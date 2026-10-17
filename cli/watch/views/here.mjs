@@ -299,6 +299,11 @@ export default {
     }
     return out;
   },
+  /** w / e (why): the rule behind the selected violation. */
+  why(state) {
+    const vs = ordered(visible(state));
+    return vs.length ? vs[Math.min(state.view.here?.index ?? 0, vs.length - 1)].ruleId : null;
+  },
   onKey(key, state, ctx) {
     const file = state.lastFile;
     const vs = ordered(visible(state));

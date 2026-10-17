@@ -160,6 +160,14 @@ export default {
     return out;
   },
 
+  /** w / e (why): the selected row's rule; with nothing selected, the newest block or fix. A block explains the locked rule that stopped it. */
+  why(state) {
+    const list = visible(state, Date.now()).filter((c) => c.kind !== "collision");
+    const c = list[state.view.feed?.sel ?? -1] ?? list.find((x) => x.kind === "blocked" || x.kind === "fix");
+    if (!c) return null;
+    if (c.kind === "blocked") return c.block?.id ?? c.block?.slug ?? c.memory?.id ?? null;
+    return c.memory?.id ?? null;
+  },
   onKey(key, state, ctx) {
     const list = visible(state, Date.now()).filter((c) => c.kind !== "collision");
     const v = (state.view.feed ??= { sel: -1 });

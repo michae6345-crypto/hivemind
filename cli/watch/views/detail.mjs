@@ -6,6 +6,7 @@
 // Then the facts (scope · owner · status · in context · related · broken right now).
 import { wrap } from "../term.mjs";
 import { linkFile } from "../git.mjs";
+import { blocks, blockingRule, whyFacts, whyLines } from "../why.mjs";
 import {
   age, agentOf, allMemories, approval, approverOf, atoms, canDecide, findMemory, inContext, isAgentActor, origin,
   ownerHandle, quoteOf, reachOf, ROLE,
@@ -51,7 +52,7 @@ function timeline(m, state, ctx, a) {
     const p = state.people.find((x) => x.id === m.author);
     nodes.push({ dot: "○", tone: "muted", when: when(o?.at ?? m.createdAt), body: `${t.muted("Set by ")}${a.handle(m.author)}${p ? t.faint(` ${p.title}`) : ""}`, quote: q });
     nodes.push({ dot: "●", tone: "locked", when: when(o?.at ?? m.createdAt), body: `${th.bold(t.lockedText("Locked"))}${t.muted(" · applies to ")}${t.text(m.scopeId === "org" ? "#org and everything below it" : `#${m.scopeId} and below`)}` });
-    const blocked = allMemories(state, ctx).filter((x) => x.status === "blocked" && String(x.blockedReason ?? "").includes(`[[${m.slug}]]`));
+    const blocked = allMemories(state, ctx).filter((x) => x.status === "blocked" && blocks(x, m));
     if (blocked.length)
       nodes.push({
         dot: "●",
@@ -87,8 +88,7 @@ function timeline(m, state, ctx, a) {
   if (o && o.type !== "manual") nodes.push({ dot: "○", tone: "muted", when: when(m.createdAt), body: `${t.muted("Hivemind proposed it for ")}${scopeText}` });
 
   if (m.status === "blocked") {
-    const slug = String(m.blockedReason ?? "").match(/\[\[([^\]]+)\]\]/)?.[1];
-    const rule = slug ? findMemory(slug, state, ctx) : null;
+    const rule = blockingRule(m, allMemories(state, ctx));
     const why = th.plain(String(m.blockedReason ?? "").split(/\):\s*/)[1] ?? "");
     nodes.push({
       dot: "●",
@@ -169,6 +169,10 @@ export default {
       if (i < nodes.length - 1) out.push(rail);
     });
     out.push("");
+
+    // why: every piece of evidence (with permalinks) and the counts (shared with `hivemind why`)
+    const facts = whyFacts(m, { memories: allMemories(state, ctx), fired: state.fired?.[m.id] ?? 0 });
+    out.push(...whyLines(facts, { width: w, root: state.workspace?.root, skipOrigin: true }), "");
 
     // facts
     const fact = (k, val) => `${t.faint(k.padEnd(13))}${val}`;

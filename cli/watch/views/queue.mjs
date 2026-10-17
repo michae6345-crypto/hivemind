@@ -5,6 +5,7 @@
 // yours the hex seal plays. Engineers: YOUR LESSONS with where each stands, then what's waiting on a lead.
 // 403s become plain sentences. j/k move · a/r decide · enter opens · p switches persona (kevin, emily, ben, greg).
 import { wrap } from "../term.mjs";
+import { blockingRule } from "../why.mjs";
 import {
   age, agentOf, allMemories, approval, approverOf, atoms, C, canDecide, isMine, origin, ownerHandle, plain403,
   quoteOf, staleExtra, switchPersona,
@@ -58,8 +59,7 @@ function card(m, act, state, ctx, a, w, flash) {
   const lines = [];
   if (m.status === "blocked") {
     lines.push(a.title(m, { base: (s) => th.bold(t.muted(s)) }));
-    const slug = String(m.blockedReason ?? "").match(/\[\[([^\]]+)\]\]/)?.[1];
-    const rule = slug ? allMemories(state, ctx).find((x) => x.slug === slug) : null;
+    const rule = blockingRule(m, allMemories(state, ctx));
     lines.push(
       rule
         ? `${t.lockedText("Blocked: contradicts ")}${a.handle(rule.author, { pos: true })}${t.lockedText(" locked rule")}`

@@ -93,9 +93,10 @@ export const quote = (m) => plain(m?.evidence?.[0]?.quote ?? "");
 export function blockedBy(m, memById) {
   const r = String(m.blockedReason ?? "");
   const slug = r.match(/\[\[([^\]]+)\]\]/)?.[1];
-  const rule = [...memById.values()].find((x) => x.slug === slug);
-  const owner = rule?.author ?? r.match(/\((\w+)/)?.[1]?.toLowerCase() ?? "maya";
-  return { title: rule?.title ?? slug ?? "a locked rule", owner, why: plain(r.split(/\):\s*/)[1] ?? "") };
+  const quoted = r.match(/locked rule "([^"]+)"/)?.[1]; // the newer wording names the rule by title
+  const rule = [...memById.values()].find((x) => (slug && x.slug === slug) || (quoted && x.title === quoted));
+  const owner = rule?.author ?? r.match(/@(\w+)'s locked rule/)?.[1] ?? r.match(/\((\w+)/)?.[1]?.toLowerCase() ?? "greg";
+  return { id: rule?.id ?? null, slug: slug ?? null, title: rule?.title ?? quoted ?? slug ?? "a locked rule", owner, why: plain(r.includes("):") ? (r.split(/\):\s*/)[1] ?? "") : "") };
 }
 
 // ---------- the feed ----------

@@ -1,7 +1,7 @@
 // `hivemind watch`: the shell. Header, tab bar (Here · Rules · Queue · Feed), key routing, the teach input docked at
 // the bottom, toasts, polling, resize, alternate screen. Views live in ./views/<id>.mjs (contract: ./README.md).
 import { appendFileSync, readFileSync } from "node:fs";
-import { basename, relative, resolve } from "node:path";
+import { relative, resolve } from "node:path";
 import * as theme from "./theme.mjs";
 import { HEX, P, REDUCED, bold, fg, label, plain, scopeChip, sep, t } from "./theme.mjs";
 import { Screen, clip, keys, padEnd, spread, strip, width, wrap } from "./term.mjs";
@@ -37,6 +37,7 @@ export async function cmdWatch(cfg) {
     pending: { count: 0, items: [] },
     approver: null,
     flags: {}, // { [file]: Violation[] }
+    fired: {}, // { [ruleId]: times watch flagged it this session } (why)
     files: {}, // { [file]: { text, at, checking } } (the watcher keeps the text the flags point into)
     lastFile: null,
     detail: null, // rule/memory id shown by views/detail.mjs over the current tab
@@ -275,7 +276,7 @@ export async function cmdWatch(cfg) {
     const own = (v?.keys?.(state) ?? []).map(([a, b]) => KEY(a, b));
     let hints = state.teach.focus
       ? [KEY("enter", "send"), KEY("esc", "cancel")]
-      : [...own, KEY("t", "teach"), KEY("?", "rules here"), KEY("tab", "switch"), KEY("q", "quit")];
+      : [...own, ...(!state.detail && v?.why?.(state) ? [KEY("w", "why")] : []), KEY("t", "teach"), KEY("?", "rules here"), KEY("tab", "switch"), KEY("q", "quit")];
     if (state.busy && now - state.busy.since > 400) hints = [t.muted(`${state.busy.label}…`)]; // a word, not a spinner
     // Fit whole pairs, never a cut "t…": drop from the end, but `q quit` always stays last.
     const quit = hints.at(-1);
@@ -296,6 +297,7 @@ export async function cmdWatch(cfg) {
 
   let lastFrame = [];
   let lastWatchState = "";
+  const firedSeen = new Set();
   function compose() {
     const w = Math.max(40, tty ? screen.cols : Number(cfg.flags.cols) || 100);
     const h = Math.max(12, tty ? screen.rows : Number(cfg.flags.rows) || 36);
@@ -337,6 +339,14 @@ export async function cmdWatch(cfg) {
     lastFrame = lines;
     if (tty) screen.draw(lines, caret);
     if (recordFile) appendFileSync(recordFile, `\x1b[2J\x1b[H${lines.join("\n")}\n\u241E\n`);
+    // "fired N× this session" (why): each new (file, rule, line) hit the watcher reports counts once.
+    for (const [file, list] of Object.entries(state.flags ?? {}))
+      for (const f of list ?? []) {
+        const k = `${file}|${f.ruleId}|${f.startLine}`;
+        if (firedSeen.has(k)) continue;
+        firedSeen.add(k);
+        state.fired[f.ruleId] = (state.fired[f.ruleId] ?? 0) + 1;
+      }
     // Tell the Claude Code status line what watch flagged (statusline.mjs reads it for 30s).
     const flags = state.lastFile ? (state.flags[state.lastFile] ?? []) : [];
     const sig = `${state.lastFile}|${flags.map((v) => `${v.ruleId}:${v.startLine}`).join(",")}`;
@@ -428,6 +438,13 @@ export async function cmdWatch(cfg) {
       state.teach = { focus: true, text: "" };
       return render();
     }
+    if ((key.name === "w" || key.name === "e") && !key.ctrl && !key.meta) {
+      // why: the focused rule's full history (Detail), from Here's selected violation or Feed's block / fix row
+      const id = TABS.find((x) => x.id === state.tab)?.why?.(state, ctx);
+      if (!id) return actions.toast("Nothing to explain here. Select a flagged rule (Here) or a block or fix (Feed).", "muted", 3000);
+      state.view.detail = { ...(state.view.detail ?? {}), from: state.tab, why: true };
+      return actions.openDetail(id);
+    }
     if (str === "?") {
       state.view.rules = { ...(state.view.rules ?? {}), file: state.lastFile };
       return actions.setTab("rules");
@@ -474,7 +491,9 @@ export async function cmdWatch(cfg) {
       await new Promise((r) => setTimeout(r, Number(cfg.flags.wait) || 1500));
       stop();
     }
-    state.toast = null;
+    // --press "jw": keys typed in order before the frame (e2e: `--view feed --press w` opens why)
+    for (const ch of typeof cfg.flags.press === "string" ? cfg.flags.press : "") onKey(ch, { name: ch === "\x1b" ? "escape" : ch });
+    if (typeof cfg.flags.press !== "string") state.toast = null;
     animUntil = 0;
     process.stdout.write(compose().lines.join("\n") + "\n");
     // No process.exit(): on Windows it can abort inside libuv while fetch sockets are closing. Nothing else is pending.
