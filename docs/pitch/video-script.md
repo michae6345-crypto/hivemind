@@ -23,8 +23,8 @@ recording time, don't show the website's Terminal animation as if it were the ap
 - 1920×1080. One terminal app (Windows Terminal, iTerm or Ghostty), dark, 16pt, split vertically about 60/40. Browser
   zoom 125%.
 - `node scripts/reset-demo.mjs`. The lesson "Exports call assertSingleCustomer()" must not exist yet.
-- **Status line**, in `demo/export-service/.claude/settings.json` (`hivemind init` doesn't write it yet):
-  `"statusLine": { "type": "command", "command": "node ../../cli/hivemind.mjs statusline" }`.
+- **Status line:** already wired in `demo/export-service/.claude/settings.json` (c1e02a0). It caches for 10 s, so
+  wait a beat after approving before you start Noor's session.
 - **Alex's split:** `HIVEMIND_USER=alex`, both panes in `demo/export-service`, `git checkout -- src/`.
   Left: `claude`. Right: `node ../../cli/hivemind.mjs watch --user alex`, on Feed.
 - **Jordan's split:** right pane only matters: `node ../../cli/hivemind.mjs watch --user jordan --role lead`, on Queue.

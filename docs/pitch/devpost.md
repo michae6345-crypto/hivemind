@@ -273,7 +273,7 @@ per-task table and reproduction commands: `docs/eval.md`.
 
 ## Build status (internal, delete before submitting)
 
-Checked against `origin/main` at **234e8b4, Sat Oct 17, ~12:15 AM PT** (terminal pivot). Only ✅ rows may be described as working in
+Checked against `origin/main` at **c1e02a0, Sat Oct 17, ~12:40 AM PT** (terminal pivot). Only ✅ rows may be described as working in
 the video or on Devpost. ⏳ rows are roadmap until they land. ✅ means the code is on main and deployed; the full run sheet
 (`scripts/e2e-demo.mjs`) has not been rehearsed end to end against the deployment yet.
 
@@ -297,7 +297,7 @@ the video or on Devpost. ⏳ rows are roadmap until they land. ✅ means the cod
 | VS Code overlay (agent H) | dropped from the demo and pitch (Michael, 17 Oct 07:08 UTC); code stays in the repo | `vscode-extension/` |
 | `hivemind watch` shell: tabs, keys, 2 s polling, teach input, toasts, code frames | ✅ 234e8b4 | `cli/watch/app.mjs`, `frame.mjs` |
 | watch views: Here (code frames), Queue (`a` / `r`), Rules, Feed, the celebration | ✅ as working stubs; agents J / I / H are finishing them. Re-check before recording | `cli/watch/views/`, `celebrate.mjs` |
-| `hivemind statusline` ("⬢ Hivemind · N rules · N waiting") | ✅ stub. `hivemind init` doesn't wire it yet: add `statusLine` to `.claude/settings.json` by hand for the video | `cli/watch/statusline.mjs` |
+| `hivemind statusline` ("⬢ Hivemind · N rules · N waiting", plus locked/lesson counts for the last-edited file), 10 s cache | ✅ c1e02a0, wired into `demo/export-service/.claude/settings.json` (not yet written by `hivemind init` for other repos) | `cli/watch/statusline.mjs` |
 | `hivemind check <file…>` / `--staged [--fix]` (code frames, exits 1 on a locked rule) | ✅ | `cli/lib/check.mjs` |
 | Hook lines in plain "Hivemind · …" wording, no emoji | ✅ cee7840 | `src/lib/engine/pipeline.ts`, `hooks/` |
 | MCP chat cards for `get_team_rules` / `propose_memory` (MCP Apps) | ✅ | `src/app/api/mcp/` |
