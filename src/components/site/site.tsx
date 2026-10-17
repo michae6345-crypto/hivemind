@@ -129,6 +129,10 @@ function Hero() {
       >
         <MacDesktop />
       </motion.div>
+      <p className="mx-auto mt-6 max-w-[64ch] text-center font-mono text-[12px] leading-relaxed text-muted">
+        We built Hivemind for AI training-data teams like AfterQuery&apos;s. The company in the demo, Meridian Data, is
+        fictional.
+      </p>
     </section>
   );
 }

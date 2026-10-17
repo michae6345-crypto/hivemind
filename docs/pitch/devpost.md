@@ -58,7 +58,8 @@ Hivemind is shared memory for AI coding agents, with a chain of command.
    editor, the same lessons show inline with the name of the person who taught them, and code that breaks a 🔒 rule
    is underlined with a one-click fix.
 
-The demo company is **Meridian Data**, a fictional AI training-data company with two lab customers (Lab A, Lab B),
+We built Hivemind for AI training-data teams like AfterQuery's, so the demo company is **Meridian Data**, a fictional
+AI training-data company with two lab customers (Lab A, Lab B),
 a Head of Security (Maya), a Data Pipelines lead (Jordan) and two engineers (Alex, Noor).
 
 ### Does it work? The eval
