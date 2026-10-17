@@ -1,6 +1,7 @@
 // Per-agent wiring. Formats verified against each vendor's docs on 2026-10-16 (see cli/README.md for links).
 // Every writer merges keys or leaves the existing file alone; nothing is overwritten.
 import { join } from "node:path";
+import { hasTemplates, wireFromTemplates } from "./templates.mjs";
 import { examplePath, mergeJson, read, write } from "./util.mjs";
 
 const mcpUrl = (ctx) => `${ctx.url}/api/mcp`;
@@ -185,6 +186,7 @@ export const AGENTS = [
     bins: ["claude"],
     wire: wireClaude,
     mcpFile: ".mcp.json",
+    hooksFile: ".claude/settings.json",
     rules: null, // SessionStart hook injects the live pack every session
   },
   {
@@ -194,6 +196,7 @@ export const AGENTS = [
     bins: ["cursor"],
     wire: wireCursor,
     mcpFile: ".cursor/mcp.json",
+    hooksFile: ".cursor/hooks.json",
     rules: {
       file: ".cursor/rules/hivemind.mdc",
       frontmatter: "---\ndescription: Hivemind team memory (synced by `hivemind sync`)\nalwaysApply: true\n---\n\n",
@@ -206,6 +209,7 @@ export const AGENTS = [
     bins: ["gemini"],
     wire: wireGemini,
     mcpFile: ".gemini/settings.json",
+    hooksFile: ".gemini/settings.json",
     rules: { file: "GEMINI.md" },
   },
   {
@@ -215,6 +219,7 @@ export const AGENTS = [
     bins: ["code"],
     wire: wireCopilot,
     mcpFile: ".vscode/mcp.json",
+    hooksFile: ".github/hooks/hivemind.json",
     rules: { file: ".github/copilot-instructions.md" },
   },
   {
@@ -224,6 +229,7 @@ export const AGENTS = [
     bins: ["codex"],
     wire: wireCodex,
     mcpFile: ".codex/config.toml",
+    hooksFile: ".codex/hooks.json",
     rules: { file: "AGENTS.md" },
   },
   {
@@ -233,10 +239,18 @@ export const AGENTS = [
     bins: ["windsurf"],
     wire: wireWindsurf,
     mcpFile: ".windsurf/mcp_config.hivemind.example.json",
+    hooksFile: ".windsurf/hooks.json",
     rules: { file: ".windsurf/rules/hivemind.md", frontmatter: "---\ntrigger: always_on\n---\n\n" },
   },
 ];
 export const byId = Object.fromEntries(AGENTS.map((a) => [a.id, a]));
+
+// Prefer agent F's integrations/<tool>/ templates (MCP + hooks + rules stanza); built-in writers above are the
+// fallback when the CLI runs without a hivemind checkout next to it.
+for (const a of AGENTS) {
+  const builtin = a.wire;
+  a.wire = (ctx) => (hasTemplates(ctx.hmRoot, a.id) ? wireFromTemplates(ctx, a) : builtin(ctx));
+}
 
 /** Is this agent's MCP wired in `root`? */
 export const mcpWired = (root, agent) => has(root, agent.mcpFile);

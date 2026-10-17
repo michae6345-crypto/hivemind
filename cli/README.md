@@ -22,9 +22,9 @@ To choose agents yourself, pass `--agents cursor,codex`.
 
 | Command | What it does |
 |---|---|
-| `init [--agents …] [--repo repo/<name>] [--user <id>] [--url <api>] [--dir <path>] [--no-sync] [--no-vscode] [--dry-run]` | Writes the MCP and hook config for each agent, then syncs the rules files |
+| `init [--agents …] [--repo repo/<name>] [--user <id>] [--url <api>] [--dir <path>] [--hivemind-dir <path>] [--no-sync] [--no-vscode] [--copilot-cli] [--dry-run]` | Writes the MCP, hook and rules config for each agent, then syncs the rules files |
 | `sync [--agents …] [--dry-run] [--personal --user <id>]` | Fetches `/api/context-pack` and writes it between `<!-- hivemind:start -->` / `<!-- hivemind:end -->` markers. Idempotent. Run it in CI or a cron to keep rules fresh |
-| `status` | Pings the API and shows rules in the pack, pending lessons, and which agents are wired |
+| `status` | Pings the API, then shows the rules in the pack, pending lessons, and each agent's MCP, hooks and rules files |
 
 Settings are resolved in this order: flags, then `HIVEMIND_API_URL` / `HIVEMIND_TOKEN` / `HIVEMIND_USER` /
 `HIVEMIND_REPO`, then `.hivemind.json`, then the hivemind checkout's `.env.local`. Every request sends
@@ -32,22 +32,30 @@ Settings are resolved in this order: flags, then `HIVEMIND_API_URL` / `HIVEMIND_
 
 ## What gets written
 
-| Agent | `--agents` id | MCP / hooks config | Rules file (`sync`) |
-|---|---|---|---|
-| Claude Code | `claude-code` | `.mcp.json` + `.claude/settings.json` (SessionStart, UserPromptSubmit, PostToolUse, SessionEnd hooks) | none: the SessionStart hook injects the live pack |
-| Cursor | `cursor` | `.cursor/mcp.json` (`${env:HIVEMIND_TOKEN}`) | `.cursor/rules/hivemind.mdc` (`alwaysApply: true`) |
-| Gemini CLI | `gemini-cli` | `.gemini/settings.json` (`httpUrl`, `$HIVEMIND_TOKEN`) | `GEMINI.md` |
-| GitHub Copilot | `copilot` | `.vscode/mcp.json` (`servers` + `${input:hivemind-token}` prompt) | `.github/copilot-instructions.md` |
-| Codex CLI | `codex` | `.codex/config.toml` (`bearer_token_env_var`, used in trusted projects) | `AGENTS.md` |
-| Windsurf | `windsurf` | `.windsurf/mcp_config.hivemind.example.json` (Windsurf MCP config is user-level only) | `.windsurf/rules/hivemind.md` (`trigger: always_on`) |
-| Anything else | `other` | prints the MCP URL | `AGENTS.md` |
+`init` renders agent F's templates from [`integrations/<tool>/`](../integrations) (see that README for the capability
+matrix). Hook commands run `node <hivemind>/hooks/adapters/<tool>.mjs`, so they need a hivemind checkout on the machine.
+Pass `--hivemind-dir ../..` to write a relative path, which the demo repo uses. If `integrations/` is missing, `init`
+falls back to built-in MCP-only writers.
+
+| Agent | `--agents` id | MCP | Hooks | Rules file (`sync`) |
+|---|---|---|---|---|
+| Claude Code | `claude-code` | `.mcp.json` | `.claude/settings.json` | none: the SessionStart hook injects the live pack |
+| Cursor | `cursor` | `.cursor/mcp.json` (`${env:HIVEMIND_TOKEN}`) | `.cursor/hooks.json` | `.cursor/rules/hivemind.mdc` (`alwaysApply: true`) |
+| Gemini CLI | `gemini-cli` | `.gemini/settings.json` (`httpUrl`) | same file, `hooks` key | `GEMINI.md` |
+| GitHub Copilot | `copilot` | `.vscode/mcp.json` (`${input:hivemind-token}` prompt) | `.github/hooks/hivemind.json`; with `--copilot-cli`, also `hivemind-cli.json` | `.github/copilot-instructions.md` |
+| Codex CLI | `codex` | `.codex/config.toml` (trusted projects only) | `.codex/hooks.json` (approve once in `/hooks`) | `AGENTS.md` |
+| Windsurf | `windsurf` | user-level only: `.windsurf/mcp_config.hivemind.example.json` | `.windsurf/hooks.json` | `.windsurf/rules/hivemind.md` (`trigger: always_on`) |
+| Anything else | `other` | prints the MCP URL | none | `AGENTS.md` |
 
 **Safety:**
 
-- Existing files are never overwritten. JSON keys are merged, and an existing `hivemind` server entry is kept as-is.
+- Existing files are never overwritten.
+- JSON is deep-merged. Your keys and values win, Hivemind hook entries are appended to your hook arrays, and an event that
+  already runs a Hivemind adapter is left alone.
+- TOML gets a `[mcp_servers.hivemind]` table appended once.
   A file that isn't plain JSON (for example JSONC with comments) is left alone, and the snippet goes to
   `<name>.hivemind.example.json` instead.
-- Text outside the markers is never touched.
+- In rules files, text outside the markers is never touched, and the file's line endings (LF or CRLF) are preserved.
 - Synced files contain org, team and repo memory only. Personal lessons are included only with `--personal`.
 
 ## Formats: verified vs live-tested
@@ -60,8 +68,16 @@ All formats were checked against vendor docs on 2026-10-16:
 - [Codex MCP and config](https://learn.chatgpt.com/docs/config-file/config-reference) and [AGENTS.md](https://learn.chatgpt.com/docs/agent-configuration/agents-md)
 - [Windsurf rules](https://docs.devin.ai/desktop/cascade/memories) and [MCP](https://docs.devin.ai/desktop/cascade/mcp)
 
-Claude Code wiring is the live-tested `demo/export-service` pattern. The other tools' files were generated and
-checked against the docs; they were not run inside each tool. Two points are not confirmed by the docs:
+What was live-tested against a local server:
+
+- Claude Code wiring, which is the `demo/export-service` pattern.
+- The generated Cursor, Gemini and Codex `SessionStart` hook commands, run by hand with sample stdin. Each returned the
+  pack.
+- `init`, `sync` and `status`, including re-runs being no-ops.
+
+None of the tools themselves were launched. These points are not confirmed by the docs:
 
 - whether Gemini CLI expands `$VAR` inside MCP `headers`
 - the Windsurf user-level MCP path
+- whether Gemini, Codex and Copilot run project hooks from the repo root, which the relative `--hivemind-dir` relies on
+  (Cursor documents that it does)

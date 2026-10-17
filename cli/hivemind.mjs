@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // hivemind — connect every coding agent in a repo to Hivemind team memory.
-//   hivemind init   [--agents a,b] [--repo repo/<name>] [--user <id>] [--url <api>] [--dir <path>] [--no-sync] [--no-vscode] [--dry-run]
+//   hivemind init   [--agents a,b] [--repo repo/<name>] [--user <id>] [--url <api>] [--dir <path>] [--hivemind-dir <path>]
+//                   [--no-sync] [--no-vscode] [--copilot-cli] [--dry-run]
 //   hivemind sync   [--agents a,b] [--repo …] [--url …] [--dir …] [--user <id>]
 //   hivemind status [--repo …] [--url …] [--dir …]
 // Precedence: flag > env (HIVEMIND_API_URL, HIVEMIND_TOKEN, HIVEMIND_USER, HIVEMIND_REPO) > .hivemind.json > <hivemind>/.env.local.
@@ -8,6 +9,7 @@ import { existsSync, statSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { AGENTS, byId, mcpWired } from "./lib/agents.mjs";
+import { rulesFrontmatter } from "./lib/templates.mjs";
 import { END, START, api, banner, c, mergeJson, onPath, read, readEnvFile, rel, sym, table, upsertBlock, write } from "./lib/util.mjs";
 
 const HM_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -99,6 +101,7 @@ function shapePack(markdown, cfg) {
     `# Hivemind — team memory for ${cfg.repo}\n` +
     `These are this repo's working rules, synced from Hivemind team memory. They come from teammates' corrections and ` +
     `code reviews, approved by team leads. Follow them, and treat 🔒 rules as company policy that always applies.\n` +
+    `Call the Hivemind \`get_team_rules\` MCP tool at the start of every task for the live version; when the user corrects you, call \`propose_memory\`.\n` +
     withoutLive.replace(/^\n+/, "\n")
   );
 }
@@ -127,7 +130,7 @@ async function runSync(cfg, agents) {
     const block = shapePack(pack.markdown ?? "", cfg);
     const p = join(cfg.root, file);
     const before = read(p);
-    const after = upsertBlock(before, block, rules.frontmatter ?? "");
+    const after = upsertBlock(before, block, rulesFrontmatter(HM_ROOT, agent) ?? rules.frontmatter ?? "");
     const action = before === null ? "created" : before === after ? "unchanged" : "updated";
     if (action !== "unchanged") write(p, after, cfg.dryRun);
     const locked = (block.match(/^- 🔒/gm) ?? []).length;
@@ -163,19 +166,26 @@ async function cmdInit(cfg) {
   console.log(banner("init"), c.gray(`${cfg.root}${cfg.dryRun ? "  (dry run)" : ""}`));
   const agents = pickAgents(cfg, { usePath: true });
   const sessionStartScript = join(HM_ROOT, "hooks", "session-start.mjs").replace(/\\/g, "/");
-  const ctx = { ...cfg, sessionStartScript, skipVscode: !!cfg.flags["no-vscode"] };
+  // Hook commands point at <hivemind>/hooks/…; --hivemind-dir overrides (e.g. "../.." for a repo inside the checkout).
+  const hivemindDir = String(typeof cfg.flags["hivemind-dir"] === "string" ? cfg.flags["hivemind-dir"] : HM_ROOT).replace(/\\/g, "/");
+  const ctx = { ...cfg, hmRoot: HM_ROOT, hivemindDir, sessionStartScript, skipVscode: !!cfg.flags["no-vscode"], copilotCli: !!cfg.flags["copilot-cli"] };
 
   const rows = [];
   const notes = [];
   for (const { id, via } of agents) {
     const a = agentOf(id);
-    const results = a.wire ? a.wire(ctx) : [];
-    for (const r of results) if (r.note) notes.push(`${a.label}: ${r.note}`);
+    const all = a.wire ? a.wire(ctx) : [];
+    for (const r of all) if (r.note) notes.push(`${a.label}: ${r.note}`);
+    const isRules = (r) => a.rules && rel(cfg.root, r.file) === a.rules.file;
+    const results = all.filter((r) => !isRules(r));
     const cfgCell = results.length
       ? results.map((r) => `${ACTION[r.action]} ${rel(cfg.root, r.file)}`).join("\n")
       : c.gray(`MCP: ${cfg.url}/api/mcp`);
-    rows.push({ id, label: a.label, via, cfgCell, rules: a.rules?.file ?? (id === "claude-code" ? c.gray("SessionStart hook") : "—") });
+    rows.push({ id, label: a.label, via, cfgCell, rulesAction: all.find(isRules)?.action, rules: a.rules?.file ?? (id === "claude-code" ? c.gray("SessionStart hook") : "—") });
   }
+  if (ids(agents).some((x) => x !== "claude-code" && x !== "other") && !existsSync(join(HM_ROOT, "hooks", "adapters")))
+    notes.push(`hook adapters not found under ${HM_ROOT}/hooks/adapters; MCP + rules files still work.`);
+  if (ids(agents).includes("codex")) notes.push("Codex: project .codex/ is read only in trusted projects; approve the new hooks once in /hooks.");
   if (ids(agents).includes("claude-code") && !existsSync(sessionStartScript))
     notes.push(`Claude Code: ${sessionStartScript} not found; point the SessionStart hook at your hivemind checkout.`);
 
@@ -202,7 +212,10 @@ async function cmdInit(cfg) {
   const out = [];
   for (const r of rows) {
     const lines = r.cfgCell.split("\n");
-    const rulesCell = syncBy[r.rules] ? `${ACTION[syncBy[r.rules]]} ${r.rules}` : r.rules;
+    // A file init just created/merged reads better as that than as the follow-up sync "updated".
+    const fresh = r.rulesAction === "created" || r.rulesAction === "merged";
+    const action = fresh && syncBy[r.rules] !== "failed" ? r.rulesAction : (syncBy[r.rules] ?? r.rulesAction);
+    const rulesCell = action ? `${ACTION[action]} ${r.rules}` : r.rules;
     lines.forEach((l, i) => out.push(i === 0 ? [`${sym.ok} ${c.bold(r.label)}`, c.gray(r.via), l, rulesCell] : ["", "", l, ""]));
   }
   console.log(table(["Agent", "Detected via", "MCP / hooks config", "Rules file"], out));
@@ -264,16 +277,20 @@ async function cmdStatus(cfg) {
     if (!chosen.has(a.id) && (a === GENERIC || (!mcp && !(rulesText ?? "").includes(START)))) continue;
     let rules = c.gray("—");
     if (a.id === "claude-code") {
-      const hooked = (read(join(cfg.root, ".claude", "settings.json")) ?? "").includes("/api/hooks/");
-      rules = hooked ? `${sym.ok} hooks` : `${sym.fail} no hooks`;
+      rules = c.gray("live via SessionStart");
     } else if (rulesText?.includes(START) && rulesText.includes(END)) {
       const age = Math.round((Date.now() - statSync(rulesPath).mtimeMs) / 60000);
       rules = `${sym.ok} ${a.rules.file} ${c.gray(age < 1 ? "just now" : age < 60 ? `${age}m ago` : `${Math.round(age / 60)}h ago`)}`;
     } else if (a.rules) rules = `${sym.fail} ${a.rules.file} ${c.gray("(run sync)")}`;
-    const mcpCell = mcp === null ? c.gray("—") : mcp ? `${sym.ok} ${a.mcpFile}` : `${sym.fail} ${c.gray("not wired")}`;
-    rows.push([c.bold(a.label), mcpCell, rules]);
+    const userLevel = a.mcpFile?.includes(".hivemind.example");
+    const mcpCell =
+      mcp === null ? c.gray("—") : !mcp ? `${sym.fail} ${c.gray("not wired")}` : userLevel ? `${sym.warn} user-level ${c.gray("(see example)")}` : `${sym.ok} ${a.mcpFile}`;
+    const hooksText = a.hooksFile ? (read(join(cfg.root, a.hooksFile)) ?? "") : null;
+    const hooked = hooksText !== null && /\/api\/hooks\/|hooks\/adapters\//.test(hooksText);
+    const hooksCell = hooksText === null ? c.gray("—") : hooked ? `${sym.ok} ${a.hooksFile}` : `${sym.fail} ${c.gray("not wired")}`;
+    rows.push([c.bold(a.label), mcpCell, hooksCell, rules]);
   }
-  if (rows.length) console.log(table(["Agent", "MCP", "Rules"], rows));
+  if (rows.length) console.log(table(["Agent", "MCP", "Hooks", "Rules"], rows));
   else console.log(`${sym.warn} No agents wired here yet. Run ${c.cyan("hivemind init")}.`);
   if (!reachable) process.exit(1);
 }
@@ -284,7 +301,7 @@ const HELP = `${banner("— team memory for every coding agent")}
 ${c.bold("Usage")}
   hivemind init   [--agents claude-code,cursor,gemini-cli,copilot,codex,windsurf,other]
                   [--repo repo/<name>] [--user <id>] [--url <api>] [--dir <path>]
-                  [--no-sync] [--no-vscode] [--dry-run]
+                  [--hivemind-dir <path>] [--no-sync] [--no-vscode] [--copilot-cli] [--dry-run]
   hivemind sync   [--agents …] [--repo …] [--url …] [--dir …] [--dry-run] [--personal --user <id>]
   hivemind status [--repo …] [--url …] [--dir …]
 
