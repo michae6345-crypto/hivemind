@@ -1,7 +1,8 @@
-export default function Home() {
-  return (
-    <main className="flex h-full items-center justify-center text-muted">
-      Hivemind — UI shell. Workbench lands here next.
-    </main>
-  );
+import { Vault } from "@/components/hm/vault";
+
+// Client-rendered workbench (seed timestamps are computed in the browser).
+export const instant = false;
+
+export default function VaultPage() {
+  return <Vault />;
 }

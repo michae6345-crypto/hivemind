@@ -83,12 +83,13 @@ body {
 .hm-chip:hover { filter: brightness(1.15); }
 
 /* Resizable panel separators */
-[data-separator] {
+.hm-sep {
   width: 1px;
   background: var(--border);
   transition: background-color 150ms ease-out;
 }
-[data-separator]:hover,
-[data-separator][data-separator-state="drag"] {
+.hm-sep:hover,
+.hm-sep[data-separator="hover"],
+.hm-sep[data-separator="active"] {
   background: var(--accent);
 }
