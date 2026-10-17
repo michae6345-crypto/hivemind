@@ -188,7 +188,8 @@ export async function cmdWatch(cfg) {
 
   function onNew(c) {
     actions.animate(400); // the card's ease-in
-    if (c.kind === "approved") actions.celebrate({ ...c.memory, approver: c.actor });
+    // The seal plays on the proposer's screen (terminal-spec §6); the approver gets the Queue's green flash.
+    if (c.kind === "approved" && c.memory?.author === state.actor) actions.celebrate({ ...c.memory, approver: c.actor });
     if (c.kind === "collision") actions.toast(`Heads up: ${typeof c.line === "function" ? c.line(Date.now()) : c.line}`, "lesson", 5000);
     hooks.onCard?.(c);
   }
@@ -379,6 +380,16 @@ export async function cmdWatch(cfg) {
     render();
   }
 
+  /** A view's key handler must never take the app down: a throw becomes a toast. */
+  function safeKey(view, key, ctx) {
+    try {
+      return view.onKey?.(key, state, ctx);
+    } catch (e) {
+      actions.toast(`${view.id}: ${plainError(e)}`, "locked", 5000);
+      return true;
+    }
+  }
+
   function onKey(str, raw = {}) {
     const key = { ...raw, name: raw.name ?? str, ch: str };
     if (key.ctrl && key.name === "c") return quit();
@@ -390,10 +401,10 @@ export async function cmdWatch(cfg) {
     const ctx = ctxFor(screen.cols, screen.rows);
     if (state.detail) {
       if (key.name === "escape" || key.name === "backspace") return actions.closeDetail();
-      if (detail.onKey?.(key, state, ctx)) return render();
+      if (safeKey(detail, key, ctx)) return render();
     } else {
       const v = TABS.find((x) => x.id === state.tab);
-      if (v.onKey?.(key, state, ctx)) return render();
+      if (safeKey(v, key, ctx)) return render();
     }
     const i = TABS.findIndex((x) => x.id === state.tab);
     if (key.name === "q") return quit();
@@ -459,6 +470,8 @@ export async function cmdWatch(cfg) {
   screen.start();
   screen.onResize = () => render();
   for (const sig of ["SIGINT", "SIGTERM", "SIGHUP", "SIGBREAK"]) process.on(sig, quit);
+  // An async slip in a view (a failed approve, a fetch) is a toast, not a dead pane.
+  process.on("unhandledRejection", (e) => actions.toast(plainError(e), "locked", 5000));
   process.on("uncaughtException", (e) => {
     screen.stop();
     console.error(e);
