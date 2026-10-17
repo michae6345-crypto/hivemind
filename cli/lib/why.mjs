@@ -8,7 +8,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, relative, resolve } from "node:path";
 import { brand, handleChip, label, scopeChip, useColor } from "./style.mjs";
-import { header, padEnd, rows, width } from "./ui.mjs";
+import { agentChip, header, padEnd, rows, width } from "./ui.mjs";
 import { api, c, plain, post } from "./util.mjs";
 
 const STATE = join(tmpdir(), "hivemind", "last-flag.json");
@@ -50,7 +50,7 @@ function refLink(e) {
 const KIND = { correction: "corrected an agent", review_comment: "review comment", manual: "set it", agent: "agent proposal", fix: "applied the quick fix" };
 const UUIDISH = /^[0-9a-f]{8}-[0-9a-f]{4}-/i;
 /** People are @handles; agents and the bare CLI read as "an agent". */
-const person = (id) => (!id || id === "cli" || id.startsWith("agent") ? c.gray("an agent") : handleChip(`@${id}`));
+const person = (id) => (!id || id === "cli" || id.startsWith("agent") ? agentChip() : handleChip(`@${id}`)); // ◇ agent, like watch
 
 // ---------- finding the rule ----------
 async function findByWords(cfg, words) {

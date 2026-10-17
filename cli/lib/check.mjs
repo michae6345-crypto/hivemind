@@ -5,7 +5,7 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { isAbsolute, relative, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { brand, handleChip, label, useColor } from "./style.mjs";
-import { pill, printHeader, spin } from "./ui.mjs";
+import { printHeader, spin, statusPill } from "./ui.mjs";
 import { api, c, plain, post } from "./util.mjs";
 import { recordFlag } from "./why.mjs";
 
@@ -209,13 +209,13 @@ async function checkOne(cfg, file, text) {
 const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
 function summary(totLocked, totLessons, fixable, nFiles, { fixHint }) {
-  const dot = c.gray(" · ");
-  if (!totLocked && !totLessons) return pill(`${brand()}${dot}${c.green("no team-rule violations")} in ${plural(nFiles, "file")}`);
-  const parts = [];
-  if (totLocked) parts.push(c.rose(c.bold(`${plural(totLocked, "locked rule")} broken`)));
-  if (totLessons) parts.push(c.lesson(plural(totLessons, "lesson")));
+  // Adrian v2: status as tinted pills; the next step beside them in grey.
+  if (!totLocked && !totLessons) return `${brand()}  ${statusPill("live", "no team-rule violations")} ${c.faint(`in ${plural(nFiles, "file")}`)}`;
+  const pills = [];
+  if (totLocked) pills.push(statusPill("locked", `${plural(totLocked, "locked rule")} broken`));
+  if (totLessons) pills.push(statusPill("lesson", plural(totLessons, "lesson")));
   const hint = fixHint && fixable ? c.gray(`  run with ${c.cyan("--fix")} to apply ${plural(fixable, "quick fix", "quick fixes")}`) : "";
-  return `${pill([brand(), ...parts].join(dot))}${hint}`; // the verdict as a pill; the next step beside it
+  return `${brand()}  ${pills.join(" ")}${hint}`;
 }
 
 // ---------- command ----------

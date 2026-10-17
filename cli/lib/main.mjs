@@ -18,7 +18,7 @@ import { USE_HINT, locateRepo } from "./locate.mjs";
 import { NOT_IN_REPO, WHO_ARE_YOU, explicitUser, findRepoRoot, nativePath, resolveUser } from "./root.mjs";
 import { liveRecent, readState, remember, setDefault } from "./state.mjs";
 import { brand, handleChip, label, rich, scopeChip, useColor } from "./style.mjs";
-import { card, chip, dot, header, padEnd, printHeader, rows, spin } from "./ui.mjs";
+import { card, chip, dot, header, padEnd, printHeader, row, rows, spin, statusPill } from "./ui.mjs";
 import { rulesFrontmatter } from "./templates.mjs";
 import { END, START, api, banner, c, callerAgent, mcpCall, mergeJson, onPath, post, read, readEnvFile, rel, sym, table, plain, upsertBlock, write } from "./util.mjs";
 
@@ -29,7 +29,7 @@ const GENERIC = { id: "other", label: "Any MCP agent", rules: { file: "AGENTS.md
 const agentOf = (id) => byId[id] ?? (id === "other" ? GENERIC : null);
 
 // ---------- args ----------
-const BOOLEAN = new Set(["no-mouse", "invert-scroll", "dry-run", "no-sync", "no-vscode", "copilot-cli", "no-statusline", "personal", "help", "json", "staged", "fix", "deep", "version", "once", "snapshot", "notify", "no-motion", "claude", "auto", "open", "last", "clear"]);
+const BOOLEAN = new Set(["no-mouse", "invert-scroll", "dry-run", "no-sync", "no-vscode", "copilot-cli", "no-statusline", "personal", "help", "json", "staged", "fix", "deep", "version", "once", "snapshot", "notify", "no-motion", "claude", "auto", "open", "last", "clear", "full"]);
 function parseArgs(argv) {
   // `hivemind --open` / `hivemind --user ben`: flags with no subcommand → cmd "" (main decides: open or help).
   const [cmd = "", ...rest] = argv[0]?.startsWith("--") && !["--help", "--version"].includes(argv[0]) ? ["", ...argv] : argv;
@@ -383,14 +383,14 @@ async function cmdTeach(cfg, positional) {
     const act = actionOf.get(m.id);
     const owner = ownerOf(m.scopeId, scopes);
     if (m.status === "blocked") {
-      block(label("blocked"), "by a locked rule", m.title, [c.gray(plain(act?.note || m.blockedReason || "conflicts with a locked rule")), `${c.faint("history:")} ${c.cyan("hivemind why --last")}`]);
+      block(`${label("blocked")}  ${statusPill("blocked")}`, "by a locked rule", m.title, [c.gray(plain(act?.note || m.blockedReason || "conflicts with a locked rule")), `${c.faint("history:")} ${c.cyan("hivemind why --last")}`]);
     } else if (act?.action === "reinforced" || act?.action === "updated" || m.status === "active") {
-      block(label("approved", "ALREADY KNOWN"), "your correction was added as evidence", m.title, [
+      block(`${label("approved", "ALREADY KNOWN")}  ${statusPill("live")}`, "your correction was added as evidence", m.title, [
         scopeChip(m.scopeId),
         m.status === "pending" && owner ? `${c.gray("still waiting on")} ${handleChip(`@${owner}`)}` : c.gray(m.status),
       ]);
     } else {
-      block(label("captured", "LESSON PROPOSED"), "", m.title, [
+      block(`${label("captured", "LESSON PROPOSED")}  ${statusPill("waiting")}`, "", m.title, [
         scopeChip(m.scopeId),
         `${c.gray("waiting on")} ${handleChip(`@${owner ?? "a lead"}`)}`,
         c.faint("not active until approved"),
@@ -413,25 +413,38 @@ async function cmdRules(cfg) {
   }
   if (cfg.flags.json) return process.stdout.write(markdown.trimEnd() + "\n");
   if (!useColor) return process.stdout.write(plain(markdown).trimEnd() + "\n");
-  // Same look as hivemind watch: kind labels in their colour, titles bold, provenance muted, @handles/#scopes rich.
+  // Adrian v2 rule 3: a rule is a dense two-line row (▎ title ……… [pill] / ▎ scope · provenance), no boxes.
+  // Sections become quiet labels; `--full` adds each rule's one-line body as a third, faint line.
   const out = [header("rules", `#${cfg.repo}${file ? ` · ${file}` : ""}`), ""];
-  let title = false; // the line after "LOCKED RULE · #org" is that rule's title
+  let cur = null;
+  const flush = () => {
+    if (!cur?.title) return;
+    const locked = cur.kind === "LOCKED RULE";
+    const meta = [scopeChip(cur.scope.replace(/^#/, "")), cur.prov ? c.gray(rich(cur.prov)) : ""].filter(Boolean).join(c.faint(" · "));
+    out.push(...row({ bar: locked ? "locked" : "lesson", title: cur.title, pill: statusPill(locked ? "locked" : "live", locked ? "locked" : "active"), meta }).map((l) => `  ${l}`));
+    if (cfg.flags.full && cur.body) out.push(`  ${(locked ? c.rose : c.lesson)("▎")} ${c.faint(cur.body)}`);
+    cur = null;
+  };
   for (const raw of markdown.split("\n")) {
-    const line = plain(raw);
-    const head = line.match(/^(LOCKED RULE|TEAM RULE|TEAM LESSON)( · .*)?$/);
+    const line = plain(raw).trim();
+    const head = line.match(/^(LOCKED RULE|TEAM RULE|TEAM LESSON) · (#\S+)/);
     if (head) {
-      out.push(`${label(head[1] === "LOCKED RULE" ? "locked" : "lesson", head[1])}${c.gray(head[2] ?? "")}`);
-      title = true;
-    } else if (title && line.trim()) {
-      out.push(c.bold(line));
-      title = false;
-    } else if (/^# /.test(line)) continue; // the pack's own title repeats the header
-    else if (/^## /.test(line)) out.push(c.faint(line.slice(3))); // section → a quiet group label, like help
-    else if (/^(Set by|Learned from|From) /.test(line)) out.push(c.gray(rich(line)));
-    else if (raw.includes("🔒")) out.push(c.rose(line)); // older packs: colour carries "locked" once the glyph is gone
-    else out.push(rich(line.replace(/\*\*(.+?)\*\*/g, (_, t) => c.bold(t))));
+      flush();
+      cur = { kind: head[1], scope: head[2] };
+    } else if (cur && !cur.title && line) cur.title = line;
+    else if (cur && !cur.prov && /^(Set by|Learned from|From) /.test(line)) cur.prov = line;
+    else if (cur && !cur.body && line && !line.startsWith("#")) cur.body = line;
+    else if (/^## /.test(line)) {
+      flush();
+      out.push("", `  ${c.faint(line.slice(3))}`);
+    } else if (/^- /.test(line)) out.push(`  ${rich(line.replace(/\*\*(.+?)\*\*/g, (_, x) => c.bold(x)))}`); // per-file "Rules for" list
+    else if (/^Hivemind · /.test(line)) {
+      flush();
+      out.push("", `  ${c.faint(line)}`);
+    }
   }
-  console.log(out.map((l, i) => (i < 2 || !l ? l : `  ${l}`)).join("\n").replace(/\n{3,}/g, "\n\n"));
+  flush();
+  console.log(out.join("\n").replace(/\n{3,}/g, "\n\n"));
 }
 
 // ---------- main ----------
@@ -535,11 +548,19 @@ async function cmdUse(cfg, positional) {
     return console.log(`${brand()} ${c.gray("· use")}  default is now ${c.repo(`#${repo}`)} ${c.gray(`(${found.root})`)}`);
   }
   const st = readState();
-  const recent = liveRecent();
-  console.log(`${brand()} ${c.gray("· use")}  ${recent.length ? "recent repos" : "no repos yet; run hivemind in one, or hivemind use <path>"}`);
+  // The default always shows first, even after it dropped out of the 10 most recent.
+  const live = liveRecent();
+  const def = st.default && findRepoRoot(st.default) && !live.some((r) => r.path.toLowerCase() === st.default.toLowerCase())
+    ? [{ path: st.default, repo: repoIdOf(findRepoRoot(st.default)) }]
+    : [];
+  const recent = [...def, ...live];
+  console.log(`${header("use", recent.length ? `${recent.length} recent` : "")}
+`);
+  if (!recent.length) console.log(`  ${c.gray("no repos yet")}${c.faint(" · run hivemind in one, or hivemind use <path>")}`);
   for (const r of recent) {
     const isDefault = st.default && st.default.toLowerCase() === r.path.toLowerCase();
-    console.log(`  ${isDefault ? c.lesson("●") : c.faint("○")} ${c.repo(`#${r.repo ?? "repo/?"}`)}  ${c.gray(r.path)}${r.user ? c.gray(` · @${r.user}`) : ""}${isDefault ? c.lesson("  default") : ""}`);
+    const meta = [c.gray(r.path), r.user ? handleChip(`@${r.user}`) : ""].filter(Boolean).join(c.faint(" · "));
+    for (const l of row({ bar: isDefault ? "lesson" : "faint", title: `#${r.repo ?? "repo/?"}`, pill: isDefault ? statusPill("you", "default") : "", meta })) console.log(`  ${l}`);
   }
   if (recent.length) console.log(c.faint(`  set the default: hivemind use <path> · clear it: hivemind use --clear`));
 }

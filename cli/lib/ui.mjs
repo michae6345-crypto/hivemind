@@ -13,6 +13,7 @@ const live = () => useColor && !!process.stdout.isTTY && !process.env.HIVEMIND_R
 export const width = () => Math.min(Number(process.stdout.columns) || Number(process.env.COLUMNS) || 96, 104);
 
 const hair = fg(hex("hair"));
+const boxLine = fg(hex("boxBorder")); // Adrian v2: rounded boxes use #3A3A40, title muted bold
 const faint = t.faint;
 
 // ---------- header ----------
@@ -47,9 +48,11 @@ export async function printHeader(cmd, context) {
  */
 export function card(lines, { title = "", min = 0 } = {}) {
   const inner = Math.max(min, vis(title) + 3, ...lines.map(vis));
-  const top = title ? `${hair("╭─")} ${t.muted(title)} ${hair("─".repeat(Math.max(0, inner - vis(title) - 1)) + "╮")}` : hair(`╭${"─".repeat(inner + 2)}╮`);
-  const body = lines.map((l) => `${hair("│")} ${padEnd(l, inner)} ${hair("│")}`);
-  return [top, ...body, hair(`╰${"─".repeat(inner + 2)}╯`)].join("\n");
+  const top = title
+    ? `${boxLine("╭─")} ${t.bold(t.muted(title))} ${boxLine("─".repeat(Math.max(0, inner - vis(title) - 1)) + "╮")}`
+    : boxLine(`╭${"─".repeat(inner + 2)}╮`);
+  const body = lines.map((l) => `${boxLine("│")} ${padEnd(l, inner)} ${boxLine("│")}`);
+  return [top, ...body, boxLine(`╰${"─".repeat(inner + 2)}╯`)].join("\n");
 }
 
 /** Aligned key/value rows: `● Key      value`. dot: "ok" | "warn" | "bad" | "off" | null. */
@@ -64,7 +67,9 @@ export const dot = (state) =>
 // ---------- chips & pills ----------
 const pillBg = bgc(hex("pill"));
 /** Keycap-style command chip: ` init ` on a dim background (plain `init` without colour). */
-export const chip = (name, w = 0) => (useColor ? pillBg(` ${t.text(padEnd(name, w))} `) : padEnd(name, w + 2));
+/** Keycap: ` k ` on chipBg, bold (Adrian v2). Used for keys and for command names in help. */
+export const chip = (name, w = 0) => (useColor ? pillBg(` ${t.bold(t.text(padEnd(name, w)))} `) : padEnd(name, w + 2));
+export const keycap = (k) => chip(k);
 /** Rounded-feeling summary pill: ` ⬢ Hivemind · … ` on the pill background. */
 export const pill = (content) => (useColor ? pillBg(` ${content} `) : content);
 
@@ -94,6 +99,39 @@ export async function spin(label, promise) {
     if (timer) clearInterval(timer);
     if (shown) process.stderr.write("\r\x1b[2K");
   }
+}
+
+// ---------- Adrian v2 atoms (public/brand/terminal/watch-v2.mjs), shared look with watch ----------
+const PILLS = {
+  you: ["lessonBg", "lessonText", "needs you"],
+  lesson: ["lessonBg", "lessonText", "lesson"],
+  waiting: ["chipBg", "muted", "waiting"],
+  live: ["okBg", "ok", "live"],
+  blocked: ["lockedBg", "lockedText", "blocked"],
+  locked: ["lockedBg", "lockedText", "locked"],
+};
+/** Status pill: tinted wash + coloured text (needs you / waiting / live / blocked / locked). Plain: [text]. */
+export function statusPill(kind, text) {
+  const [bgTok, fgTok, word] = PILLS[kind] ?? PILLS.waiting;
+  const label = text ?? word;
+  if (!useColor) return `[${label}]`;
+  const paint = (x) => bgc(hex(bgTok))(fg(hex(fgTok))(x));
+  return paint(kind === "you" ? t.bold(` ${label} `) : ` ${label} `);
+}
+
+/** An agent with no human behind it: a neutral ◇ so columns never have a hole (chips are coloured text, no box). */
+export const agentChip = () => t.muted("◇ agent");
+
+/**
+ * Dense two-line list row (Adrian v2 rule 3): `▎ title ……… [pill]` / `▎ meta`. The bar carries the kind's colour.
+ * Rows never get a box; boxes are only for things that float.
+ */
+export function row({ bar = "lesson", title, pill: p = "", meta = "", cols = width() - 2 }) {
+  const mark = (t[bar] ?? t.lesson)("▎");
+  const left = `${mark} ${t.bold(title)}`;
+  const gap = cols - vis(left) - vis(p);
+  const first = p ? (gap >= 2 ? `${left}${" ".repeat(gap)}${p}` : `${left}  ${p}`) : left;
+  return meta ? [first, `${mark} ${meta}`] : [first];
 }
 
 export { faint, hair };
