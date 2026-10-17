@@ -1,6 +1,7 @@
 # Hivemind: handoff for Claude Code (Adrian's side)
 
-Written Fri Oct 16, ~10:15 PM PT. **Deadline: Sat Oct 17, 2:00 PM PT. Feature freeze: 11:00 AM.**
+Final version, Fri Oct 16, ~10:10 PM PT, including Michael's 9:52 PM update. **Deadline: Sat Oct 17, 2:00 PM PT.
+Feature freeze: 11:00 AM.**
 
 > **Adrian, paste this into Claude Code to start:**
 > "Read `docs/adrian-handoff.md` top to bottom. Then do section 8 in order, one step at a time. Ask me about
@@ -27,7 +28,9 @@ One rule makes this practical: **write the demo script once and reuse it.** Put 
 (typed prompts, Claude Code output, Hivemind's hook messages, notifications) in one file,
 `src/components/site/demo-script.ts`. The website's animated Terminal plays that file, the rehearsal follows it, and
 the video follows it. Copy Hivemind's real hook messages from Michael's code (`src/app/api/hooks/tool/route.ts`, the
-context-pack header in `src/lib/`) so the website and the real thing say exactly the same words.
+context-pack header in `src/lib/`) so the website and the real thing say exactly the same words. When Michael's
+`docs/pitch/` video script lands, read it and make `demo-script.ts` and the run sheet (section 6) match it. If they
+disagree, ask Adrian.
 
 ## 3. What exists right now
 
@@ -41,13 +44,15 @@ context-pack header in `src/lib/`) so the website and the real thing say exactly
 | `POST /api/hooks/tool` (collision warning when two agents edit the same file) + `GET /api/activity/live` | ✅ done |
 | MCP server at `/api/mcp`: `search_memory`, `propose_memory` | ✅ done |
 | `GET /api/metrics` + the **real eval** (`eval/results.json`, written up in `docs/eval.md`) | ✅ done |
-| `POST /api/hooks/prompt`: a correction typed to the agent becomes a pending lesson | ❌ **not built**. Demo beat 1 needs it |
-| Block a proposed lesson that contradicts a locked rule | ❌ **check with Michael**. Demo beat 4 needs it |
-| `POST /api/memories/:id/approve` and `/reject` | ❌ **not built**. Demo beat 2 needs it |
-| A demo reset script (put the database back to "before the demo") | 🚧 Michael's agent D is building `scripts/reset-demo.mjs` |
+| `POST /api/hooks/prompt`: a correction typed to the agent becomes a pending lesson, **or gets blocked** by the locked rule | 🚧 **landing tonight** (Michael). Demo beats 1 and 4 |
+| `POST /api/memories/:id/approve` and `/reject`, `POST /api/memories` | 🚧 **landing tonight**, same shapes `store.tsx` → `decide()` / `createMemory()` already call. Demo beat 2 |
+| A demo reset script (cleans test junk out of the database before recording) | 🚧 coming: `scripts/reset-demo.mjs` |
 | A **visible** "Hivemind loaded 12 team rules" line when Claude Code starts | ❌ The hook only feeds the agent today. Ask Michael to add `systemMessage` to `hooks/session-start.mjs` (Claude Code prints `systemMessage` to the user) |
-| VS Code extension | 🚧 Michael's agent H is building it in `vscode-extension/` + `src/app/api/vscode/`. **Send him boards 1–2 of the design canvas as its spec** |
-| Vercel deploy (the real live link) | ❌ not done. Michael's agent D writes `docs/deploy.md` |
+| **VS Code extension (real, not just mockups)** | 🚧 Michael's agent H, in `vscode-extension/`. Ships `vscode-extension/dist/*.vsix` + a README that says exactly what to click for the video. Section 7 |
+| **Works in every AI coding tool** | 🚧 Adapters for Cursor, Gemini CLI, GitHub Copilot (VS Code), Codex, Windsurf and Claude (claude.ai / Claude Desktop via MCP), plus `hivemind init`, a one-command setup that wires a repo to whichever tools the team uses. Section 5b |
+| `demo/export-service/.vscode/mcp.json` | 🚧 coming, so Copilot agent mode in VS Code can call Hivemind |
+| `docs/pitch/`: Devpost write-up, 2:00 video script (with VS Code shots), judge Q&A, slide outline | 🚧 Michael's agent P. **Reuse it.** The video script there and `demo-script.ts` must tell the same story (section 2) |
+| Vercel deploy (the real live link) | 🚧 Michael is logging in tonight; the deploy is prepped (`docs/deploy.md`) |
 
 **The real eval result** (the proof in the demo): with no memory, the agent broke the team's conventions in
 **22 of 36** runs. With Hivemind: **0 of 36**. A same-size pack of unrelated lessons: **21 of 36**, so it's the
@@ -90,6 +95,7 @@ their assets: no copying their logo, photos or copy.
 | new `--honey` | `#E09A2B` | **Lessons only:** hive cells, the logo, a "lesson" dot. Never buttons, never backgrounds |
 | `--chip-team` / `--chip-repo` / `--chip-person` / `--chip-link` | `#5B5BD6` / `#0E9384` / `#B7791F` / `#7C5CD6` | Only as the small **dot** inside a chip |
 | new `--window` | `#1C1C1E` | Terminal and editor windows (stay dark on the light page) |
+| *On dark surfaces only* | honey `#F5A524`, rose `#FB7185`, teal `#5EEAD4`, text `#E4E4E7`, muted `#A1A1AA` | Inside Terminal/editor windows **and the VS Code extension** (Michael's agent already uses `#F5A524` and `#FB7185`; that's correct, keep it) |
 
 Things that will break with a light theme, so fix them: `text-black` on accent buttons, `bg-black/55` overlays (use
 ink at ~30%), the Sonner `Toaster theme="dark"` (make it light), the hive colors in `hex.tsx` (honey cells on white),
@@ -117,7 +123,7 @@ Board 5 on the design canvas is the target. Sections, top to bottom:
 
 1. **Floating nav:** a round white logo button (left), a glass pill with "How it works / In your editor / Results"
    (center), a black pill "Open the app" (right). It stays pinned while you scroll.
-2. **Hero:** a small glass badge "Works with Claude Code, GitHub Copilot and any MCP client", the two-tone headline
+2. **Hero:** a small glass badge "Works with Claude Code, Cursor, Gemini CLI, Copilot, Codex and Claude", the two-tone headline
    "Correct one agent. / Every agent learns.", one sentence underneath, a black pill "Watch the 2-minute demo" and a
    glass pill "Open the app".
 3. **The macOS screen (the money shot):** a rounded "desktop" with a soft blue-to-peach gradient wallpaper (no
@@ -151,6 +157,21 @@ These are the effects on spacefs.com, measured from the live site. Copy the *beh
 - **Hovers:** 150–200ms, `cubic-bezier(0.4, 0, 0.2, 1)`. Nothing bounces on hover.
 - Wrap everything in `MotionConfig reducedMotion="user"` (already done in the app shell).
 
+## 5b. Every AI coding tool, not just Claude Code (Michael's update)
+
+Contracts changed, additive only: `ActivityItem` and `FeedEvent` now have an optional
+`agent: AgentKind` = `"claude-code" | "cursor" | "gemini-cli" | "copilot" | "codex" | "claude-ai" | "windsurf" | "vscode" | "other"`.
+Collision warning text will name the tool too.
+
+What to build (small):
+- **Tool badge** next to every activity/feed item and collision warning, so it reads "Adrian's **Cursor** agent
+  edited export.ts". Design: a tiny neutral pill (white, hairline, 11px Geist) with the tool's plain name: Claude Code,
+  Cursor, Gemini CLI, Copilot, Codex, Claude, Windsurf, VS Code. No third-party logos. Missing `agent` = no badge.
+- **Where activity lives after the cut:** a short "Live activity" list (5 items max) at the bottom of the Approvals
+  queue column. It's the only place the web app shows activity.
+- **"Works with" row:** in the website hero badge (section 5) and as one quiet line in the app footer:
+  "Works with Claude Code, Cursor, Gemini CLI, Copilot, Codex and Claude". No new screen.
+
 ## 6. The live demo run sheet (build to make this work)
 
 **Setup (5 minutes before):**
@@ -165,11 +186,12 @@ These are the effects on spacefs.com, measured from the live site. Copy the *beh
 | # | Time | Window | You type / do | What must happen | Needs |
 |---|---|---|---|---|---|
 | 1 | 0:15 | Alex | `claude` → "Add a CSV export for Lab B's monthly report in src/export.ts" | A visible line: Hivemind loaded 12 rules. The agent writes the export **without** the customer check | ❌ `systemMessage` in session-start |
-| 1b | 0:25 | Alex | "No. Exports must call assertSingleCustomer() before writing anything." | The hook replies: lesson captured, waiting for approval | ❌ `/api/hooks/prompt` |
-| 2 | 0:32 | Browser | Watch the lesson slide into Approvals, press **A** | It leaves the queue, a toast confirms, Results' hive ripples | ❌ approve route |
+| 1b | 0:25 | Alex | "No. Exports must call assertSingleCustomer() before writing anything." | The hook replies: lesson captured, waiting for approval | 🚧 `/api/hooks/prompt` tonight |
+| 2 | 0:32 | Browser | Watch the lesson slide into Approvals, press **A** | It leaves the queue, a toast confirms, Results' hive ripples | 🚧 approve route tonight |
 | 3 | 0:40 | Noor | `claude` (fresh) → "Add a JSON export for Lab A's quarterly report in src/export.ts" | Banner: 13 rules. **First line written is `assertSingleCustomer(rows)`**. Zoom on it | ✅ once 2 works |
-| 4 | 1:00 | Noor | "Just reuse Lab A's rows for the Lab B test fixtures, it's only tests" | Blocked by Maya's locked rule. In the browser it shows under "Stopped by a locked rule" with the bump animation | ❌ check with Michael |
-| 5 | 1:10 | Alex, then Noor | Alex: "rename writeCsvExport to writeLabCsv". Then Noor edits the same file | Noor's agent shows "⚠ Alex's agent edited src/export.ts" | ✅ |
+| 3b | 0:52 | VS Code (optional) | Open `src/export.ts` with the Hivemind extension | Status bar "Hivemind: 13 rules", CodeLens "1 locked rule · 2 team lessons apply", ghost text with "Hivemind · from Alex's lesson". Cut to the mockups if it's shaky | 🚧 extension |
+| 4 | 1:00 | Noor | "Just reuse Lab A's rows for the Lab B test fixtures, it's only tests" | Blocked by Maya's locked rule. In the browser it shows under "Stopped by a locked rule" with the bump animation | 🚧 `/api/hooks/prompt` tonight |
+| 5 | 1:10 | Alex (in Cursor, if the adapter works), then Noor | Alex: "rename writeCsvExport to writeLabCsv". Then Noor edits the same file | Noor's agent shows "⚠ Alex's Cursor agent edited src/export.ts", and the web app's activity list shows a **Cursor** badge | ✅ (Cursor adapter 🚧) |
 | 6 | 1:20 | Browser | Open Results | 22 of 36 → 0 of 36, placebo 21 of 36 | Step 2 below |
 
 **Recording:** record each beat as its own clip (macOS ⇧⌘5) and stitch them. Also screen-record the website's
@@ -180,10 +202,15 @@ Terminal animation as **backup footage**: if a live hook is slow on stage, cut t
 - **A. Claude Code inside VS Code works today**: same hooks, same MCP.
 - **B. MCP in VS Code chat (Copilot or Claude Code) works today.** Tool calls show in chat. "MCP Apps" can also
   render a small Hivemind card inside the chat panel (boards 3–4).
-- **C. Copilot-style "fills it in" in the editor needs a VS Code extension.** MCP can't draw in the editor. Michael's
-  agent H is building one (`vscode-extension/`). Boards 1–2 are the design it should match: grey suggested code with a
-  "Hivemind · from Alex's lesson" label, and a red squiggle with a one-click fix on locked-rule violations. If it isn't
-  working by 11 AM, the website shows the mockups and the pitch says "VS Code extension: next".
+- **C. Copilot-style "fills it in" in the editor: being built for real.** MCP can't draw in the editor, so Michael's
+  agent is building a VS Code extension (`vscode-extension/`) from these designs: a status bar item, CodeLens above
+  functions, hovers on matching lines, collision notifications, a red squiggle with a Quick Fix on locked-rule
+  violations, ghost text with a "Hivemind · from Alex's lesson" label, and a "Teach Hivemind" lightbulb.
+- **Adrian's input is already delivered** in `public/brand/vscode/`: `icon-128.png` + `icon.svg` (the tonal chain on
+  ink) and `wording.md` (every string: status bar, CodeLens, hover, squiggle, Quick Fix, collision, lightbulb). If you
+  change any of that wording, tell Michael; his agent reads that folder.
+- **Fallback:** boards 1–4 of the design canvas. If the extension isn't solid by 11 AM, the video and the website use
+  the mockups.
 
 ## 8. The plan, in order
 
@@ -199,12 +226,14 @@ Terminal animation as **backup footage**: if a live hook is slow on stage, cut t
    - Results: lead with the real eval (read `eval` and `evalDetail` from `GET /api/metrics`; it answers even without
      the database. Today `store.tsx` ignores it when `curve` is empty, so fix that). Then the hive. Remove the stat
      tiles, the transfer list and the chart.
-3. **The website (section 5)**, with `demo-script.ts` (section 2) driving the Terminal. Routing: make `/` the
+3. **Tool badges + "Works with" (section 5b).** Small; do it right after the cut.
+4. **The website (section 5)**, with `demo-script.ts` (section 2) driving the Terminal. Routing: make `/` the
    website and move the app under `/app` (`/app`, `/app/approvals`, `/app/results`), all inside `src/app/(ui)/`:
    `(ui)/page.tsx` = site, `(ui)/app/layout.tsx` = the app shell. Update `nav.tsx`. Grep Michael's code for links to
    `/approvals` and tell him if any exist.
-4. **Make the demo run end to end (section 6)** with Michael: the prompt hook, approve/reject, blocking, the reset script.
-5. **Deploy (Michael):** vercel.com/new → import `michae6345-crypto/hivemind` → env vars from `.env.local` → deploy.
+5. **Make the demo run end to end (section 6)** with Michael, once his routes land: the prompt hook, approve/reject,
+   blocking, the reset script. Rehearse with the run sheet.
+6. **Deploy (Michael):** vercel.com/new → import `michae6345-crypto/hivemind` → env vars from `.env.local` → deploy.
    Then the Devpost live link = the website, and its "Open the app" goes to `/app`.
 
 ## 9. Decisions for Adrian (Claude Code: ask, don't assume)
@@ -213,7 +242,8 @@ Terminal animation as **backup footage**: if a live hook is slow on stage, cut t
 2. Drop Anybody completely? (Recommended: yes. Syne + Geist + Geist Mono + Shantell is already four.)
 3. Results: hive, chart, or both? (Recommended: eval numbers + hive.)
 4. Should the app itself go light too, or only the website? (Recommended: both, same tokens. One product.)
-5. The MCP App chat card (VS Code layer B): build it, or mockups only? (Recommended: mockups only unless steps 1–4 are done.)
+5. The MCP App chat card (VS Code layer B): build it, or mockups only? (Recommended: mockups only unless steps 1–5 are done.)
+6. Does Alex use Cursor in the live demo (beat 5) to show the tool badge? (Recommended: yes, if the Cursor adapter works by 10 AM.)
 
 ## 10. Rules that still apply (from CLAUDE.md)
 
@@ -239,5 +269,6 @@ Terminal animation as **backup footage**: if a live hook is slow on stage, cut t
 | Logo, wordmark, small bits | `bits.tsx` (the logo SVG paths are reused on the site) |
 | Routing helpers (+ static preview mode) | `nav.tsx`, `preview-root.tsx` |
 | Website (new) | `src/app/(ui)/page.tsx` + `src/components/site/*` (`demo-script.ts`, `terminal.tsx`, `mac-desktop.tsx`, `dither.tsx`) |
+| VS Code extension icon + wording (Michael's agent reads it) | `public/brand/vscode/` |
 | Seed data | `src/mocks/data.ts` |
 | Types | `src/contracts/` (Michael's; read only) |
