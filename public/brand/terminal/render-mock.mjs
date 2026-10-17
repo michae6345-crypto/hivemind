@@ -127,6 +127,6 @@ const story = {
 };
 writeFileSync(
   join(root, "src", "components", "site", "watch-screens.json"),
-  JSON.stringify({ split: site(T.split()), here: site(T.here(W)), queue: site(T.queue(W)), celebrate: frames.celebrate.map(site), story }) + "\n",
+  JSON.stringify({ split: site(T.split()), here: site(T.here(W)), queue: site(T.queue(W)), approve: frames.approve.map(site), celebrate: frames.celebrate.map(site), story }) + "\n",
 );
 console.log(`terminal-mock.html: ${shots.length} screens + 3 animations; watch-screens.json written`);

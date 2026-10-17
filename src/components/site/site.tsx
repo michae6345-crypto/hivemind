@@ -14,6 +14,7 @@ import { HowItWorksPinned, HowItWorksSteps } from "./how-it-works";
 import { UnderTheHood } from "./under-the-hood";
 import { Structure } from "./structure";
 import { InitMock } from "./live-work";
+import { TryApprove } from "./try-approve";
 import { LOCKED_RULE, PROMPTS } from "./demo-script";
 import { Note } from "./notes";
 
@@ -41,6 +42,7 @@ export function Site() {
         <Hero />
         <HowItWorks />
         <LockedRules />
+        <YoureTheLead />
         <UnderHood />
         <Built />
         <Results />
@@ -255,6 +257,22 @@ function LockedRules() {
           </Note>
         </div>
       </Reveal>
+    </section>
+  );
+}
+
+// ── You're the lead ─────────────────────────────────────────────────────────
+
+function YoureTheLead() {
+  return (
+    <section className="px-4 pt-32">
+      <SectionHead id="try" title="You're the lead. Approve it.">
+        Kevin&apos;s correction is waiting in your queue. Press <kbd className="rounded-[5px] bg-panel px-1.5 font-mono text-[14px] text-fg shadow-[0_0_0_1px_var(--border)]">a</kbd> (or
+        tap Approve), the same key as in <code className="font-mono text-[15px] text-fg">hivemind watch</code>.
+      </SectionHead>
+      <div className="mt-12">
+        <TryApprove />
+      </div>
     </section>
   );
 }
