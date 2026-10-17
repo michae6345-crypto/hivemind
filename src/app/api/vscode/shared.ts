@@ -27,8 +27,8 @@ export const clip = (s: string, n: number) => {
 
 export function violationMessage(r: VsRule, explanation?: string): string {
   const base = r.locked
-    ? `Breaks a locked rule: ${r.title}. Locked by ${r.ownerFirst}, ${r.ownerRole}.`
-    : `Doesn't follow a team lesson: ${r.title}. From ${r.ownerFirst}'s lesson.`;
+    ? `Breaks a locked rule: ${r.title}. Locked by ${r.handle} (${r.ownerRole}).`
+    : `Doesn't follow a team lesson: ${r.title}. From ${r.handle}'s lesson.`;
   return explanation ? `${base} ${clip(explanation, 100)}` : base;
 }
 
@@ -75,11 +75,11 @@ export function symbolsOf(text: string): string[] {
 function toVsRule(m: Memory, people: Map<string, Person>, matches: (t: string) => boolean): VsRule {
   const p = people.get(m.author);
   const agent = isAgent(m.author) || !p;
-  const first = (id: string) => (isAgent(id) ? "An agent" : (people.get(id)?.name ?? id).split(" ")[0]);
+  const at = (id: string) => (isAgent(id) ? "An agent" : `@${id}`);
   const ev = m.evidence[0];
   const learnedFrom =
-    ev?.type === "correction" ? `${first(ev.actor)} corrected an agent: "${clip(ev.quote, 90)}"`
-    : ev?.type === "review_comment" ? `${first(ev.actor)} in code review: "${clip(ev.quote, 90)}"`
+    ev?.type === "correction" ? `${at(ev.actor)} corrected an agent: "${clip(ev.quote, 90)}"`
+    : ev?.type === "review_comment" ? `${at(ev.actor)} in code review: "${clip(ev.quote, 90)}"`
     : null;
   return {
     id: m.id,
@@ -90,7 +90,8 @@ function toVsRule(m: Memory, people: Map<string, Person>, matches: (t: string) =
     kind: m.kind,
     locked: m.locked,
     status: m.status === "pending" ? "pending" : "active",
-    owner: agent ? "an agent" : m.locked && p.title ? `${p.name}, ${p.title}` : p.name,
+    owner: agent ? "an agent" : `@${m.author}`,
+    handle: agent ? "an agent" : `@${m.author}`,
     ownerId: m.author,
     ownerFirst: agent ? "An agent" : p.name.split(" ")[0],
     ownerRole: agent ? "Agent" : (ROLE_WORD[p.role] ?? "Engineer"),

@@ -12,8 +12,10 @@ export type VsRule = {
   kind: "directive" | "lesson" | "owner" | "fact";
   locked: boolean;
   status: "active" | "pending";
-  /** Display owner: "Maya Chen, Head of Security" (locked) / "Alex Kim" (lesson author). */
+  /** Display owner as a handle: "@maya" / "@alex" ("an agent" for agent authors). Same as `handle`. */
   owner: string;
+  /** "@maya" — use this wherever a person is mentioned (never full names). */
+  handle: string;
   ownerId: string;
   /** "Maya" / "Alex" ("An agent" for agent authors). */
   ownerFirst: string;
@@ -58,11 +60,11 @@ export type Violation = {
   ruleSlug: string;
   ruleTitle: string;
   locked: boolean;
-  owner: string; // "Maya Chen, Head of Security"
+  owner: string; // "@maya"
   startLine: number;
   endLine: number;
-  /** Squiggle text (Adrian's wording, public/brand/vscode/wording.md). Locked: `Breaks a locked rule: Never mix data from different lab customers. Locked by Maya, Security.`
-   *  Lesson: `Doesn't follow a team lesson: Use logger, not console.log. From Alex's lesson.` LLM hits append ` <explanation>`. */
+  /** Squiggle text (Adrian's wording, public/brand/vscode/wording.md). Locked: `Breaks a locked rule: Never mix data from different lab customers. Locked by @maya (Security).`
+   *  Lesson: `Doesn't follow a team lesson: Use logger, not console.log. From @alex's lesson.` LLM hits append ` <explanation>`. */
   message: string;
   severity: "error" | "warning"; // locked → error, lesson → warning
   source: "regex" | "llm";
@@ -71,7 +73,8 @@ export type Violation = {
 
 /** POST /api/vscode/check { repo, file, text } */
 export type CheckRequest = { repo: string; file: string; text: string };
-export type CheckResponse = { violations: Violation[]; cached: boolean; ms: number };
+/** pending: the deterministic pass answered within the latency budget and the LLM pass is still running — ask again in ~2s (it lands in the cache). */
+export type CheckResponse = { violations: Violation[]; cached: boolean; ms: number; pending?: boolean };
 
 /** POST /api/vscode/complete { repo, file, prefix, suffix } — prefix/suffix = document text before/after the cursor. */
 export type CompleteRequest = { repo: string; file: string; prefix: string; suffix: string };
@@ -79,7 +82,7 @@ export type CompleteResponse = {
   /** Text to insert at the cursor ("" = no suggestion). Usually starts with "\n" + indentation. */
   text: string;
   /** The lesson the completion follows, for the "Hivemind · Alex's lesson" label. */
-  lesson: { id: string; slug: string; title: string; author: string; authorName: string; locked: boolean } | null;
+  lesson: { id: string; slug: string; title: string; author: string; /** "@alex" */ authorName: string; locked: boolean } | null;
   cached: boolean;
   ms: number;
   source: "regex" | "llm" | "none";

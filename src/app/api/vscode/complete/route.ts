@@ -12,7 +12,7 @@ const LLM_TIMEOUT_MS = Number(process.env.HM_COMPLETE_TIMEOUT_MS) || 2000;
 const cache = lru<Omit<CompleteResponse, "cached" | "ms">>(300);
 
 const lessonOf = (r: VsRule | undefined): CompleteResponse["lesson"] =>
-  r ? { id: r.id, slug: r.slug, title: r.title, author: r.ownerId, authorName: r.ownerFirst, locked: r.locked } : null;
+  r ? { id: r.id, slug: r.slug, title: r.title, author: r.ownerId, authorName: r.handle, locked: r.locked } : null;
 
 function fastPath(prefix: string, suffix: string, rules: VsRule[]): { text: string; rule: VsRule } | null {
   const asc = rules.filter((r) => r.symbols.includes("assertSingleCustomer"));

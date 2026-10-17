@@ -1,71 +1,18 @@
+import { after } from "next/server";
 import { err, json } from "@/lib/auth";
 import { haikuJson, llmEnabled } from "../llm";
-import { DATA_FN, DATA_PARAM, auth, bodyEnd, indentOf, loadRules, lru, parseSig, sha256, violation } from "../shared";
+import { auth, loadRules, lru, sha256, violation } from "../shared";
+import { detect } from "./detectors";
 import type { CheckRequest, CheckResponse, QuickFix, Violation, VsRule } from "../types";
 
 // POST /api/vscode/check { repo, file, text } → CheckResponse (squiggles + quick fixes).
-// Pass 1: deterministic regex rules (instant). Pass 2: Haiku against the ranked rules, when a key is set.
+// Pass 1: deterministic detectors (./detectors.ts, a few ms). Pass 2: Haiku against the ranked rules, when a key is set.
+// Latency budget: answer within BUDGET_MS. If Haiku is still running, return the deterministic hits with pending: true,
+// finish the LLM call after the response (next/server after()) and cache the merged result for the client's follow-up.
+export const maxDuration = 30;
 const MAX_LLM_LINES = 400;
+const BUDGET_MS = 1200;
 const cache = lru<CheckResponse>(200);
-
-const LOGGER: Record<string, string> = { log: "info", info: "info", debug: "info", warn: "warn", error: "error" };
-const CONSOLE_RE = /\bconsole\.(log|info|warn|error|debug)\(/;
-const isComment = (s: string) => /^\s*(\/\/|\*|\/\*)/.test(s);
-
-function regexPass(lines: string[], rules: VsRule[]): Violation[] {
-  const out: Violation[] = [];
-
-  // console.* → logger.* (use-logger lesson)
-  const logRule = rules.find((r) => r.symbols.includes("console.log") || r.summary.includes("console.log") || r.title.includes("console.log"));
-  if (logRule) {
-    lines.forEach((s, i) => {
-      const m = s.match(CONSOLE_RE);
-      if (!m || isComment(s)) return;
-      const fix: QuickFix = {
-        title: `Fix: use logger.${LOGGER[m[1]]} instead of console.${m[1]}`,
-        kind: "replaceLines",
-        line: i,
-        endLine: i,
-        text: s.replace(new RegExp(CONSOLE_RE.source, "g"), (_, f: string) => `logger.${LOGGER[f]}(`),
-      };
-      out.push(violation(logRule, i, i, "regex", fix));
-    });
-  }
-
-  // Export/write functions over rows that never call assertSingleCustomer (🔒 lab isolation)
-  const ascRules = rules.filter((r) => r.symbols.includes("assertSingleCustomer"));
-  const ascRule = ascRules.find((r) => r.locked) ?? ascRules[0];
-  if (ascRule) {
-    for (let i = 0; i < lines.length; i++) {
-      if (isComment(lines[i])) continue;
-      const sig = parseSig(lines, i);
-      if (!sig || sig.braceLine === null || !DATA_FN.test(sig.name)) continue;
-      const end = bodyEnd(lines, sig.braceLine, sig.braceCol);
-      const body = [lines[sig.braceLine].slice(sig.braceCol), ...lines.slice(sig.braceLine + 1, end + 1)].join("\n");
-      if (/\bassertSingleCustomer\s*\(/.test(body)) continue;
-
-      let arg = sig.params.find((p) => DATA_PARAM.test(p));
-      let at = sig.braceLine + 1;
-      let indent = "";
-      if (!arg) {
-        // e.g. `const rows = await fetchRows()` inside the body → assert right after it
-        const j = lines.findIndex((s, k) => k > sig.braceLine! && k < end && /\b(?:const|let|var)\s+(rows|records|items|data)\b/.test(s));
-        if (j < 0) continue;
-        arg = lines[j].match(/\b(?:const|let|var)\s+(rows|records|items|data)\b/)![1];
-        at = j + 1;
-        indent = indentOf(lines[j]);
-      }
-      if (!indent) {
-        const firstBody = lines.slice(at, end).find((s) => s.trim());
-        indent = firstBody ? indentOf(firstBody) : sig.indent + "  ";
-      }
-      const fix: QuickFix | undefined =
-        end > sig.braceLine && at <= end ? { title: `Fix: add assertSingleCustomer(${arg})`, kind: "insertBefore", line: at, text: `${indent}assertSingleCustomer(${arg});` } : undefined;
-      out.push(violation(ascRule, sig.line, sig.line, "regex", fix));
-    }
-  }
-  return out;
-}
 
 type LlmOut = {
   violations: {
@@ -190,10 +137,24 @@ export async function POST(req: Request) {
     if (hit) return json({ ...hit, cached: true, ms: Date.now() - t0 } satisfies CheckResponse);
 
     const lines = body.text.split("\n").map((s) => s.replace(/\r$/, ""));
-    const regex = regexPass(lines, rules);
-    const llm = rules.length && llmEnabled() ? await llmPass(file, lines, rules) : [];
+    const regex = detect(lines, rules);
+    if (!rules.length || !llmEnabled()) {
+      const res: CheckResponse = { violations: merge(regex, [], rules), cached: false, ms: Date.now() - t0 };
+      cache.set(key, res);
+      return json(res);
+    }
+    const llmP = llmPass(file, lines, rules);
+    const left = Math.max(100, BUDGET_MS - (Date.now() - t0));
+    const llm = await Promise.race([llmP, new Promise<undefined>((r) => setTimeout(r, left, undefined))]);
+    if (llm === undefined) {
+      after(async () => {
+        const late = await llmP;
+        if (late) cache.set(key, { violations: merge(regex, late, rules), cached: false, ms: 0 });
+      });
+      return json({ violations: merge(regex, [], rules), cached: false, pending: true, ms: Date.now() - t0 } satisfies CheckResponse);
+    }
     const res: CheckResponse = { violations: merge(regex, llm ?? [], rules), cached: false, ms: Date.now() - t0 };
-    if (llm !== null) cache.set(key, res); // don't pin a regex-only result after an LLM timeout
+    if (llm !== null) cache.set(key, res); // don't pin a regex-only result after an LLM failure
     return json(res);
   } catch (e) {
     return err(e instanceof Error ? e.message : "check failed", 500);
