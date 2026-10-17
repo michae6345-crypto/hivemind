@@ -35,4 +35,6 @@ Permissions (`src/lib/auth.ts` `canWrite`): security → anywhere (and may lock 
 engineer → `personal/<self>` only; agent → never (proposals only). Locked memories can't be approved/rejected except by security.
 
 Seed / reset the demo company: `node scripts/seed.mjs` (upserts from `src/mocks/data.ts`; idempotent; never deletes;
-resets seeded memories' status/alpha/beta, so it doubles as a demo reset).
+resets seeded memories' status/alpha/beta, so it doubles as a demo reset). Then `node scripts/seed-scenarios.mjs` adds
+26 realistic lessons (incident/PR/Linear evidence), `repo/labeling-api`, and the `repo/playground` sandbox scope
+(Michael's experiments; reset-demo leaves its activity and memories alone). Upsert-only; `SCENARIO_SLUGS` is importable.
