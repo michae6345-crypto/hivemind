@@ -74,6 +74,9 @@ Three screens, all working on seed data and switching to live data automatically
 
 - Logo/brand canvas: https://claude.ai/artifact/CMz5VTrEwRf8TL8v5ekQz6
 - Hosted UI preview (seed data, private): https://claude.ai/artifact/Jrake9kQpq63vyLt5UH4iE
+- VS Code mockups (section 5): https://claude.ai/artifact/5S7sm3hn55miXaqResYsYM. Four screens: ghost text that
+  follows a lesson, a locked-rule squiggle with a one-click fix, the agent checking the hive in chat (MCP), and
+  "correct once" with Approve/Reject in chat plus a collision banner
 
 ## 4. Adrian's problems, in his words, and what they mean
 
@@ -119,7 +122,7 @@ MCP only talks to the chat agent. Ghost text, squiggles and inline labels come f
 - **"Teach Hivemind?" lightbulb:** when you fix something the agent wrote, offer "Turn this into a lesson for #repo/export-service".
 
 **Realistic by 11 AM:** A for sure. B's tool calls, yes; the MCP App card only if there's time. C as **mockups for
-the video/slides** (design canvas, link in chat), not working code. Say "VS Code extension: next" in the pitch.
+the video/slides** (the VS Code mockups canvas linked in section 3), not working code. Say "VS Code extension: next" in the pitch.
 
 ## 6. The plan, in order
 
