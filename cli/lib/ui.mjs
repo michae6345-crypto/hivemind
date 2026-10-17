@@ -1,7 +1,7 @@
 // Calm, minimal building blocks for the non-watch CLI output (help, status, check, why, teach, rules, init, use,
 // update, open). Pure string helpers on watch's theme tokens (lib/style.mjs → watch/theme.mjs); the only side effects
 // are the opt-in TTY spinner and header fade. Plain and copy-pasteable under NO_COLOR or when piped.
-import { bgc, brand, fg, hex, t, useColor } from "./style.mjs";
+import { bgc, brand, fg, hex, t, themeStatusPill, useColor } from "./style.mjs";
 
 const ANSI = /\x1b\[[0-9;:]*m|\x1b\]8;;[^\x07\x1b]*(?:\x07|\x1b\\)/g;
 /** Visible width (ANSI and OSC 8 stripped; the wide chars we print are all 1 column). */
@@ -115,6 +115,9 @@ export function statusPill(kind, text) {
   const [bgTok, fgTok, word] = PILLS[kind] ?? PILLS.waiting;
   const label = text ?? word;
   if (!useColor) return `[${label}]`;
+  // Same colours as watch's Queue: blocked/locked rose, live green, waiting/needs-you honey.
+  const HEXOF = { you: "lesson", lesson: "lesson", waiting: "lesson", live: "ok", blocked: "locked", locked: "locked" };
+  if (themeStatusPill) return kind === "you" ? t.bold(themeStatusPill(label, hex(HEXOF[kind]))) : themeStatusPill(label, hex(HEXOF[kind] ?? "muted"));
   const paint = (x) => bgc(hex(bgTok))(fg(hex(fgTok))(x));
   return paint(kind === "you" ? t.bold(` ${label} `) : ` ${label} `);
 }
