@@ -107,6 +107,7 @@ export default {
       lines.push(a.wash(`  ${a.scope(m.scopeId)} ${a.handle(ownerHandle(m))}  ${when}${fresh}`, bg, w));
       if (sel) selTo = lines.length;
     });
+    if (!items.length && !v.filter) return [...top, ...th.empty({ title: "No team rules yet.", hint: "Correct an agent and approve the lesson; it shows up here.", key: "t", what: "teach a rule", width: w, height: ctx.height - top.length })];
     if (!items.length) lines.push(t.muted(v.filter ? `No rules match "${v.filter}".` : "No team rules yet."), t.faint(v.filter ? "esc clears the filter." : "Correct an agent and approve the lesson."));
 
     // keep the selection in view

@@ -270,7 +270,7 @@ export default {
     const { width: w, height: h, now } = ctx;
     const ch = chips(th, state);
     const file = state.lastFile;
-    if (!file) return [t.muted("No changes yet."), t.faint("Edit a file, or let an agent, and what it breaks shows up here.")];
+    if (!file) return th.empty({ title: "No changes yet.", hint: "Edit a file, or let an agent, and what it breaks shows up here.", key: "?", what: "rules here", width: w, height: h });
     const f = state.files[file] ?? {};
     const vs = ordered(visible(state));
     const lines = (f.text ?? "").split(/\r?\n/);

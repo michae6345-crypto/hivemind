@@ -51,45 +51,46 @@ function proposer(m, state, ctx, a) {
   return `${a.handle(who, { pos: !!tool })}${tool ? t.faint(` ${tool} agent`) : ""}`;
 }
 
-/** Lines of one card (without the left rule). */
-function card(m, act, state, ctx, a, w, flash) {
+/**
+ * A compact card: the title, then scope · age with a status pill on the right (honey "waiting on @ben", green "live",
+ * rose "blocked"). The selected card also shows the quote, who proposed it and what you can do.
+ */
+function card(m, act, state, ctx, a, w, flash, selected = false) {
   const th = ctx.theme;
-  const { t } = th;
+  const { t, P } = th;
   const o = origin(m);
-  const lines = [];
-  if (m.status === "blocked") {
-    lines.push(a.title(m, { base: (s) => th.bold(t.muted(s)) }));
+  const inner = w - 2; // the "▎ " rule in front
+  const blocked = m.status === "blocked";
+  let pill;
+  if (flash) pill = flash === "approve" ? th.statusPill("approved", P.ok) : th.statusPill(blocked ? "dismissed" : "rejected", P.muted);
+  else if (blocked) pill = th.statusPill("blocked", P.locked);
+  else if (m.status === "active") pill = th.statusPill("live", P.ok);
+  else if (m.status === "rejected") pill = th.statusPill("rejected", P.muted);
+  else pill = th.statusPill(act ? "waiting on you" : `waiting on @${approverOf(m.scopeId, state)}`, P.lesson);
+
+  const lines = [th.clip(blocked ? a.title(m, { base: (s) => th.bold(t.muted(s)) }) : a.title(m), inner)];
+  lines.push(th.spread(`${a.scope(m.scopeId)} ${t.faint(age(o?.at ?? m.createdAt, ctx.now))}`, pill, inner));
+  if (!selected || flash) return lines;
+
+  if (blocked) {
     const rule = blockingRule(m, allMemories(state, ctx));
     lines.push(
       rule
-        ? `${t.lockedText("Blocked: contradicts ")}${a.handle(rule.author, { pos: true })}${t.lockedText(" locked rule")}`
-        : t.lockedText(`Blocked: ${th.plain(m.blockedReason ?? "contradicts a locked rule")}`),
+        ? `${t.lockedText("contradicts ")}${a.handle(rule.author, { pos: true })}${t.lockedText(" locked rule")}`
+        : t.lockedText(th.plain(m.blockedReason ?? "contradicts a locked rule")),
     );
-    lines.push(`${t.faint("from ")}${proposer(m, state, ctx, a)}${t.faint(`  ${age(o?.at ?? m.createdAt, ctx.now)}`)}`);
-    if (flash) lines.push(th.bold(t.muted(flash === "approve" ? "Let through" : "Dismissed")));
-    else lines.push(act ? `${a.chromeText("a")}${t.faint(" let it through   ")}${a.chromeText("r")}${t.faint(" dismiss")}` : t.faint("only security can let it through"));
-    return lines;
+  } else {
+    const q = quoteOf(m);
+    if (q) lines.push(...wrap(t.muted(`"${th.plain(q)}"`), inner, 2));
   }
-  lines.push(a.title(m));
-  const q = quoteOf(m);
-  if (q) lines.push(...wrap(t.muted(`"${th.plain(q)}"`), w - 2, 2));
-  lines.push(`${a.scope(m.scopeId)}${t.faint(`  ${age(o?.at ?? m.createdAt, ctx.now)}`)}`);
-  lines.push(`${t.faint("proposed by ")}${proposer(m, state, ctx, a)}`);
-  if (m.status === "pending") {
-    const locked = (state.rules ?? []).filter((r) => r.locked).length;
-    lines.push(
-      m.blockedReason
-        ? t.lockedText(`conflicts: ${th.plain(m.blockedReason)}`)
-        : t.faint(locked ? `no conflict with the ${locked} locked rule${locked === 1 ? "" : "s"}` : "no conflict with a locked rule"),
-    );
-  }
-  if (flash) lines.push(flash === "approve" ? `${th.bold(a.ok("Approved"))}${a.ok(" · in every agent's next session")}` : th.bold(t.muted("Rejected")));
-  else if (m.status === "pending")
-    lines.push(act ? `${a.chromeText("a")}${t.faint(" approve   ")}${a.chromeText("r")}${t.faint(" reject")}` : `${t.faint("Waiting on ")}${a.handle(approverOf(m.scopeId, state))}`);
-  else if (m.status === "active") {
+  lines.push(`${t.faint(blocked ? "from " : "proposed by ")}${proposer(m, state, ctx, a)}`);
+  if (m.status === "active") {
     const ap = approval(m);
-    lines.push(`${a.ok("Live")}${ap ? `${t.faint(" · approved by ")}${a.handle(ap.actor)}` : ""}${t.faint(" · in every agent's context")}`);
-  } else if (m.status === "rejected") lines.push(t.muted("Rejected"));
+    if (ap) lines.push(`${t.faint("approved by ")}${a.handle(ap.actor)}${t.faint(" · in every agent's context")}`);
+  } else if (m.status === "pending" || blocked) {
+    if (act) lines.push(`${a.chromeText("a")}${t.faint(blocked ? " let it through   " : " approve   ")}${a.chromeText("r")}${t.faint(blocked ? " dismiss" : " reject")}`);
+    else if (blocked) lines.push(t.faint("only security can let it through"));
+  }
   return lines;
 }
 
@@ -154,7 +155,7 @@ export default {
         const isSel = m === sel && !flash;
         const bg = flash === "approve" ? C.okBg : isSel ? C.selBg : null;
         const rule = flash === "approve" ? a.ok("▎ ") : isSel ? a.chrome("▎ ") : m.status === "blocked" || m.locked ? t.locked("▎ ") : t.lesson("▎ ");
-        const lines = card(m, act, state, ctx, a, w, flash);
+        const lines = card(m, act, state, ctx, a, w, flash, isSel);
         if (v.notes[m.id]) lines.push(t.lockedText(v.notes[m.id]));
         if (isSel) selFrom = out.length;
         const at = cards.findIndex((c) => c.m === m);

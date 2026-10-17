@@ -225,9 +225,10 @@ export async function cmdWatch(cfg) {
     const where = state.workspace.org ? `${state.workspace.org} / ${state.workspace.project}` : state.workspace.project;
     const full = `${mark}${sep()}${t.muted(where)}`;
     const short = `${mark}${sep()}${t.muted(state.workspace.project)}`;
-    if (width(full) + width(me) + 2 <= w) return [spread(full, me, w)];
-    if (width(short) + width(me) + 2 <= w) return [spread(short, me, w)];
-    return [clip(short, w), clip(`   ${me}`, w)];
+    // A narrow split pane loses detail in order (org, then the workspace, then your role), never a line, never a clip.
+    const meShort = `${state.online === false ? `${t.locked("●")} ` : ""}${theme.handleChip(state.actor)}`;
+    for (const [l, r] of [[full, me], [short, me], [mark, me], [mark, meShort]]) if (width(l) + width(r) + 2 <= w) return [spread(l, `${r} `, w)];
+    return [clip(mark, w)];
   }
 
   /** Labels, then a hairline with a heavy chrome-blue segment under the active tab. Under 50 columns: H R Q F. */
@@ -291,14 +292,18 @@ export async function cmdWatch(cfg) {
         ? [H("enter", "send"), H("esc", "cancel")]
         : [...own, ...(!state.detail && v?.why?.(state) ? [H("w", "why")] : []), H("t", "teach"), H("?", "rules here"), H("h", "help"), H("tab", "switch"), H("q", "quit")];
     if (state.busy && now - state.busy.since > 400) hints = [{ k: null, s: t.muted(`${state.busy.label}…`) }]; // a word, not a spinner
-    // Fit whole pairs, never a cut "t…": drop from the end, but `q quit` always stays last.
+    // Fit whole pairs, never a cut "tab switc…". When they don't all fit, the rest fold into one "h keys" cap (the
+    // help lists everything); `q quit` always stays last. One column of air on the right.
     const quit = hints.at(-1);
-    const keep = [];
-    const seen = new Set();
-    for (const h of hints.slice(0, -1)) {
-      if (seen.has(h.s)) continue;
-      seen.add(h.s);
-      if (width(" " + [...keep, h, quit].map((x) => x.s).join("   ")) <= w) keep.push(h);
+    const uniq = [...new Map(hints.slice(0, -1).map((x) => [x.s, x])).values()];
+    const fits = (xs) => width(" " + xs.map((x) => x.s).join("   ")) <= w - 1;
+    let keep;
+    if (fits([...uniq, quit])) keep = [...uniq];
+    else {
+      const more = H("h", "keys");
+      keep = [];
+      for (const h of uniq.filter((x) => x.k !== "h")) if (fits([...keep, h, more, quit])) keep.push(h);
+      keep.push(more);
     }
     if (quit) keep.push(quit);
     layout.hints = [];

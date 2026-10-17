@@ -90,7 +90,7 @@ export default {
     const cards = visible(state, now).filter((c) => c.kind !== "collision");
     const collisions = (state.cards ?? []).filter((c) => c.kind === "collision" && now - Date.parse(c.at) < NOW_MS);
     if (!cards.length && !collisions.length) {
-      return ["", `  ${th.t.muted("No agents working right now.")}`, `  ${th.t.faint("Edits, corrections, approvals and collisions show up here as they happen.")}`];
+      return th.empty({ title: "No agents working right now.", hint: "Edits, corrections, approvals and collisions show up here as they happen.", key: "t", what: "teach a rule", width: w, height: ctx.height });
     }
     const sel = Math.min(state.view.feed?.sel ?? -1, cards.length - 1);
     const fresh = cards.some((c) => c.born && now - c.born < WASH.length * 100);
@@ -98,7 +98,7 @@ export default {
 
     const row = (c, i) => {
       const isAgent = th.isBot(c.actor); // agent sessions and the CLI read "an agent", never "@cli"
-      const chip = isAgent ? ` ${th.t.muted("an agent")}` : th.handleChip(c.actor);
+      const chip = th.handleChip(c.actor); // agents get a neutral chip too
       const pad = " ".repeat(Math.max(0, CHIP_CELLS - th.width(chip)));
       const tool = th.t.faint(` ${th.toolName(c.agent) || (c.kind === "approved" || c.kind === "rejected" ? "Hivemind" : "")}`.padEnd(TOOL_CELLS));
       const [verb, obj] = words(c);

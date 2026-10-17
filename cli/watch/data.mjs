@@ -111,6 +111,14 @@ export function toCards(live, memById, ctx) {
     if (!cards.has(c.key)) cards.set(c.key, c);
   };
   const agentOfMem = new Map();
+  // An agent's proposal names its session ("agent:s-101", evidence ref "session s-101"); the activity feed knows which
+  // tool that session was (Claude Code, Cursor…), so the row can say so.
+  const agentOfSession = new Map((live.items ?? []).filter((i) => i.agent).map((i) => [i.sessionId, i.agent]));
+  const sessionOf = (m) => String(m?.author ?? "").replace(/^agent:/, "") || String(m?.evidence?.[0]?.ref ?? "").replace(/^session /, "");
+  for (const m of memById.values()) {
+    const a = agentOfSession.get(sessionOf(m)) ?? agentOfSession.get(String(m.evidence?.[0]?.ref ?? "").replace(/^session /, ""));
+    if (a) agentOfMem.set(m.id, a);
+  }
   for (const f of live.feed ?? []) if (f.memoryId && f.agent) agentOfMem.set(f.memoryId, f.agent);
 
   for (const f of live.feed ?? []) {

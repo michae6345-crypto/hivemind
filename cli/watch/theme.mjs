@@ -1,3 +1,5 @@
+import { width as cellWidth, wrap as wrapCells } from "./term.mjs";
+
 // Hivemind in the terminal: Adrian's editor palette (public/brand/vscode/editor-spec.md) as 24-bit ANSI on dark.
 // Meaning is only rose (locked), honey (lesson) and the layer dots; blue is chrome (focus ring, active tab, keys).
 // NO_COLOR → plain text. Terminals without truecolor get the nearest xterm-256 colour.
@@ -92,6 +94,26 @@ export const t = {
 export const rowMark = (i) => `\x1b]hm;${i}\x07`;
 export const ROW_MARK_RE = /\x1b\]hm;([^\x07]*)\x07/;
 
+/** A status pill: ` waiting on @ben ` in honey, ` live ` in green… on a tint of its own colour. NO_COLOR: [text]. */
+export const statusPill = (text, hex) => (COLOR ? bg(mix(hex, P.bg, 0.16))(fg(hex)(` ${text} `)) : `[${text}]`);
+
+/**
+ * A calm empty state, centred in the body: a small hex mark, one line saying what's (not) here, one helpful line,
+ * and a key hint as a keycap. Wraps on a narrow pane instead of clipping.
+ */
+export function empty({ title, hint = "", key, what = "", width: w = 64, height: h = 20 }) {
+  const center = (s) => " ".repeat(Math.max(0, Math.floor((w - cellWidth(s)) / 2))) + s;
+  const body = [
+    fg(P.lesson)("⬡"),
+    "",
+    ...wrapCells(title, Math.max(10, w - 4), 2).map((l) => t.muted(l)),
+    ...(hint ? wrapCells(hint, Math.max(10, w - 6), 2).map((l) => t.faint(l)) : []),
+    ...(key ? ["", `${COLOR ? bg(P.pill)(` ${t.blueText(key)} `) : key} ${t.faint(what)}`] : []),
+  ];
+  const top = Math.max(1, Math.floor((h - body.length) / 3));
+  return [...Array(top).fill(""), ...body.map(center)];
+}
+
 export const HEX = "⬢";
 export const HEX_OPEN = "⬡";
 export const SEP = " · ";
@@ -125,7 +147,8 @@ const personColor = (id) => {
 /** ` ● @jordan ` on the chip background; { pos: true } puts the possessive inside: ` ● @alex's `. */
 export function handleChip(h, { pos = false } = {}) {
   const id = String(h ?? "").replace(/^@/, "");
-  if (isBot(id)) return t.muted(pos ? "an agent's" : "an agent");
+  // Agents get the same chip as people, with a neutral grey ring: a row never starts with bare text.
+  if (isBot(id)) return pill(`${fg(P.faint)("○")} ${t.muted(pos ? "an agent's" : "an agent")}`);
   return pill(`${fg(personColor(id))("●")} ${t.text(`@${id}${pos ? "'s" : ""}`)}`);
 }
 const pill = (inner) => (COLOR ? bg(P.pill)(` ${inner} `) : inner);
