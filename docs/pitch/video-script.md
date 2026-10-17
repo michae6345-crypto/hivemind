@@ -1,70 +1,73 @@
 # Hivemind: 2:00 video script (terminal version)
 
 Hard limit 2:00. Voiceover (VO) averages under 2 words per second against a calm read of about 2.3, so each beat fits
-its slot with a breath to spare. Total VO: 214 words.
+its slot with a breath to spare. Total VO: 224 words.
 
-**The product surface is the terminal (Michael, 17 Oct).** Claude Code on the left, `hivemind watch` in a split pane
-on the right, Claude Code's status line along the bottom. Both panes use Adrian's website Terminal palette: no emoji,
-⬢ is the only mark. The VS Code extension is out of the video. The web app appears only for Approvals (beat 3, a
-two-second cut) and Results (beat 7). This script and `src/components/site/demo-script.ts` must tell the same story
-with the same lines. If you change a typed prompt here, change it there too.
+**Follow `docs/demo-terminal.md` (D's runbook) for setup, commands and fixes.** This script adds the timing, the VO
+and the shots around it, and uses the same cast, prompts and beat order. If the two disagree on what to type, the
+runbook wins; tell P so this file gets fixed. `src/components/site/demo-script.ts` must tell the same story.
+
+**Cast** (seed `b4b0a20`, Meridian Data, fictional):
+
+| Persona | `HIVEMIND_USER` | Role | Beats |
+|---|---|---|---|
+| Kevin Park | `kevin` | Engineer, Data Pipelines | 2 (corrects the agent) |
+| Ben Carter | `ben` | Lead, owns `#team/data-pipelines` and `#repo/export-service` | 3 (approves) |
+| Emily Ross | `emily` | Engineer, Data Pipelines | 3 (gets the 403), 4, 5, 6 (fresh session, blocked lesson, hero) |
+| Greg Walsh | `greg` | Head of Security, owns the locked rules | named in beats 5 and 6 |
+
+**The product surface is the terminal.** Claude Code on the left, `hivemind watch` in a split pane on the right,
+Claude Code's status line along the bottom. Both panes use Adrian's website Terminal palette: no emoji, ⬢ is the only
+mark. The web app appears only for the 403 (beat 3, two seconds) and Results (beat 8).
 
 **Two lines every judge must hear (Adrian):** the Greptile contrast (review bots catch mistakes *after* the code is
 written, Hivemind teaches the agent *before*), and that it's cheap to run (one command, under 1,000 tokens a session,
-no model on the hot path). Both are in beat 8. Cut anything else first.
+no model on the hot path). Both are in beat 9. Cut anything else first.
 
 **The rule for backups:** a backup is for a feature that works but had a bad take. If a feature isn't on `main` at
 recording time, don't show the website's Terminal animation as if it were the app. Cut the beat, or caption the mock
-**"Design mockup, in progress"**. Check the build status table at the bottom of `docs/pitch/devpost.md` first. The
-`hivemind watch` views were working stubs at 234e8b4 and are being finished; re-check them before you record.
+**"Design mockup, in progress"**. The runbook marks the views it hasn't asserted yet with **(confirm)**; eyeball those
+in the rehearsal.
 
-## Setup (10 minutes before)
+## Setup
 
-- 1920×1080. One terminal app (Windows Terminal, iTerm or Ghostty), dark, 16pt, split vertically about 60/40. Browser
-  zoom 125%.
-- `node scripts/reset-demo.mjs`. The lesson "Exports call assertSingleCustomer()" must not exist yet.
-- **Status line:** already wired in `demo/export-service/.claude/settings.json` (c1e02a0). It caches for 10 s, so
-  wait a beat after approving before you start Noor's session.
-- **Alex's split:** `HIVEMIND_USER=alex`, both panes in `demo/export-service`, `git checkout -- src/`.
-  Left: `claude`. Right: `node ../../cli/hivemind.mjs watch --user alex`, on Feed.
-- **Jordan's split:** right pane only matters: `node ../../cli/hivemind.mjs watch --user jordan --role lead`, on Queue.
-- **Noor's split:** `HIVEMIND_USER=noor`, a fresh copy of `src/`. Left: `claude`. Right:
-  `node ../../cli/hivemind.mjs watch --user noor`, on Here.
-- **Browser:** the app at `/app/approvals` viewing as Jordan (Lead); a second tab on `/app/results`.
+Do runbook §0–§2 (one-time setup, `reset-demo` before every take, the `wt` split command). On top of that:
+- 1920×1080, font 16+, `--no-motion` only if the celebration stutters. Browser zoom 125%.
+- `npm i -g ./cli` from the hivemind checkout so `hivemind` is on PATH for beat 7.
 - **Init shot:** an empty scratch repo containing `.claude/`, `.cursor/`, `.gemini/`, `.vscode/`, `.windsurf/` and an
   `AGENTS.md`, so `init` detects all six agents.
-- **Hero fixture:** `demo/violations.ts` also logs an email and calls `console.log`, so Here would show three frames.
-  For beat 5, save a trimmed copy as `src/lab-fixtures.ts` that keeps only the `[...labA, ...labB]` lines, so the one
-  frame on screen is the locked lab rule.
-- `npm i -g ./cli` from the hivemind checkout so `hivemind` is on PATH for beat 6.
-- Record each beat as its own clip with a 1 s handle on both ends.
+- Record each beat as its own clip with a 1 s handle on both ends. Switch persona between clips as the runbook says
+  (`/exit`, set `HIVEMIND_USER` in both panes, restart both).
 
 ## Shot list
 
-The **hero shot** is beat 5: the agent on the left refuses to mix lab data and cites @maya's locked rule, while the
-Here tab on the right shows the same line as a code frame. Use a still from it as the thumbnail and on slide 3.
+The **hero shot** is beat 6: on the right, the Here tab catches a locked-rule violation as a code frame, owned by
+@greg. On the left, Claude Code either wrote the line or refused and cited Greg's rule; both are good takes. Use a
+still of it as the thumbnail, the cold open and slide 3.
 
 | # | Time | Window | On screen (exact actions) | VO | Words |
 |---|---|---|---|---|---|
-| 1 | 0:00–0:09 | Hero still, then title | Freeze-frame of beat 5's split terminal. Fade the two-tone headline over it: "Correct one agent. / Every agent learns." | "Your reviewer tells your AI agent what they told a teammate's agent last week. Every session starts from zero." | 19 |
-| 2 | 0:09–0:25 | Split terminal (Alex): Claude Code + watch Feed | Status line reads "⬢ Hivemind · {n} rules" ({n} is whatever the live pack has after reset; the VO never says the number). Left: hold on "Hivemind · Loaded {n} team rules for #repo/export-service." Type **"Add a CSV export for Lab B's monthly report in src/export.ts"**. Speed the work up 4×; the diff has no customer check. Type **"No. Exports must call assertSingleCustomer() before writing anything."** Hold on "Hivemind · Lesson captured: "…". Waiting on @jordan." Right: the new card lands in Feed. | "This is Alex at Meridian Data. The agent writes an export without the customer check. Alex corrects it once. Hivemind turns that correction into a lesson, and it waits for the team lead." | 33 |
-| 3 | 0:25–0:37 | Jordan's watch (Queue), then the web app | The lesson at the top of Queue with "@alex's correction" under it. Press **a**. The honey hex cells fill and "@alex's lesson is live" fades in. Cut for 2 s to the web Approvals view: the queue is empty, the toast shows. | "Jordan approves it with one key, in the terminal or in the web app. Agents can only propose. People decide." | 20 |
-| 4 | 0:37–0:52 | Split terminal (Noor): Claude Code + watch | Fresh `claude`. The status line now reads one rule more than Alex had. Type **"Add a JSON export for Lab A's quarterly report in src/export.ts"**. Zoom on the first line of the diff: `assertSingleCustomer(rows)`. | "Noor starts a fresh session. Noor never saw that correction, but the agent loads the team's lessons at startup and writes the customer check first." | 25 |
-| 5 | 0:52–1:14 | **Hero.** Split terminal (Noor): Claude Code + watch Here | Save the trimmed `src/lab-fixtures.ts` (it builds `[...labA, ...labB]`). Right: Here flags it: "LOCKED RULE · Never mix data from different lab customers", the code frame with the range underlined in rose, "@maya" and the fix. Left: type **"Just reuse Lab A's rows for the Lab B test fixtures, it's only tests."** The agent refuses and names @maya's locked rule. Hold on "Hivemind · Blocked: contradicts @maya's locked rule "…"." | "Now Noor asks for a shortcut: reuse Lab A's rows in Lab B's tests. Maya in security locked one rule: never mix lab customers. The pane flags the line, the agent refuses and cites Maya's rule, and the shortcut can't become a lesson." | 43 |
-| 6 | 1:14–1:26 | Plain terminal | In the scratch repo: `hivemind init`. Hold on the table: Claude Code, Cursor, Gemini CLI, Codex, Copilot, Windsurf. Then in `demo/export-service`: `git add src/ && hivemind check --staged`. Hold on the same locked-rule code frame and the non-zero exit. | "One command connects the agents a team already uses, six today. And hivemind check stops a locked-rule break before it's committed." | 21 |
-| 7 | 1:26–1:42 | Web app, Results | "22 of 36" → "0 of 36". Then the placebo line "21 of 36". Then held-out "3/12 → 12/12" and "p = 0.0078, 12 tasks" (on screen only). | "Does it work? Twelve coding tasks, three runs each. Without memory, Claude Code broke an unwritten team rule in 22 of 36 runs. With Hivemind, zero. Unrelated lessons didn't help." | 30 |
-| 8 | 1:42–2:00 | Title card, then logo | Two columns: "Greptile, CodeRabbit · after the code is written" vs "Hivemind · before the agent writes". Under it: "`hivemind init` · one command · under 1,000 tokens a session · no model on the hot path". End on "Works with Claude Code, Cursor, Gemini CLI, Codex, Copilot, Windsurf", the ⬢ wordmark and the URL. | "Review bots like Greptile catch mistakes after they're written. Hivemind teaches every agent before it writes, for under a thousand tokens a session." | 23 |
+| 1 | 0:00–0:09 | Hero still, then title | Freeze-frame of beat 6's split terminal. Fade the two-tone headline over it: "Correct one agent. / Every agent learns." | "Your reviewer tells your AI agent what they told a teammate's agent last week. Every session starts from zero." | 19 |
+| 2 | 0:09–0:25 | Split terminal as `kevin` | Status line "⬢ Hivemind · {n} rules". Left: type **"Add a JSONL export: create src/jsonl-export.ts with buildJsonlExport(job: ExportJob) that loads the job's rows and returns one JSON object per line."** Speed the work up 4×. Then type, word for word: **"No — every export must call assertSingleCustomer(rows) before it writes anything. We can never mix Lab A and Lab B rows in one file."** Hold on "Hivemind · Lesson captured: "Every export calls assertSingleCustomer()". Waiting on @ben." Right: the lesson in Queue, taught by @kevin. | "This is Kevin at Meridian Data. The agent writes an export without the customer check. Kevin corrects it once. Hivemind turns that correction into a lesson, and it waits for the team lead." | 33 |
+| 3 | 0:25–0:37 | Right pane as `ben`, then the web app | Press `3` (Queue), `j/k` to the lesson, press **a**. The honey hex cells fill and "@kevin's lesson is live" fades in. Cut for 2 s to the web app as Engineer (Emily) trying to approve: the chain-of-command toast "403 engineer … cannot approve". | "Ben leads the team, so Ben approves it with one key. Emily is an engineer, so Emily can't. Agents can only propose." | 22 |
+| 4 | 0:37–0:51 | Split terminal as `emily`, fresh `claude` | Hold on "Hivemind · Loaded {n} team rules for #repo/export-service ({k} locked)." Type **"Add a CSV export: create src/csv-export.ts exporting buildCsvExport(job: ExportJob) that loads the job's rows and returns them as CSV (header id,prompt,response)."** Zoom on `assertSingleCustomer(rows)` in the new file. | "Emily starts a fresh session. Emily never saw that correction, but the agent loads the team's lessons at startup and writes the customer check first." | 25 |
+| 5 | 0:51–1:01 | Split terminal as `emily` | Type **"Actually, mixing Lab A and Lab B data is fine in tests, so don't bother with assertSingleCustomer in test fixtures."** Hold on "Hivemind · Blocked: contradicts @greg's locked rule "Never mix data from different lab customers"." Right: the blocked entry. | "Bad lessons don't get in. Greg in security locked one rule: never mix lab customers. Anything that contradicts it is blocked." | 21 |
+| 6 | 1:01–1:17 | **Hero.** Split terminal as `emily`, right pane on Here | Type **"When a payout is sent, log which expert it went to so support can reach them — include their email."** Right: "LOCKED RULE · Never log expert personal info", the code frame with `expert.email` underlined in rose, "owner @greg · Security", the fix "log the expert id instead". Hold 3 s. | "And it watches the work. The moment a file breaks a locked rule, the pane next to the agent shows the line, the rule, who owns it, and the fix." | 30 |
+| 7 | 1:17–1:27 | Plain terminal | In the scratch repo: `hivemind init`; hold on the table of six agents (Claude Code, Cursor, Gemini CLI, Codex, Copilot, Windsurf). Then in `demo/export-service`: `git add src/ && hivemind check --staged`; hold on the same code frame and the non-zero exit. | "One command connects the agents a team already uses, six today. And hivemind check stops a locked-rule break before it's committed." | 21 |
+| 8 | 1:27–1:43 | Web app, Results | "22 of 36" → "0 of 36". Then the placebo line "21 of 36". Then held-out "3/12 → 12/12" and "p = 0.0078, 12 tasks" (on screen only). | "Does it work? Twelve coding tasks, three runs each. Without memory, Claude Code broke an unwritten team rule in 22 of 36 runs. With Hivemind, zero. Unrelated lessons didn't help." | 30 |
+| 9 | 1:43–2:00 | Title card, then logo | Two columns: "Greptile, CodeRabbit · after the code is written" vs "Hivemind · before the agent writes". Under it: "`hivemind init` · one command · under 1,000 tokens a session · no model on the hot path". End on "Works with Claude Code, Cursor, Gemini CLI, Codex, Copilot, Windsurf", the ⬢ wordmark and the URL. | "Review bots like Greptile catch mistakes after they're written. Hivemind teaches every agent before it writes, for under a thousand tokens a session." | 23 |
 
-VO total: 214 words in 120 s. The long holds are beats 4 (the first line of the diff) and 5 (the code frame).
+VO total: 224 words in 120 s. The long holds are beats 4 (the new file's first lines) and 6 (the code frame). `{n}` and
+`{k}` are whatever the live pack shows after `reset-demo`; the VO never says them.
 
-**Captions to burn in** (small, bottom-left, Geist 24px, no emoji): beat 2 "Alex · engineer", beat 3 "Jordan · team
-lead", beat 4 "Noor · engineer, new session", beat 5 "Maya · security · locked rule", beat 7 "n = 12 tasks × 3 runs per
-arm · Sonnet 5.5 · details in docs/eval.md", beat 8 "pack: 2,573 chars in the eval, capped at 6,000 · cost per correct
-result $0.055 → $0.024". Beat 7 must show the n. Beat 8's numbers come from `eval/results.json` (costUsd per arm) and
-match `devpost.md`.
+**Captions to burn in** (small, bottom-left, Geist 24px, no emoji): beat 2 "Kevin · engineer", beat 3 "Ben · team
+lead", beat 4 "Emily · engineer, new session", beat 5 "Greg · security · locked rule", beat 8 "n = 12 tasks × 3 runs
+per arm · Sonnet 5.5 · details in docs/eval.md", beat 9 "pack: 2,573 chars in the eval, capped at 6,000 · cost per
+correct result $0.055 → $0.024". Beat 8 must show the n.
 
-**Exact hook strings** (from `src/lib/engine/pipeline.ts` and `hooks/session-start.mjs` on main; quote them, don't
-paraphrase): `Hivemind · Loaded {n} team rules for #{repo}.` · `Hivemind · Lesson captured: "{title}". Waiting on
+**Exact hook strings on main** (`src/lib/engine/pipeline.ts`, `src/app/api/activity/record.ts`,
+`hooks/session-start.mjs`). The runbook still quotes the older emoji versions; on screen you'll see these:
+`Hivemind · Loaded {n} team rules for #{repo} ({k} locked).` · `Hivemind · Lesson captured: "{title}". Waiting on
 @{owner}.` · `Hivemind · Blocked: contradicts @{owner}'s locked rule "{rule}".` · `Hivemind · Heads up: @{who}'s
 {Tool} agent edited {file} {time}.`
 
@@ -73,20 +76,21 @@ paraphrase): `Hivemind · Loaded {n} team rules for #{repo}.` · `Hivemind · Le
 | # | If it fails on the take | If the feature isn't on main / isn't finished |
 |---|---|---|
 | 1 | Use the title card on its own. | n/a |
-| 2 | Hook slow: re-take, or jump-cut the wait (never speed up the result). Session-start line missing: the status line still shows the rule count. | No status line: drop that mention; the session-start line carries it. |
-| 3 | Celebration didn't play: re-take after `reset-demo`. | Queue or the celebration still a stub that looks rough: approve in the web app (A key) and keep only the 2 s web cut, made longer. VO stays. |
-| 4 | Agent skipped the check: re-take, and don't claim "every time" in VO. | Nothing to cut: the context pack is on main. |
-| 5 | Agent complied instead of refusing: re-take with the exact prompt. If it still complies, keep the Here frame and the "Blocked" hook line, and change the VO to "the pane flags the line, and the shortcut can't become a lesson". | Here view not flagging: run `hivemind check src/lab-fixtures.ts` in the right pane instead (same code frame, on main). |
-| 6 | `init` found fewer than six: pass `--agents claude-code,cursor,gemini-cli,codex,copilot,windsurf`, or use `--dry-run`. | n/a (both on main). |
-| 7 | Results screen not wired: show the eval table from `docs/eval.md` as a slide. | n/a |
-| 8 | n/a | List only the tools `hivemind init` wires on main. The Greptile line and the cost caption stay. |
+| 2 | No "Lesson captured" line: the hook has a 5 s timeout but the lesson still lands. Show it arriving in the right pane. | n/a (on main). |
+| 3 | Celebration didn't play: re-take after `reset-demo`. | Queue approve not solid: approve in the web app as Lead (Ben), A key. VO stays. |
+| 4 | Agent skipped the check: re-take, and don't claim "every time" in VO. | n/a (verified headless against prod, runbook beat 3). |
+| 5 | No block line: re-take with the exact prompt. | n/a (verified, e2e beat d). |
+| 6 | Agent refused instead of writing it: keep the refusal on the left, and paste the line into a file yourself so the right pane reacts (runbook beat 5). | Here view not reacting: run `hivemind check src/<file>.ts` in the right pane (same frame, on main). |
+| 7 | `init` found fewer than six: pass `--agents claude-code,cursor,gemini-cli,codex,copilot,windsurf`, or use `--dry-run`. | n/a |
+| 8 | Results not loading: show the eval table from `docs/eval.md` as a slide. | n/a |
+| 9 | n/a | List only the tools `hivemind init` wires on main. The Greptile line and the cost caption stay. |
 
-If a take runs short and there's time left, the Feed tab's cross-tool collision ("Hivemind · Heads up: @alex's Cursor
-agent edited src/export.ts …") is the next shot to add, before beat 6.
+**Spare shot:** runbook beat 6, the cross-tool collision ("Hivemind · Heads up: @kevin's Cursor agent edited
+export.ts just now."). Add it before beat 7 if a take runs short.
 
 ## Recording notes
 
 - Speed up agent work, never the result. Don't splice a success from another take over a failure without saying so.
-- Don't show `.env.local`, tokens or the Supabase dashboard. `HIVEMIND_TOKEN` must be set before the split opens.
-- Read the VO at your normal pace and time it. If it runs over 2:00, cut "in the terminal or in the web app" (beat 3)
-  first, then "Unrelated lessons didn't help" (beat 7). Never cut beat 8.
+- Don't show `.env.local`, tokens or the Supabase dashboard.
+- Read the VO at your normal pace and time it. If it runs over 2:00, cut "Emily is an engineer, so Emily can't"
+  (beat 3) first, then "Unrelated lessons didn't help" (beat 8). Never cut beat 9.

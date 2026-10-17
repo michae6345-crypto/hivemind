@@ -23,7 +23,7 @@ every agent on your team."
 
 **On slide**
 - Headline: "Every agent session / starts from zero."
-- Left: a dark Terminal with the same correction typed twice, by Alex on Monday and Noor on Thursday.
+- Left: a dark Terminal with the same correction typed twice, by Kevin on Monday and Emily on Thursday.
 - Right, one stat: "#1 developer friction: finding information. 50% lose 10+ hrs/week." Source line: Atlassian State
   of DevEx 2025.
 
@@ -37,16 +37,17 @@ again for the next person's agent. CLAUDE.md only knows what someone wrote down.
 
 **On slide**
 - Headline: "Correct → approve → / every agent knows."
-- Full-bleed hero: the split terminal from video beat 5. Left, Claude Code refuses to mix Lab A and Lab B rows and
-  cites @maya's locked rule. Right, `hivemind watch` on Here with the rose code frame. The status line
+- Full-bleed hero: the split terminal from video beat 6. Left, Emily's Claude Code session (it wrote the payout log
+  line, or refused and cited @greg's rule). Right, `hivemind watch` on Here with the rose code frame: "LOCKED RULE ·
+  Never log expert personal info", `expert.email` underlined, "owner @greg · Security". The status line
   "⬢ Hivemind · {n} rules" along the bottom. No emoji anywhere on the slide. Use a capture of
   the real app from the recording. `public/brand/terminal/shots/` are design-reference renders: they're fine for a
   "how it looks" style frame only if captioned "design reference".
-- Under it, three small frames: Alex's correction ("Hivemind · Lesson captured: … Waiting on @jordan.") · Jordan
-  presses `a` in Queue and the hex cells fill · Noor's agent writes `assertSingleCustomer(rows)` first.
+- Under it, three small frames: Kevin's correction ("Hivemind · Lesson captured: … Waiting on @ben.") · Ben presses
+  `a` in Queue and the hex cells fill · Emily's agent writes `assertSingleCustomer(rows)` first.
 - Live demo here if time allows (two terminal splits and nothing else); otherwise play video beats 2–6.
 
-**Say** (live, or 45 s over the frames): follow `video-script.md` beats 2–6. Point at the right pane: "Hivemind
+**Say** (live, or 45 s over the frames): follow `video-script.md` beats 2–6 (same cast and prompts as `docs/demo-terminal.md`). Point at the right pane: "Hivemind
 lives next to the agent, in the terminal you already have open."
 
 ---

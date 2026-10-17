@@ -19,9 +19,8 @@
 - [ ] Judging criteria to hit in the story and the video: **Functionality** (how functional is the demo),
   **Continual Learning** (does it get better as it's used, or adapt as the world changes), **Pitch** (put the judges in
   the user's shoes). Rules add: "a big focus on continual learning, creativity and feasibility."
-- [ ] The demo company's people in this file and the video are the live database's (Alex, Noor, Jordan, Maya). The
-  website's demo data now says @kevin, @emily, @ben, @greg. Match them before recording, or leave both and don't
-  show the website and the app side by side.
+- [ ] The cast matches the seed (`b4b0a20`) and `docs/demo-terminal.md` everywhere: @kevin corrects, @ben (Data
+  Pipelines lead) approves, @emily has the fresh session and gets the 403, @greg (Security) owns the locked rules.
 
 **Tagline (≤200 chars):** Correct one AI coding agent and every agent at your company learns it. Lessons are approved
 by a lead, locked rules can't be overridden, and an eval shows the difference: 39% → 100% pass.
@@ -36,7 +35,7 @@ Continual Failure Detection (Lemma) · Most Scalable To $1B (Outcast Ventures) �
 ## Inspiration
 
 Our teams use several coding agents at once, and each one starts every session knowing nothing about how we work. A
-reviewer tells Alex's agent that exports must call `assertSingleCustomer()`. Next week Noor's agent makes the same
+reviewer tells Kevin's agent that exports must call `assertSingleCustomer()`. Next week Emily's agent makes the same
 mistake in the same file, and someone has to type the same correction again.
 
 The written rules (`CLAUDE.md`, Cursor rules, a wiki page) only hold what somebody remembered to write down. Most of
@@ -54,9 +53,9 @@ everyone on a team and passes it to every agent they use.
 Hivemind is shared memory for AI coding agents, with a chain of command.
 
 1. **It learns from corrections.** When an engineer corrects their agent, Hivemind turns the correction into a short,
-   attributed lesson ("Exports call `assertSingleCustomer(rows)` before writing", evidence: Alex's correction on
-   `src/export.ts`). Agents can also propose lessons through MCP. Every proposal starts as **pending**, and the agent's terminal says so:
-   "Hivemind · Lesson captured: … Waiting on @jordan."
+   attributed lesson ("Exports call `assertSingleCustomer(rows)` before writing", evidence: Kevin's correction on
+   `src/jsonl-export.ts`). Agents can also propose lessons through MCP. Every proposal starts as **pending**, and the agent's terminal says so:
+   "Hivemind · Lesson captured: … Waiting on @ben."
 2. **A human approves it.** The lead who owns that scope (team, repo) approves or rejects it in the Approvals inbox.
    Agents can only propose. They can never approve.
 3. **Every agent gets it.** When any engineer starts a new agent session, a session-start hook injects a context pack:
@@ -67,7 +66,7 @@ Hivemind is shared memory for AI coding agents, with a chain of command.
    contradicts one is blocked.
 5. **It watches agents while they work.** A PostToolUse hook records every file edit. If another engineer's agent
    touched the same file in the last 10 minutes, whichever tool it ran in, the agent and the engineer are told:
-   "Hivemind · Heads up: @alex's Cursor agent edited src/export.ts 2 min ago." The first time an agent touches a file,
+   "Hivemind · Heads up: @kevin's Cursor agent edited src/export.ts 2 min ago." The first time an agent touches a file,
    it also gets the locked rules that mention that file.
 6. **Confidence changes with use.** Each lesson keeps a Beta(α, β) score. Evidence from more people and sessions
    without a repeat correction raise it, and corrections against it lower it. The pack ranks lessons by the Wilson
@@ -80,7 +79,7 @@ Hivemind is shared memory for AI coding agents, with a chain of command.
    agent) and uses the website terminal's palette: no emoji, one honey ⬢ for Hivemind. It has four tabs. **Here**
    checks each file as it changes and shows any broken rule as a code frame: the line, the range underlined, the rule,
    who locked it, and the fix. **Rules** lists what applies, by layer, with who taught each one. **Queue** lets a lead
-   approve with `a` or reject with `r`, and an approval plays a short honey-hex celebration ("@alex's lesson is
+   approve with `a` or reject with `r`, and an approval plays a short honey-hex celebration ("@kevin's lesson is
    live"). **Feed** shows what every agent on the team is doing, labeled by tool. `hivemind statusline` prints one line
    for Claude Code's status bar: "⬢ Hivemind · N rules · N waiting". The web app (Approvals, Results) has the same
    queue and the eval, for people who'd rather click.
@@ -139,7 +138,7 @@ What that means in practice:
 
 We built Hivemind for AI training-data teams like AfterQuery's, so the demo company is **Meridian Data**, a fictional
 AI training-data company with two lab customers (Lab A, Lab B),
-a Head of Security (Maya), a Data Pipelines lead (Jordan) and two engineers (Alex, Noor).
+a Head of Security (Greg), a Data Pipelines lead (Ben) and two engineers (Kevin, Emily).
 
 ### Does it work? The eval
 
