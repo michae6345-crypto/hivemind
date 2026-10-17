@@ -16,6 +16,7 @@ import { fileURLToPath } from "node:url";
 import { AGENTS, SKILL_FILE, byId, mcpWired } from "./agents.mjs";
 import { cmdCheck } from "./check.mjs";
 import { cmdOpen } from "./open.mjs";
+import { NOT_IN_REPO, WHO_ARE_YOU, findRepoRoot, nativePath, resolveUser } from "./root.mjs";
 import { brand, handleChip, label, rich, scopeChip } from "./style.mjs";
 import { rulesFrontmatter } from "./templates.mjs";
 import { END, START, api, banner, c, callerAgent, mcpCall, mergeJson, onPath, post, read, readEnvFile, rel, sym, table, plain, upsertBlock, write } from "./util.mjs";
@@ -49,7 +50,7 @@ function parseArgs(argv) {
 
 function resolveConfig(flags) {
   const dev = readEnvFile(join(HM_ROOT, ".env.local")); // dev fallback, below everything else
-  const root = resolve(typeof flags.dir === "string" ? flags.dir : process.cwd());
+  const root = nativePath(typeof flags.dir === "string" ? flags.dir : process.cwd()); // /c/… from Git Bash → C:…
   let saved = {};
   try {
     saved = JSON.parse(read(join(root, CONFIG)) ?? "{}");
@@ -60,7 +61,9 @@ function resolveConfig(flags) {
   const repo = String(rawRepo).includes("/") ? String(rawRepo) : `repo/${rawRepo}`;
   // .env.local only supplies the token; its localhost URL must not leak into generated configs.
   const url = String(flags.url || process.env.HIVEMIND_API_URL || saved.url || DEFAULT_URL).replace(/\/+$/, "");
-  const actor = (typeof flags.user === "string" && flags.user) || process.env.HIVEMIND_USER || "cli";
+  // --user → HIVEMIND_USER → .hivemind.json "user" → git user.email local part. No made-up default: commands that need
+  // a person (teach, watch) refuse without one; read-only calls just omit x-hm-user.
+  const actor = resolveUser(flags, saved, root) ?? "";
   return { root, saved, repo, url, actor, token: process.env.HIVEMIND_TOKEN || dev.HIVEMIND_TOKEN, flags, dryRun: !!flags["dry-run"] };
 }
 
@@ -327,6 +330,7 @@ function ownerOf(scopeId, scopes) {
 }
 
 async function cmdTeach(cfg, positional) {
+  if (!cfg.actor) fail(WHO_ARE_YOU); // a lesson needs a person behind it
   const rule = positional.join(" ").trim();
   if (!rule) fail('usage: hivemind teach "<rule>" [--scope repo/<name>|team/<name>]');
   const scope = typeof cfg.flags.scope === "string" ? cfg.flags.scope : null;
@@ -441,7 +445,18 @@ const { flags, positional } = parsed;
 const cmd = parsed.cmd || (flags.open || process.stdout.isTTY || process.env.WT_SESSION ? "open" : "help");
 if (typeof flags.agent === "string") process.env.HIVEMIND_AGENT = flags.agent;
 // watch / statusline live in cli/watch (the terminal app); they parse their own flags from argv too.
-const watchCmd = (file) => async (cfg) => (await import(`../watch/${file}`)).run(process.argv.slice(3), cfg);
+// watch / statusline only ever run on a real repo: the nearest .hivemind.json or git root above cwd (or --dir), never ~
+// or a drive root, so the file watcher can't end up scanning a home directory.
+const watchCmd = (file) => async (cfg) => {
+  const found = findRepoRoot(typeof cfg.flags.dir === "string" ? nativePath(cfg.flags.dir) : process.cwd());
+  if (!found) {
+    if (file === "statusline.mjs") return console.log(`${brand()} ${c.gray("· not in a Hivemind repo")}`);
+    fail(NOT_IN_REPO);
+  }
+  const scoped = resolveConfig({ ...cfg.flags, dir: found.root });
+  if (!scoped.actor && file !== "statusline.mjs") fail(WHO_ARE_YOU);
+  return (await import(`../watch/${file}`)).run(process.argv.slice(3), scoped);
+};
 const commands = { watch: watchCmd("index.mjs"), statusline: watchCmd("statusline.mjs"), open: (cfg) => cmdOpen(cfg, fail), init: cmdInit, sync: cmdSync, status: cmdStatus, teach: cmdTeach, rules: cmdRules, check: (cfg, pos) => cmdCheck(cfg, pos, fail) };
 if (cmd === "--version" || cmd === "-v" || cmd === "version" || (flags.version && cmd !== "watch")) {
   console.log(`hivemind ${VERSION}`);

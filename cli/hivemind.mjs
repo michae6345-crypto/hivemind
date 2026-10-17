@@ -3,8 +3,6 @@
 // `hivemind` with no command (in a terminal, or anywhere inside Windows Terminal, e.g. Claude Code's `!hivemind`),
 // `hivemind open` and `hivemind --open` take the instant path: no API calls, only lib/open.mjs is loaded, the pane is
 // spawned and the pane (hivemind watch) fetches its own data. Every other command loads the full CLI (lib/main.mjs).
-import { existsSync, readFileSync } from "node:fs";
-import { basename, resolve } from "node:path";
 
 const argv = process.argv.slice(2);
 const first = argv[0] ?? "";
@@ -23,20 +21,19 @@ if (wantsOpen) {
     else if (!BOOL.has(k) && rest[i + 1] && !rest[i + 1].startsWith("--")) flags[k] = rest[++i];
     else flags[k] = true;
   }
-  const root = resolve(typeof flags.dir === "string" ? flags.dir : process.cwd());
-  let saved = {};
-  try {
-    saved = existsSync(`${root}/.hivemind.json`) ? JSON.parse(readFileSync(`${root}/.hivemind.json`, "utf8")) : {};
-  } catch {
-    /* ignore a broken .hivemind.json */
-  }
-  const raw = String(flags.repo || process.env.HIVEMIND_REPO || saved.repo || basename(root));
-  const cfg = { root, flags, repo: raw.includes("/") ? raw : `repo/${raw}`, dryRun: !!flags["dry-run"] };
-  const { cmdOpen } = await import("./lib/open.mjs");
-  await cmdOpen(cfg, (msg) => {
+  const { NOT_IN_REPO, WHO_ARE_YOU, findRepoRoot, nativePath, repoIdFor, resolveUser } = await import("./lib/root.mjs");
+  const fail = (msg) => {
     console.error(`✗ ${msg}`);
     process.exit(1);
-  });
+  };
+  // The pane must watch THIS repo as THIS user: find the repo above cwd (never ~), resolve the user, pass both explicitly.
+  const found = typeof flags.dir === "string" ? findRepoRoot(nativePath(flags.dir)) : findRepoRoot(process.cwd());
+  if (!found) fail(NOT_IN_REPO);
+  const user = resolveUser(flags, found.saved, found.root);
+  if (!user) fail(WHO_ARE_YOU);
+  const cfg = { root: found.root, flags: { ...flags, user }, repo: repoIdFor(flags, found.saved, found.root), dryRun: !!flags["dry-run"] };
+  const { cmdOpen } = await import("./lib/open.mjs");
+  await cmdOpen(cfg, fail);
 } else {
   await import("./lib/main.mjs");
 }

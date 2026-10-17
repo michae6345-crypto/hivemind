@@ -139,7 +139,7 @@ export const callerAgent = () => process.env.HIVEMIND_AGENT || "cli";
 
 const headers = (cfg, agent) => ({
   Authorization: `Bearer ${cfg.token ?? ""}`,
-  "x-hm-user": cfg.actor,
+  ...(cfg.actor ? { "x-hm-user": cfg.actor } : {}),
   "x-hm-repo": cfg.repo,
   "x-hm-agent": agent ?? callerAgent(),
 });

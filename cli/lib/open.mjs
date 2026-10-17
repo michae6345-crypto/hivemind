@@ -10,6 +10,7 @@ import { existsSync, mkdirSync, readdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { delimiter, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { nativePath } from "./root.mjs";
 import { brand } from "./style.mjs";
 import { c, onPath } from "./util.mjs";
 
@@ -35,12 +36,14 @@ const insideClaude = () => !!process.env.CLAUDECODE || !!process.env.CLAUDE_CODE
 
 /** argv for the watch pane. `node <cli>` works whether or not `hivemind` is installed globally (no .cmd shim issues). */
 // The pane gets this shell's repo and user explicitly: Windows Terminal starts new panes from its own environment, so
-// an `$env:HIVEMIND_USER` set only in this shell wouldn't reach it otherwise. Same cwd via -d.
+// an `$env:HIVEMIND_USER` set only in this shell wouldn't reach it otherwise. Same folder via -d and --dir.
 function watchArgv(cfg, user) {
   return [
     nodeBin(),
     CLI.replace(/\\/g, "/"),
     "watch",
+    "--dir",
+    nativePath(cfg.root),
     "--repo",
     cfg.repo,
     ...(user ? ["--user", user] : []),
@@ -132,7 +135,7 @@ export async function cmdOpen(cfg, fail) {
   if (auto && process.env.HIVEMIND_AUTOOPEN !== "1") return; // off by default; hook output must stay empty
   const user = (typeof cfg.flags.user === "string" && cfg.flags.user) || process.env.HIVEMIND_USER || "";
   const size = Math.min(0.8, Math.max(0.2, Number(cfg.flags.size) || 0.45));
-  const p = plan(cfg, { claude: !!cfg.flags.claude, user, size, cwd: cfg.root });
+  const p = plan(cfg, { claude: !!cfg.flags.claude, user, size, cwd: nativePath(cfg.root) }); // wt -d needs C:…, never /c/…
 
   if (auto) {
     const input = await readHookInput();
