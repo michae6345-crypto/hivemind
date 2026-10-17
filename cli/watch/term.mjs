@@ -104,7 +104,8 @@ export class Screen {
     for (let r = 0; r < n; r++) {
       const line = lines[r] ?? "";
       if (this.prev[r] === line) continue;
-      buf += `\x1b[${r + 1};1H\x1b[0m${line}\x1b[0m\x1b[K`;
+      // A full-width line leaves the cursor in pending-wrap on the last cell; EL there would erase that cell's char.
+      buf += `\x1b[${r + 1};1H\x1b[0m${line}\x1b[0m${width(line) < this.cols ? "\x1b[K" : ""}`;
     }
     this.prev = lines.slice(0, n);
     if (cursor) buf += `\x1b[${cursor.row + 1};${cursor.col + 1}H\x1b[6 q\x1b[?25h`;
