@@ -137,7 +137,7 @@ is illustrative.
 > from the real hooks are appended to the same curve (`sources.syntheticSessions` reports the split). **The only
 > measured result in this document is the eval above.**
 
-Sample response (abridged, 30 synthetic + 4 live sessions):
+Sample response (abridged snapshot at write-up time, 30 synthetic + 4 live sessions; live values move as real sessions arrive):
 
 ```json
 {
