@@ -12,6 +12,13 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Hivemind: generated / non-app trees (linting these made pnpm lint hang)
+    "eval/out/**",
+    "eval/fixture/**",
+    "demo/**",
+    "vscode-extension/**",
+    ".claude/**",
+    "**/node_modules/**",
   ]),
 ]);
 
