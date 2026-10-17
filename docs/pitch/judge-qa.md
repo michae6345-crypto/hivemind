@@ -34,7 +34,7 @@ uses, with a person approving what gets in.
 Every correction is a labeled failure written by an expert. Hivemind stores them structured, attributed and scoped,
 which is the raw material for a company-specific eval set or rubric *(export: roadmap)*.
 
-## Agent Behavior Monitoring (Lemma, Jerry Zhang)
+## Continual Failure Detection (Lemma, Jerry Zhang)
 
 **How do you decide what counts as a failure?**
 Three signals, all defined by people and not by a model's opinion: a human correcting the agent, an edit that touches
@@ -158,6 +158,20 @@ corrections, ranks them, scopes them org → team → repo, and serves them to e
 GitHub already shipped Copilot Memory: it's per repository, only Copilot uses it, and unused memories expire after
 28 days. Factory's org memory works for Factory's agents, and Cursor Team Rules are hand-written. A team using three
 agent vendors needs memory none of them owns.
+
+**How is this different from Greptile or CodeRabbit?**
+They're review bots. They learn from PR comments and reactions and use that in their next review, after an agent has
+written the code and someone has opened a PR. Hivemind gives the lesson to the agent before it writes, at session start
+and on every file edit, in whichever agent the engineer uses. It also learns from corrections typed into the agent's
+chat, which never reach a PR. A lead approves every lesson, and locked rules can't be overridden. In our eval the
+agent broke the rule in 22 of 36 runs without the lesson and in 0 of 36 with it: there was nothing left for a reviewer
+to catch. Use both. Review comments are a natural input for Hivemind.
+
+**What does it cost to run, and does it scale?**
+The context pack is capped at 6,000 characters (under 2,000 tokens) however many lessons a company has; in the eval it
+was 2,573. That adds about $0.002 to a session, but the cost per correct result fell from $0.055 to $0.024, because
+14 of 36 runs passed without it and 36 of 36 with it. Session start and file edits make no model call; Haiku runs only
+when someone corrects an agent. Cost grows with corrections, not with sessions.
 
 **Isn't this Mem0 / Zep / Letta?**
 Those are memory infrastructure for building agents. Hivemind is a product for engineering teams: scopes, roles,

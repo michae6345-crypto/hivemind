@@ -4,13 +4,32 @@
 > Before submitting, check the **Build status** table at the bottom against `git log origin/main` and delete any
 > sentence that describes a ⏳ row as working.
 
+### Submission checklist (from sephacks-2026.devpost.com, read 17 Oct)
+
+- [ ] **Devpost closes Oct 17, 2:00 PM EDT = 11:00 AM PT.** The rules page says "Oct 16 5 PM - Oct 17 2 PM", but
+  Devpost's countdown and its confirmation email both say 2:00 PM *EDT*. Submit by 10:45 AM PT to be safe.
+- [ ] **A 2-minute demo + pitch video** (YouTube or Loom link). Hard cap 2:00. Script: `docs/pitch/video-script.md`.
+- [ ] **GitHub project link.** The repo is **private** right now, and judging says "ensure your project AND GitHub
+  links work". Make it public (or add the judges) before submitting.
+- [ ] **Project link:** https://hivemind-beta-virid.vercel.app (check it loads in a logged-out browser).
+- [ ] **Team of 4 or fewer:** Adrian Erlikhman, Michael Tarekegn. Built during the hackathon (Oct 16 5 PM onward).
+- [ ] **Opt in to every prize** on the submission form (cross-eligibility is allowed):
+  Grand Tech Winner · Grand Tech Runner-Up · Best Visual Design · Most Scalable To $1B · Continual Failure Detection.
+- [ ] Demo is legible: 1920×1080, 16pt terminal font, browser zoom 125%.
+- [ ] Judging criteria to hit in the story and the video: **Functionality** (how functional is the demo),
+  **Continual Learning** (does it get better as it's used, or adapt as the world changes), **Pitch** (put the judges in
+  the user's shoes). Rules add: "a big focus on continual learning, creativity and feasibility."
+- [ ] The demo company's people in this file and the video are the live database's (Alex, Noor, Jordan, Maya). The
+  website's demo data now says @kevin, @emily, @ben, @greg. Match them before recording, or leave both and don't
+  show the website and the app side by side.
+
 **Tagline (≤200 chars):** Correct one AI coding agent and every agent at your company learns it. Lessons are approved
 by a lead, locked rules can't be overridden, and an eval shows the difference: 39% → 100% pass.
 
 **Try it out:** https://hivemind-beta-virid.vercel.app · GitHub: https://github.com/michae6345-crypto/hivemind
 
-**Tracks:** Grand Tech: Continual Learning · Agent Behavior Monitoring (Lemma) · Most Scalable to $1B (Outcast) ·
-Best Visual Design (Figma)
+**Prizes entered (all five):** Grand Tech Winner · Grand Tech Runner-Up (Continual Learning: AfterQuery + SideShift) ·
+Continual Failure Detection (Lemma) · Most Scalable To $1B (Outcast Ventures) · Best Visual Design (Figma)
 
 ---
 
@@ -46,16 +65,71 @@ Hivemind is shared memory for AI coding agents, with a chain of command.
    customers in one export"). Locked rules always come first in the pack and never decay. A proposed lesson that
    contradicts one is blocked.
 5. **It watches agents while they work.** A PostToolUse hook records every file edit. If another engineer's agent
-   touched the same file in the last 10 minutes, whichever tool it ran in, the agent is told: "⚠️ @alex's Cursor agent
-   edited export.ts 2 min ago — coordinate before changing it." The first time an agent touches a file, it also gets the locked rules that mention
-   that file.
+   touched the same file in the last 10 minutes, whichever tool it ran in, the agent and the engineer are told:
+   "Hivemind · Heads up: @alex's Cursor agent edited src/export.ts 2 min ago." The first time an agent touches a file,
+   it also gets the locked rules that mention that file.
 6. **Confidence changes with use.** Each lesson keeps a Beta(α, β) score. Evidence from more people and sessions
    without a repeat correction raise it, and corrections against it lower it. The pack ranks lessons by the Wilson
    lower bound, so a lesson seen once by one person ranks below one confirmed by five.
 7. **It works with any agent, in any terminal.** One command, `hivemind init`, connects a repo to the agents the team
    already uses: Claude Code, Cursor, Gemini CLI, Codex, GitHub Copilot and Windsurf, each through its own hooks and
    MCP. Clients without hooks (claude.ai, Claude Desktop) call `get_team_rules` and `propose_memory` over MCP. In the
-   terminal, `hivemind check --staged` flags code that breaks a 🔒 rule before it's committed.
+   terminal, `hivemind check --staged` flags code that breaks a locked rule before it's committed.
+   `hivemind watch` runs in a terminal pane next to the agent: the rules that apply to the file you're in, with who
+   taught each one, the approval queue for leads, and a live feed of what every agent is doing. *(⏳ check the build
+   table: delete this sentence if `hivemind watch` isn't on main.)*
+
+## How it's different from Greptile, CodeRabbit and the rest
+
+The closest products are AI code reviewers. **Greptile** and **CodeRabbit** both learn a team's preferences from PR
+comments, replies and reactions, and apply them in their next reviews. That's a good product, and it's a different
+moment: a review bot sees the code **after** an agent wrote it and someone opened a PR. Hivemind puts the lesson in
+front of the agent **before** it writes anything.
+
+| | Learns from | When it acts | Who gets it | Who decides what's learned |
+|---|---|---|---|---|
+| **Greptile, CodeRabbit** | PR comments, replies, 👍/👎 | In review, after the PR is open | Their own review bot (Greptile's MCP lets an agent look rules up if it asks) | Inferred from team behavior, edited in a dashboard |
+| **GitHub Copilot Memory** | Copilot's own work in a repo | Copilot sessions | Copilot only, one repo; unused memories expire after 28 days | Copilot, checked against the code |
+| **CLAUDE.md, Cursor rules, AGENTS.md** | Whatever someone remembers to write down | Session start | One file per vendor, per repo | Whoever edits the file |
+| **Mem0, Zep, Letta** | One user's or one app's conversations | Wherever a developer wires it in | Building blocks for one agent | The app |
+| **Hivemind** | Corrections typed to *any* agent, plus review comments | Session start, and on every file edit | Claude Code, Cursor, Gemini CLI, Codex, Copilot, Windsurf, any MCP client | A named lead approves. Agents can only propose. Locked rules can't be overridden |
+
+What that means in practice:
+
+- **Prevention, not detection.** In our eval, without the lesson the agent broke the team's rule in 22 of 36 runs. A
+  review bot could catch some of those in review, after the agent wrote them and a person read the diff. With
+  Hivemind the agent broke it in 0 of 36, so there was nothing to catch.
+- **It learns from the corrections review bots never see.** Most "no, not like that" happens inside the agent's chat,
+  before anything is pushed. It never reaches a PR, so a PR-based tool can't learn from it.
+- **One memory for every vendor.** Greptile's learnings live in Greptile, Copilot's in Copilot, Cursor's rules in
+  Cursor. Teams run several agents at once, and no single vendor has a reason to share its memory with competitors.
+- **Governed.** A memory every agent trusts is an attack surface (OWASP lists memory poisoning as ASI06). Agents can
+  only propose, a person approves, and locked rules block contradicting lessons with two independent checks.
+- **It works alongside a review bot.** Keep Greptile or CodeRabbit for review. Their comments are exactly the kind of
+  input Hivemind turns into lessons (a PR-comment importer is on the roadmap).
+
+## Built to scale: cost, tokens, setup
+
+- **One command, no new habits.** `hivemind init` writes each tool's own hook and MCP config for the agents a repo
+  already uses. Engineers keep their agent and their terminal. The web app is for leads approving lessons.
+- **A fixed token budget.** The context pack is capped at 6,000 characters (under 2,000 tokens) however many lessons
+  the company has. Lessons are ranked and the pack is filled to the cap; only locked rules skip the line. In the eval
+  the pack was 2,573 characters, under 1,000 tokens. Pasting every rule into every prompt grows with the company.
+  This doesn't.
+- **Measured cost, from the eval's own billing.** A session with Hivemind cost $0.024 on average, against $0.022
+  without it: the pack adds about two tenths of a cent. But only 14 of 36 runs without memory passed, so the **cost per
+  correct result fell from $0.055 to $0.024 (57% less)**. That's before counting the reviewer who has to catch each
+  of the 22 failures, type the correction and wait for a rerun.
+- **No model on the hot path.** Session start and every file edit are database reads and plain code, with no LLM call.
+  Claude Haiku runs only when someone corrects an agent, and a no-model filter drops "lgtm", bots and one-offs first.
+  Cost grows with corrections, not with sessions or edits.
+- **More valuable as the team grows.** One approved correction reaches every engineer's next session, so on a team
+  of N engineers it saves up to N−1 repeat corrections. Evidence from more people raises a lesson's confidence, and
+  the approved lessons, with who taught them and why, become a company asset that builds up over months.
+- **Fits inside the agents' limits.** The pack respects Claude Code's 10,000-character hook cap, a correction is
+  captured within the 5-second hook timeout, and anything slower finishes in the background so the agent never waits.
+- **Plain, horizontal parts.** One Next.js app on Vercel (UI, API and MCP server) and Postgres. Scopes (org → team →
+  repo → personal) match how companies are already organized, so a new team is a new row, not a new deployment.
 
 We built Hivemind for AI training-data teams like AfterQuery's, so the demo company is **Meridian Data**, a fictional
 AI training-data company with two lab customers (Lab A, Lab B),
@@ -163,6 +237,21 @@ per-task table and reproduction commands: `docs/eval.md`.
 - **Export lessons as an eval set:** every correction is a labeled failure, and an attributed set of them is a
   rubric for testing agents on a company's own conventions.
 
+## Why it fits each prize
+
+- **Grand Tech (Continual Learning).** The track's four questions: it gets better the more people use it (every
+  correction becomes a lesson, and confidence moves with every session); learning is the product, not an add-on;
+  a product that never learns can't help with rules that exist only in someone's correction; and it's worth more as
+  the team grows. The eval measures it: 14/36 → 36/36, placebo 15/36.
+- **Continual Failure Detection (Lemma).** Failures are defined by people, not a model's opinion: an engineer
+  correcting the agent, an edit to a file a locked rule governs, two agents in one file within 10 minutes. Each is
+  flagged inside the agent's own loop while it works, and each correction becomes a lesson, so the same failure
+  doesn't come back. A bad lesson trying to get in is itself a failure, and it's blocked.
+- **Most Scalable To $1B (Outcast Ventures).** Per seat for every engineer who uses an agent, vendor-neutral, a fixed
+  token budget per session, no model on the hot path, and a moat that compounds: a company's approved lessons.
+- **Best Visual Design (Figma).** One idea per screen, color that always means the same thing (honey = a lesson,
+  red = a locked rule, blue = interface), and a product that shows up in the terminal where engineers already work.
+
 ## Built with
 
 `next.js` · `typescript` · `react` · `tailwindcss` · `shadcn/ui` · `motion` · `codemirror` · `supabase` ·
@@ -193,8 +282,11 @@ the video or on Devpost. ⏳ rows are roadmap until they land. ✅ means the cod
 | Claude chat (claude.ai, Claude Desktop) and VS Code Copilot through MCP | ✅ | `docs/integrations/` |
 | Demo reset + rehearsal scripts | ✅ | `scripts/reset-demo.mjs`, `scripts/e2e-demo.mjs` |
 | Approve / reject (role-checked, 🔒 blocks only security can clear), `POST /api/memories` | ✅ | `src/app/api/memories/` |
-| Visible "⬢ Hivemind loaded N team rules" line at session start | ✅ | `hooks/session-start.mjs` |
-| VS Code overlay (agent H) | dropped from the demo and pitch (Michael, 17 Oct); code stays in the repo | `vscode-extension/` |
+| Visible "Hivemind · Loaded N team rules for #repo/…" line at session start | ✅ | `hooks/session-start.mjs` |
+| VS Code overlay (agent H) | dropped from the demo and pitch (Michael, 17 Oct 07:08 UTC); code stays in the repo | `vscode-extension/` |
+| `hivemind watch` terminal app (Here · Rules · Queue · Feed) | ⏳ being built 17 Oct; check main | `cli/` |
+| Claude Code status line "Hivemind · N rules · N waiting" | ⏳ check main | |
+| Hook lines in plain "Hivemind · …" wording, no emoji | ✅ cee7840 | `src/lib/engine/pipeline.ts`, `hooks/` |
 | MCP chat cards for `get_team_rules` / `propose_memory` (MCP Apps) | ✅ | `src/app/api/mcp/` |
 | Vercel deploy (live link): https://hivemind-beta-virid.vercel.app | ✅ auto-deploys from main | `docs/deploy.md` |
 | Decay, invalidation, PR-comment importer | roadmap | |
