@@ -6,7 +6,7 @@ import type { Memory, Person } from "@/mocks/types";
 import { STATUS_META, cn, confidence } from "./utils";
 
 // The tonal chain mark (logo canvas, direction 11): a locked rule on top, an approved lesson
-// overlapping it, and a dashed cell for the next lesson. Overlaps blend with `screen`.
+// overlapping it, and a dashed cell for the next lesson. On the light page the overlap blends with `multiply`.
 const CELL_LOCK = "M60 13L84.25 27L84.25 55L60 69L35.75 55L35.75 27Z";
 const CELL_LESSON = "M38 51.1L62.25 65.1L62.25 93.1L38 107.1L13.75 93.1L13.75 65.1Z";
 const CELL_NEXT = "M82 52.7L104.86 65.9L104.86 92.3L82 105.5L59.14 92.3L59.14 65.9Z";
@@ -23,12 +23,12 @@ export function Logo({ className, intro = false }: { className?: string; intro?:
       : {};
   return (
     <svg viewBox="0 0 120 120" className={cn("size-5 overflow-visible", className)} aria-hidden>
-      <motion.path d={CELL_LOCK} fill="var(--chip-lock)" style={{ mixBlendMode: "screen" }} {...pop(0.1)} />
-      <motion.path d={CELL_LESSON} fill="var(--accent)" style={{ mixBlendMode: "screen" }} {...pop(0.28)} />
+      <motion.path d={CELL_LOCK} fill="var(--chip-lock)" style={{ mixBlendMode: "multiply" }} {...pop(0.1)} />
+      <motion.path d={CELL_LESSON} fill="var(--honey)" style={{ mixBlendMode: "multiply" }} {...pop(0.28)} />
       <motion.path
         d={CELL_NEXT}
         fill="none"
-        stroke="var(--accent)"
+        stroke="var(--honey)"
         strokeWidth="7.5"
         strokeDasharray="13 8"
         strokeLinejoin="round"
@@ -46,7 +46,7 @@ export function Logo({ className, intro = false }: { className?: string; intro?:
 
 const TITTLE = "M50 4L89.84 27L89.84 73L50 96L10.16 73L10.16 27Z";
 
-/** "hivemind" set in Syne ExtraBold with hexagon dots on the i's: one honey, one locked-rule rose. */
+/** "hivemind" set in Syne Bold with hexagon dots on the i's: one honey, one locked-rule rose. */
 export function Wordmark({ className }: { className?: string }) {
   const i = (fill: string) => (
     <span className="relative inline-block" aria-hidden>
@@ -57,10 +57,10 @@ export function Wordmark({ className }: { className?: string }) {
     </span>
   );
   return (
-    <span className={cn("font-brand leading-none font-extrabold tracking-[-0.02em]", className)}>
+    <span className={cn("font-brand leading-none font-bold tracking-[-0.03em]", className)}>
       <span className="sr-only">Hivemind</span>
       <span aria-hidden>
-        h{i("var(--accent)")}vem{i("var(--chip-lock)")}nd
+        h{i("var(--honey)")}vem{i("var(--chip-lock)")}nd
       </span>
     </span>
   );
@@ -99,7 +99,7 @@ export function ConfidenceBar({ memory, className }: { memory: Memory; className
           className="h-full rounded-full transition-[width] duration-300 ease-out"
           style={{
             width: `${Math.max(pct, 2)}%`,
-            background: memory.locked ? "var(--chip-lock)" : "var(--accent)",
+            background: memory.locked ? "var(--chip-lock)" : "var(--honey)",
           }}
         />
       </div>
@@ -118,7 +118,7 @@ export function Avatar({ person, id, className }: { person?: Person; id: string;
       title={isAgent ? "Agent" : person?.name}
       className={cn(
         "inline-flex size-5 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold",
-        isAgent ? "bg-link/15 text-link" : "bg-person/15 text-person",
+        isAgent ? "bg-link/12 text-link" : "bg-elevated text-fg/80 ring-1 ring-line",
         className,
       )}
     >
@@ -129,7 +129,7 @@ export function Avatar({ person, id, className }: { person?: Person; id: string;
 
 export function Kbd({ children }: { children: React.ReactNode }) {
   return (
-    <kbd className="inline-flex h-4 min-w-4 items-center justify-center rounded border border-line bg-elevated px-1 font-mono text-[10px] text-muted">
+    <kbd className="inline-flex h-4 min-w-4 items-center justify-center rounded border border-current/20 px-1 font-mono text-[10px] opacity-60">
       {children}
     </kbd>
   );

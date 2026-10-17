@@ -1,24 +1,38 @@
 @import "tailwindcss";
 
-/* Hivemind visual identity — PLAN.md §6 (dark-first, one accent: hive amber) */
+/* Hivemind visual identity: light, calm, Space-style (docs/adrian-handoff.md section 4).
+   Honey is for lessons only (hive cells, the logo, a lesson dot): never buttons, never backgrounds. */
 :root {
-  --bg: #0b0b0e;
-  --panel: #111114;
-  --elevated: #18181c;
-  --border: #26262c;
-  --text: #ededef;
-  --muted: #8a8a93;
-  --accent: #f5a524;
+  --bg: #f7f8fa;
+  --panel: #ffffff;
+  --elevated: #f1f3f5;
+  --border: #e5e7eb;
+  --text: #0e0f12;
+  --muted: #686d78;
+  --accent: #2f6feb;
+  --honey: #e09a2b;
+  --window: #1c1c1e;
 
-  --chip-team: #8b93ff;
-  --chip-repo: #2dd4bf;
-  --chip-person: #fcd34d;
-  --chip-link: #c4b5fd;
-  --chip-lock: #fb7185;
-  --chip-org: #f5a524;
+  --chip-team: #5b5bd6;
+  --chip-repo: #0e9384;
+  --chip-person: #b7791f;
+  --chip-link: #7c5cd6;
+  --chip-lock: #e5484d;
+  --chip-org: #0e0f12;
 
-  --ok: #4ade80;
-  --danger: #fb7185;
+  --ok: #2e9e5b;
+  --danger: #e5484d;
+
+  /* Inside dark Terminal / editor windows only */
+  --win-text: #e4e4e7;
+  --win-muted: #a1a1aa;
+  --win-honey: #f5a524;
+  --win-rose: #fb7185;
+  --win-teal: #5eead4;
+
+  --shadow-card: 0 8px 24px rgba(15, 23, 42, 0.06);
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-hover: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 @theme inline {
@@ -29,6 +43,8 @@
   --color-fg: var(--text);
   --color-muted: var(--muted);
   --color-accent: var(--accent);
+  --color-honey: var(--honey);
+  --color-window: var(--window);
   --color-team: var(--chip-team);
   --color-repo: var(--chip-repo);
   --color-person: var(--chip-person);
@@ -40,7 +56,6 @@
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
   --font-brand: var(--font-syne), var(--font-geist-sans), system-ui, sans-serif;
-  --font-condensed: var(--font-anybody), var(--font-geist-sans), system-ui, sans-serif;
   --font-note: var(--font-shantell), "Comic Sans MS", cursive;
   --radius-hm: 6px;
 }
@@ -54,40 +69,103 @@ body {
   background: var(--bg);
   color: var(--text);
   font-family: var(--font-geist-sans), system-ui, sans-serif;
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.45;
 }
 
 ::selection {
-  background: color-mix(in srgb, var(--accent) 30%, transparent);
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
 }
 
 /* Thin, quiet scrollbars */
 * {
   scrollbar-width: thin;
-  scrollbar-color: var(--border) transparent;
+  scrollbar-color: #d4d7dd transparent;
 }
 
-/* Token chips — shared by the editor (CodeMirror marks) and React chips */
+/* Two-tone Syne headlines: first line ink, second line graphite. */
+.hm-display {
+  font-family: var(--font-syne), var(--font-geist-sans), system-ui, sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.02;
+  color: var(--text);
+}
+.hm-display .tone-2 { color: var(--muted); }
+
+/* Token chips: a white pill, a hairline, a 6px coloured dot and mono text (● #repo/export-service).
+   Shared by the editor (CodeMirror marks) and React chips. */
 .hm-chip {
-  border-radius: 4px;
-  padding: 0 4px;
+  --dot: var(--muted);
+  display: inline;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  padding: 0 7px;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 0.86em;
   font-weight: 500;
+  line-height: 1.55;
+  color: var(--text);
   cursor: pointer;
   white-space: nowrap;
-  transition: background-color 150ms ease-out;
+  vertical-align: baseline;
+  transition: border-color 160ms var(--ease-hover), background-color 160ms var(--ease-hover);
 }
-.hm-chip[data-kind="team"] { color: var(--chip-team); background: color-mix(in srgb, var(--chip-team) 14%, transparent); }
-.hm-chip[data-kind="repo"] { color: var(--chip-repo); background: color-mix(in srgb, var(--chip-repo) 14%, transparent); }
-.hm-chip[data-kind="org"] { color: var(--chip-org); background: color-mix(in srgb, var(--chip-org) 14%, transparent); }
-.hm-chip[data-kind="person"] { color: var(--chip-person); background: color-mix(in srgb, var(--chip-person) 14%, transparent); }
-.hm-chip[data-kind="link"] { color: var(--chip-link); background: color-mix(in srgb, var(--chip-link) 14%, transparent); }
-.hm-chip[data-kind="lock"] { color: var(--chip-lock); background: color-mix(in srgb, var(--chip-lock) 14%, transparent); }
-.hm-chip:hover { filter: brightness(1.15); }
+.hm-chip::before {
+  content: "";
+  display: inline-block;
+  vertical-align: 0.08em;
+  margin-right: 5px;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--dot);
+}
+.hm-chip[data-kind="team"] { --dot: var(--chip-team); }
+.hm-chip[data-kind="repo"] { --dot: var(--chip-repo); }
+.hm-chip[data-kind="org"] { --dot: var(--chip-org); }
+.hm-chip[data-kind="person"] { --dot: var(--chip-person); }
+.hm-chip[data-kind="link"] { --dot: var(--honey); }
+.hm-chip[data-kind="lock"] { --dot: var(--chip-lock); color: var(--chip-lock); }
+.hm-chip[data-kind="lock"]:has(svg)::before { display: none; }
+.hm-chip:hover { border-color: color-mix(in srgb, var(--text) 22%, var(--border)); }
+
+/* Glass: frosted secondary pills and floating bars. */
+.hm-glass {
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 0 0 1px rgba(14, 15, 18, 0.06), 0 4px 14px rgba(15, 23, 42, 0.06);
+}
+
+/* Cards: white, 16px radius, hairline ring, soft shadow. */
+.hm-card {
+  background: var(--panel);
+  border-radius: 16px;
+  box-shadow: 0 0 0 1px var(--border), var(--shadow-card);
+}
+
+/* Pills: black = primary, glass = secondary. */
+.hm-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-radius: 999px;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: background-color 180ms var(--ease-hover), box-shadow 180ms var(--ease-hover), color 180ms var(--ease-hover),
+    opacity 180ms var(--ease-hover);
+}
+.hm-pill-primary { background: var(--text); color: #fff; }
+.hm-pill-primary:hover { background: #2a2c31; }
+.hm-pill-glass { color: var(--text); }
+.hm-pill-glass:hover { background: rgba(255, 255, 255, 0.92); }
 
 /* Motion: only when state changes (approve, new activity, a new cell in the hive). */
 @keyframes hm-flash {
-  0% { background-color: color-mix(in srgb, var(--accent) 16%, transparent); }
+  0% { background-color: color-mix(in srgb, var(--honey) 18%, transparent); }
   100% { background-color: transparent; }
 }
 .hm-flash { animation: hm-flash 1.6s ease-out; }

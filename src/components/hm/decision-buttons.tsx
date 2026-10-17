@@ -25,7 +25,7 @@ export function DecisionButtons({
   const { user, scopes } = useHivemind();
   const { onApprove, onReject } = useDecide();
   const allowed = canApprove(user, m, scopes);
-  const h = size === "md" ? "h-8 px-3 text-[13px]" : "h-7 px-2.5 text-[12px]";
+  const h = size === "md" ? "h-10 px-5 text-[14px]" : "h-8 px-3.5 text-[12px]";
 
   if (m.status !== "pending" && m.status !== "blocked") return null;
 
@@ -36,10 +36,7 @@ export function DecisionButtons({
         onClick={async () => {
           if (await onReject(m)) onDone?.();
         }}
-        className={cn(
-          "flex items-center gap-1.5 rounded-md border border-line text-muted transition-colors duration-150 hover:border-danger/50 hover:text-danger",
-          h,
-        )}
+        className={cn("hm-pill hm-pill-glass text-muted hover:text-danger", h)}
       >
         <X className="size-3.5" /> {m.status === "blocked" ? "Dismiss" : "Reject"}
         {shortcuts ? <Kbd>R</Kbd> : null}
@@ -51,13 +48,7 @@ export function DecisionButtons({
             if (await onApprove(m)) onDone?.();
           }}
           title={allowed ? undefined : "Your role can't approve for this scope"}
-          className={cn(
-            "flex items-center gap-1.5 rounded-md font-semibold transition-[filter,background-color] duration-150",
-            allowed
-              ? "bg-accent text-black hover:brightness-110"
-              : "border border-accent/40 bg-accent/10 text-accent hover:bg-accent/15",
-            h,
-          )}
+          className={cn("hm-pill", allowed ? "hm-pill-primary" : "hm-pill-glass text-muted hover:text-fg", h)}
         >
           {allowed ? <Check className="size-3.5" /> : <Lock className="size-3.5" />} Approve
           {shortcuts ? <Kbd>A</Kbd> : null}

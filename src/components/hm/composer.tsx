@@ -90,7 +90,7 @@ export function Composer() {
       <motion.button
         type="button"
         aria-label="Close"
-        className="absolute inset-0 bg-black/55 backdrop-blur-[1px]"
+        className="absolute inset-0 bg-fg/30 backdrop-blur-[1px]"
         onClick={() => setComposerOpen(false)}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -189,7 +189,7 @@ export function Composer() {
                 type="date"
                 value={expires}
                 onChange={(e) => setExpires(e.target.value)}
-                className="h-9 w-full rounded-md border border-line bg-bg px-2 text-[13px] text-fg outline-none [color-scheme:dark] focus:border-accent/60"
+                className="h-9 w-full rounded-md border border-line bg-bg px-2 text-[13px] text-fg outline-none [color-scheme:light] focus:border-accent/60"
               />
               <p className="mt-1.5 text-[12px] text-muted">Leave empty to keep it until someone changes it.</p>
             </div>
@@ -234,7 +234,7 @@ export function Composer() {
             type="button"
             disabled={!canSave}
             onClick={save}
-            className="h-8 rounded-md bg-accent px-3.5 text-[13px] font-semibold text-black transition-[filter,opacity] duration-150 hover:brightness-110 disabled:opacity-40"
+            className="hm-pill hm-pill-primary h-9 px-4 text-[13px] disabled:opacity-40"
           >
             {saving ? "Saving…" : locked && lockAllowed ? "Save locked rule" : "Save rule"}
           </button>

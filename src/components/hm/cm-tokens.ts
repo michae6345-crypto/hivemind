@@ -193,7 +193,8 @@ export const hmEditorTheme = EditorView.theme(
     ".cm-activeLine": { backgroundColor: "color-mix(in srgb, var(--text) 3%, transparent)" },
     ".cm-gutters": { display: "none" },
     ".cm-tooltip": {
-      backgroundColor: "var(--elevated)",
+      backgroundColor: "var(--panel)",
+      boxShadow: "var(--shadow-card)",
       border: "1px solid var(--border)",
       borderRadius: "6px",
       color: "var(--text)",
@@ -201,18 +202,18 @@ export const hmEditorTheme = EditorView.theme(
     },
     ".cm-tooltip-autocomplete > ul > li": { padding: "3px 8px", fontFamily: "var(--font-geist-sans)" },
     ".cm-tooltip-autocomplete > ul > li[aria-selected]": {
-      backgroundColor: "color-mix(in srgb, var(--accent) 18%, transparent)",
+      backgroundColor: "color-mix(in srgb, var(--accent) 12%, transparent)",
       color: "var(--text)",
     },
     ".cm-completionDetail": { color: "var(--muted)", marginLeft: "8px", fontStyle: "normal" },
     ".hm-md-bold": { fontWeight: "600", color: "var(--text)" },
-    ".hm-md-code": { color: "var(--chip-repo)" },
+    ".hm-md-code": { color: "var(--chip-repo)", fontWeight: "500" },
     ".hm-md-marker": { color: "var(--muted)", opacity: "0.6" },
     ".hm-hovercard": { padding: "8px 10px", maxWidth: "280px", fontFamily: "var(--font-geist-sans)" },
     ".hm-hovercard-title": { fontWeight: "600", fontSize: "13px" },
     ".hm-hovercard-detail": { color: "var(--muted)", fontSize: "12px", marginTop: "2px" },
   },
-  { dark: true },
+  { dark: false },
 );
 
 export function hmTokens(env: TokenEnv): Extension[] {

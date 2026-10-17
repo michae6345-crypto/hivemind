@@ -68,11 +68,11 @@ export function Learning() {
           <div className="flex flex-col justify-center border-l border-line pl-6">
             <Label>Corrections per session</Label>
             <div className="flex items-baseline gap-3">
-              <span className="font-condensed text-[56px] leading-none font-black tracking-[-0.02em] text-muted tabular-nums [font-stretch:75%]">
+              <span className="font-brand text-[56px] leading-none font-bold tracking-[-0.02em] text-muted tabular-nums">
                 {before.toFixed(1)}
               </span>
               <ArrowRight className="size-6 self-center text-muted" />
-              <span className="font-condensed text-[56px] leading-none font-black tracking-[-0.02em] text-accent tabular-nums [font-stretch:75%]">
+              <span className="font-brand text-[56px] leading-none font-bold tracking-[-0.02em] text-accent tabular-nums">
                 {after.toFixed(1)}
               </span>
             </div>

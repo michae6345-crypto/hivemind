@@ -39,12 +39,14 @@ export function AppShell({ children }: { children: ReactNode }) {
         </>
       ) : null}
       <Toaster
-        theme="dark"
+        theme="light"
         position="bottom-right"
         toastOptions={{
           style: {
-            background: "var(--elevated)",
+            background: "var(--panel)",
             border: "1px solid var(--border)",
+            borderRadius: 14,
+            boxShadow: "var(--shadow-card)",
             color: "var(--text)",
             fontSize: 13,
           },
@@ -129,7 +131,7 @@ function Header() {
                   initial={{ scale: 0.5 }}
                   animate={{ scale: 1 }}
                   transition={{ type: "spring", stiffness: 700, damping: 18 }}
-                  className="ml-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-semibold text-black"
+                  className="ml-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-fg px-1 text-[10px] font-semibold text-white"
                 >
                   {badge}
                 </motion.span>

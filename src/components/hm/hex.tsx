@@ -123,12 +123,12 @@ export function Hive({ className }: { className?: string }) {
           const ring =
             m.locked || m.status === "blocked"
               ? { stroke: m.locked ? "var(--chip-lock)" : "var(--danger)", strokeOpacity: 0.85 }
-              : { stroke: "var(--accent)", strokeOpacity: m.status === "pending" ? 0.9 : 0.4 };
+              : { stroke: "var(--honey)", strokeOpacity: m.status === "pending" ? 0.9 : 0.4 };
           const core =
             m.locked
               ? { r: RADIUS * 0.6, fill: "var(--chip-lock)", opacity: 0.9 }
               : m.status === "active"
-                ? { r: RADIUS * (0.3 + 0.6 * c), fill: "var(--accent)", opacity: 0.95 }
+                ? { r: RADIUS * (0.3 + 0.6 * c), fill: "var(--honey)", opacity: 0.95 }
                 : null;
           // Cells are drawn at the origin and moved with transforms, so when a lesson is approved and the hive
           // re-sorts, every cell glides to its new place; a new lesson grows in where it lands.
@@ -217,7 +217,7 @@ function Ripple() {
           key={delay}
           d={hexPath(0, 0, RADIUS)}
           fill="none"
-          stroke="var(--accent)"
+          stroke="var(--honey)"
           strokeWidth={1.4}
           initial={{ scale: 1, opacity: 0.8 }}
           animate={{ scale: 3.2, opacity: 0 }}
@@ -243,8 +243,8 @@ export function HiveLegend() {
   return (
     <div className="flex flex-wrap gap-x-4 gap-y-1 text-[12px] text-muted">
       {item(<><path d={h} fill="none" stroke="var(--chip-lock)" />{core(4.5, "var(--chip-lock)")}</>, "Locked rule")}
-      {item(<><path d={h} fill="none" stroke="var(--accent)" strokeOpacity={0.5} />{core(5.5, "var(--accent)")}</>, "Approved lesson; a fuller cell is more trusted")}
-      {item(<path d={h} fill="none" stroke="var(--accent)" strokeDasharray="2.5 2" />, "Waiting for approval")}
+      {item(<><path d={h} fill="none" stroke="var(--honey)" strokeOpacity={0.5} />{core(5.5, "var(--honey)")}</>, "Approved lesson; a fuller cell is more trusted")}
+      {item(<path d={h} fill="none" stroke="var(--honey)" strokeDasharray="2.5 2" />, "Waiting for approval")}
       {item(<path d={h} fill="none" stroke="var(--danger)" />, "Blocked")}
     </div>
   );

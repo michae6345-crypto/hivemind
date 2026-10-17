@@ -1,25 +1,14 @@
 import localFont from "next/font/local";
 
-// Brand type (see the logo canvas): Syne for the wordmark and headlines, Anybody condensed for big numerals,
-// Shantell Sans for hand-written notes.
-// Both are variable fonts under the SIL OFL (fonts/OFL.txt), served locally so builds never fetch fonts.
+// Brand type (handoff section 4): Syne Bold for the wordmark and two-tone headlines, Shantell Sans for hand-drawn
+// notes. Geist and Geist Mono (root layout) carry everything else. Both are variable fonts under the SIL OFL (fonts/OFL.txt), served locally so builds never fetch fonts.
 
-/** Syne: the wordmark and headlines, set ExtraBold. */
+/** Syne: the wordmark and headlines, set Bold (700). */
 export const brandFont = localFont({
   src: "./fonts/syne.woff2",
   variable: "--font-syne",
   weight: "400 800",
   display: "swap",
-});
-
-/** Anybody: variable weight and width, used condensed for big numerals. */
-export const displayFont = localFont({
-  src: "./fonts/anybody.woff2",
-  variable: "--font-anybody",
-  weight: "100 900",
-  display: "swap",
-  preload: false,
-  declarations: [{ prop: "font-stretch", value: "50% 150%" }],
 });
 
 /** Shantell Sans: marker-style hand for annotations (the chart's lesson notes). */

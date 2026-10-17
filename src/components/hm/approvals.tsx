@@ -191,7 +191,7 @@ function Detail({ memory: m, onDone }: { memory: Memory; onDone: () => void }) {
               const who = people.find((p) => p.id === e.actor);
               return (
                 <figure key={i} className="mb-2 rounded-lg border border-line bg-panel px-4 py-3">
-                  <blockquote className="border-l-2 border-accent pl-3 text-[15px] leading-snug">“{e.quote}”</blockquote>
+                  <blockquote className="border-l-2 border-honey pl-3 text-[15px] leading-snug">“{e.quote}”</blockquote>
                   <figcaption className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-muted">
                     <span className="flex items-center gap-1.5">
                       <Avatar person={who} id={e.actor} className="size-4 text-[9px]" />

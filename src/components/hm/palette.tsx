@@ -112,7 +112,7 @@ export function Palette() {
       <motion.button
         type="button"
         aria-label="Close"
-        className="absolute inset-0 bg-black/55"
+        className="absolute inset-0 bg-fg/30"
         onClick={close}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -120,7 +120,7 @@ export function Palette() {
         transition={{ duration: 0.15 }}
       />
       <motion.div
-        className="relative w-[min(580px,92vw)] overflow-hidden rounded-xl border border-line bg-panel"
+        className="hm-card relative w-[min(580px,92vw)] overflow-hidden"
         initial={{ opacity: 0, scale: 0.97, y: -8 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.98, y: -4, transition: { duration: 0.12 } }}

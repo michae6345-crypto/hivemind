@@ -118,11 +118,11 @@ export const STATUS_META: Record<
   Memory["status"],
   { label: string; className: string }
 > = {
-  active: { label: "Active", className: "text-ok bg-ok/10" },
-  pending: { label: "Pending", className: "text-accent bg-accent/10" },
+  active: { label: "Approved", className: "text-ok bg-ok/10" },
+  pending: { label: "Waiting for approval", className: "text-[#9a6412] bg-honey/15" },
   blocked: { label: "Blocked", className: "text-danger bg-danger/10" },
-  rejected: { label: "Rejected", className: "text-muted bg-white/5" },
-  invalid: { label: "Invalidated", className: "text-muted bg-white/5 line-through" },
+  rejected: { label: "Rejected", className: "text-muted bg-fg/5" },
+  invalid: { label: "Invalidated", className: "text-muted bg-fg/5 line-through" },
 };
 
 export const SOURCE_LABEL: Record<Memory["source"], string> = {
