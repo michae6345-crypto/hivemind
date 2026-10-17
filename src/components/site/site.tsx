@@ -17,7 +17,6 @@ import { LESSON, LOCKED_RULE, PROMPTS } from "./demo-script";
 import { Note } from "./notes";
 import { Structure } from "./structure";
 import { CheckMock, InitMock, WhileWorking } from "./live-work";
-import { ResultsRuns } from "./results-runs";
 
 const EASE = [0.22, 1, 0.36, 1] as const;
 
@@ -480,16 +479,52 @@ function LockedRules() {
 // ── Results ─────────────────────────────────────────────────────────────────
 
 function Results() {
+  const d = evalDetail;
   return (
     <section className="px-4 pt-32">
-      <SectionHead id="results" one="Without Hivemind, agents break the rules." two="With it, they don't.">
-        We gave Claude 12 coding tasks, 3 runs each, and checked every run with code for the team convention the task
-        was built to trip.
+      <SectionHead id="results" one="Does it work?" two="Same tasks, with and without it.">
+        12 coding tasks, 3 runs each, graded by code: did the agent break the team&apos;s rule?
       </SectionHead>
-      <Reveal className="mt-14">
-        <ResultsRuns />
+      <Reveal className="mx-auto mt-12 grid max-w-[760px] gap-4 sm:grid-cols-2">
+        <Compare label="Without Hivemind" broke={d.targetViolations.off} of={d.n.off} tone="bad" />
+        <Compare label="With Hivemind" broke={d.targetViolations.on} of={d.n.on} tone="good" />
+      </Reveal>
+      <Reveal className="mx-auto mt-5 max-w-[760px] text-center text-[14px] text-muted">
+        A similar-length pack of 12 unrelated lessons: {d.targetViolations.placebo} of {d.n.placebo}. It&apos;s the lessons that
+        help, not the extra text.
+        <span className="mt-2 block font-mono text-[11.5px]">
+          {d.model ?? "Claude"} · {d.n.off / 3} tasks × 3 runs · method in docs/eval.md
+        </span>
       </Reveal>
     </section>
+  );
+}
+
+function Compare({ label, broke, of, tone }: { label: string; broke: number; of: number; tone: "bad" | "good" }) {
+  const bad = tone === "bad";
+  return (
+    <div className={cn("hm-card p-6 sm:p-7", !bad && "ring-1 ring-ok/30")}>
+      <div className="flex items-center justify-between text-[14px]">
+        <span className={cn("font-medium", bad ? "text-muted" : "text-fg")}>{label}</span>
+        {!bad && <span className="rounded-full bg-ok/10 px-2 py-0.5 font-mono text-[11px] text-ok">every run passed</span>}
+      </div>
+      <div className="mt-5 flex items-baseline gap-2">
+        <span className="hm-display text-[64px] leading-none tabular-nums" style={{ color: bad ? "var(--danger)" : "var(--ok)" }}>
+          {broke}
+        </span>
+        <span className="font-mono text-[14px] text-muted">/ {of} runs</span>
+      </div>
+      <div className="mt-1 text-[14px] text-muted">broke the team&apos;s rule</div>
+      <div className="mt-5 h-2 overflow-hidden rounded-full bg-elevated">
+        <motion.div
+          className={cn("h-full rounded-full", bad ? "bg-danger" : "bg-ok")}
+          initial={{ width: 0 }}
+          whileInView={{ width: `${(broke / of) * 100}%` }}
+          viewport={{ once: true }}
+          transition={{ duration: 1.1, ease: EASE, delay: 0.2 }}
+        />
+      </div>
+    </div>
   );
 }
 

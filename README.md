@@ -34,7 +34,7 @@ and graded every run with code (no LLM judge).
 | What the agent got | Runs that broke the team's rule |
 |---|---|
 | No memory | **22 of 36** |
-| A same-size pack of unrelated lessons (placebo) | 21 of 36 |
+| A similar-length pack of 12 unrelated lessons (placebo) | 21 of 36 |
 | **Hivemind's lessons** | **0 of 36** |
 
 On held-out tasks, where the lesson came from a *different* task, violations went from 9 of 12 to 0 of 12. Task-level

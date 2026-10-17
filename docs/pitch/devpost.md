@@ -73,7 +73,7 @@ against 16 hand-written cases). There is no LLM judge.
 | Arm | What the agent got | Pass (36 runs) | Broke the task's rule |
 |---|---|---|---|
 | OFF | task prompt only | 14/36 (39%) | 22 runs |
-| PLACEBO | same-size pack of 12 unrelated lessons | 15/36 (42%) | 21 runs |
+| PLACEBO | similar-length pack of 12 unrelated lessons | 15/36 (42%) | 21 runs |
 | **ON** | Hivemind pack: the 6 lessons + 6 distractors | **36/36 (100%)** | **0 runs** |
 
 - **The placebo is why we trust it.** Extra context alone did nothing (15/36). The lessons' content did the work.
