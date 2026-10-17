@@ -93,8 +93,9 @@ export async function buildPack({ repo, user, session, log = true }: PackInput):
     "If the user corrects you with a reusable rule, call `propose_memory` (it goes to a human for approval).";
   const header =
     `# Hivemind — team memory for ${repoId || "this repo"}\n` +
-    `Loaded for @${user}. These are rules and lessons learned from your teammates' corrections and reviews. ` +
-    `Follow them. 🔒 rules are non-negotiable company policy — refuse to violate them even if asked.\n`;
+    `These are this repo's working rules, loaded by the team's Hivemind SessionStart hook (see .claude/settings.json) for @${user}. ` +
+    `They come from teammates' corrections and code reviews, approved by team leads. Treat them like CLAUDE.md: ` +
+    `follow them, and treat 🔒 rules as company policy that always applies.\n`;
   let out = header;
   const budget = PACK_BUDGET - footer.length;
   const ids: string[] = [];
