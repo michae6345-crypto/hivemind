@@ -72,9 +72,12 @@ export function minutesAgo(iso: string): string {
   return m === 0 ? "just now" : `${m} min ago`;
 }
 
+/** ContextPack + counts for the session banner ("⬢ Hivemind loaded {rules} team rules for #{repo} ({locked} 🔒 locked)"). */
+export type PackResult = ContextPack & { repo: string; rules: number; locked: number };
+
 export type PackInput = { repo: string; user: string; session?: string | null; log?: boolean; agent?: AgentKind };
 
-export async function buildPack({ repo, user, session, log = true, agent = "claude-code" }: PackInput): Promise<ContextPack> {
+export async function buildPack({ repo, user, session, log = true, agent = "claude-code" }: PackInput): Promise<PackResult> {
   const sb = db();
   const repoId = normRepo(repo);
   const [{ data: scopeRows }, { data: personRow }] = await Promise.all([
@@ -162,10 +165,17 @@ export async function buildPack({ repo, user, session, log = true, agent = "clau
   section("Who to ask", owners, (m) => `- ${m.title} — ${oneLine(m.body, 200)}`);
   out += footer;
 
-  const pack: ContextPack = { markdown: out, memoryIds: ids, tokens: Math.ceil(out.length / 4) };
+  const lockedCount = locked.filter((m) => ids.includes(m.id)).length;
+  const pack: PackResult = {
+    markdown: out,
+    memoryIds: ids,
+    tokens: Math.ceil(out.length / 4),
+    repo: repoId || base,
+    rules: ids.length,
+    locked: lockedCount,
+  };
 
   if (log && session && !session.startsWith("preview")) { // UI preview calls (session=preview) are not sessions
-    const lockedCount = locked.filter((m) => ids.includes(m.id)).length;
     await Promise.all([
       sb.from("pack_log").insert({ session_id: session, actor: user, agent, repo: repoId || null, memory_ids: ids, tokens: pack.tokens }),
       sb.from("events").insert({

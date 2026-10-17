@@ -23,8 +23,11 @@ function loadEnvFile(path) {
   }
 }
 
-function emit(text) {
-  process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: "SessionStart", additionalContext: text } }));
+// systemMessage = the one-line banner the user sees; additionalContext = the pack the model sees.
+function emit(text, banner) {
+  const out = { hookSpecificOutput: { hookEventName: "SessionStart", additionalContext: text } };
+  if (banner) out.systemMessage = banner;
+  process.stdout.write(JSON.stringify(out));
   process.exit(0);
 }
 
@@ -61,7 +64,9 @@ async function main() {
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const pack = await res.json();
   if (!pack?.markdown) throw new Error("empty pack");
-  emit(pack.markdown.slice(0, 9500)); // Claude Code caps additionalContext at 10,000 chars
+  const rules = pack.rules ?? pack.memoryIds?.length ?? 0;
+  const banner = `⬢ Hivemind loaded ${rules} team rules for #${pack.repo || repo} (${pack.locked ?? 0} 🔒 locked)`;
+  emit(pack.markdown.slice(0, 9500), banner); // Claude Code caps additionalContext at 10,000 chars
 }
 
 main().catch((e) => emit(`(Hivemind team memory unavailable: ${e?.message ?? e}. Proceed using the repo's own docs.)`));

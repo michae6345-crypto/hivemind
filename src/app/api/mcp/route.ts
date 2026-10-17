@@ -5,11 +5,13 @@ import { err } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { scopeChain, toMemory } from "@/lib/map";
 import { buildPack, minutesAgo, normRepo, toAgentKind, whoseAgent } from "@/lib/engine/pack";
+import type { Memory } from "@/contracts";
 import { rulesForFile } from "@/app/api/activity/record";
+import { CARD_HTML, CARD_MIME, CARD_URI } from "./card";
 
 // MCP (Streamable HTTP) — Hivemind for every agent, including ones without hooks (Cursor, Copilot, claude.ai…).
 // Tools: get_team_rules (call first), search_memory, propose_memory (pending only). Prompt: hivemind_briefing.
-// Resource: hivemind://context-pack.
+// Resource: hivemind://context-pack. MCP Apps card (ui://hivemind/card.html, ./card.ts) on get_team_rules + propose_memory.
 //
 // Auth: `Authorization: Bearer <HIVEMIND_TOKEN>`, or `?token=` for clients that can't send headers (claude.ai
 // connectors without the headers beta). URL tokens leak into logs/history — hackathon trade-off, see
@@ -37,28 +39,75 @@ async function scopeIds() {
   return (data ?? []).map((s) => ({ id: s.id as string, parentId: s.parent_id as string | null }));
 }
 
-/** Pack markdown + (optionally) rules and live edits for one file. */
+/** People (id → first name) and scopes (with owners) for card subtitles. */
+async function directory() {
+  const [{ data: people }, { data: scopes }] = await Promise.all([
+    db().from("people").select("id, name"),
+    db().from("scopes").select("id, parent_id, owner"),
+  ]);
+  const first = new Map((people ?? []).map((p) => [p.id as string, String(p.name ?? p.id).split(" ")[0]]));
+  const sc = (scopes ?? []).map((x) => ({ id: x.id as string, parentId: x.parent_id as string | null, owner: x.owner as string | null }));
+  const name = (id: string | null | undefined) => (id ? first.get(id) ?? id : "someone");
+  /** First owner up the scope chain = who approves lessons there. */
+  const lead = (scopeId: string) => scopeChain(scopeId, sc).map((id) => sc.find((x) => x.id === id)?.owner).find(Boolean) ?? null;
+  return { name, lead };
+}
+type Directory = Awaited<ReturnType<typeof directory>>;
+
+type CardRule = { id: string; slug: string; title: string; scopeId: string; locked: boolean; sub: string };
+/** One card row per rule, worded like Adrian's McpCheckCard (src/components/site/editor-mocks.tsx). */
+function cardRow(m: Memory, d: Directory): CardRule {
+  const scope = `#${m.scopeId}`;
+  const lead = d.lead(m.scopeId);
+  let sub: string;
+  if (m.locked) sub = `Locked by ${d.name(m.author)} · ${scope}`;
+  else if (m.source === "review") sub = `From ${d.name(m.author)}'s review · ${scope}`;
+  else if (m.source === "correction" || m.source === "agent")
+    sub = `From ${d.name(m.author)}'s lesson${lead && lead !== m.author ? ` · approved by ${d.name(lead)}` : ""} · ${scope}`;
+  else sub = `From ${d.name(m.author)} · ${scope}`;
+  return { id: m.id, slug: m.slug, title: m.title, scopeId: m.scopeId, locked: m.locked, sub };
+}
+
+const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+/** "1 locked rule, 2 team lessons apply" (no locked rule → "2 team lessons apply"). */
+function cardHeader(rules: CardRule[]) {
+  const locked = rules.filter((r) => r.locked).length;
+  const lessons = rules.length - locked;
+  const parts = [locked ? plural(locked, "locked rule", "locked rules") : "", plural(lessons, "team lesson", "team lessons")];
+  return `${parts.filter(Boolean).join(", ")} apply`;
+}
+
+/** Pack markdown + card data; with `file`, also the rules and live edits for that file. */
 async function teamRules(c: Ctx, repoArg?: string, file?: string, log = true) {
   const repo = normRepo(repoArg) || c.repo;
-  const pack = await buildPack({ repo, user: c.user, session: log ? newSession(c) : null, log, agent: c.agent });
-  if (!file) return { markdown: pack.markdown, repo, file: null, rules: [] as RuleChip[], memoryIds: pack.memoryIds };
+  const [pack, dir] = await Promise.all([
+    buildPack({ repo, user: c.user, session: log ? newSession(c) : null, log, agent: c.agent }),
+    directory(),
+  ]);
+  if (!file) {
+    // No file: the card shows the 🔒 rules + the top-ranked lessons in the pack.
+    const { data } = pack.memoryIds.length ? await db().from("memories").select("*").in("id", pack.memoryIds) : { data: [] };
+    const byId = new Map((data ?? []).map((r) => [r.id as string, toMemory(r)]));
+    const mems = pack.memoryIds.map((id) => byId.get(id)).filter((m): m is Memory => !!m && m.kind !== "owner");
+    const rules = [...mems.filter((m) => m.locked), ...mems.filter((m) => !m.locked).slice(0, 3)].map((m) => cardRow(m, dir));
+    return { markdown: pack.markdown, repo, file: null, rules, header: cardHeader(rules), memoryIds: pack.memoryIds };
+  }
 
   const f = file.replace(/\\/g, "/").replace(/^\.\//, "");
-  const rules = (await rulesForFile(repo, f)).slice(0, 6);
+  const mems = (await rulesForFile(repo, f)).slice(0, 6);
   const since = new Date(Date.now() - 10 * 60000).toISOString();
   let q = db().from("activity").select("*").eq("file", f).gte("created_at", since).neq("actor", c.user);
   if (repo) q = q.eq("repo", repo);
   const { data: edits } = await q.order("created_at", { ascending: false }).limit(3);
 
   let md = `## Rules for \`${f}\`\n`;
-  md += rules.length
-    ? rules.map((m) => `- ${m.locked ? "🔒 " : ""}**${m.title}** (#${m.scopeId}) — ${oneLine(m.body, 200)}`).join("\n")
+  md += mems.length
+    ? mems.map((m) => `- ${m.locked ? "🔒 " : ""}**${m.title}** (#${m.scopeId}) — ${oneLine(m.body, 200)}`).join("\n")
     : "- No file-specific rules; the team rules below still apply.";
   for (const e of edits ?? []) md += `\n- ⚠️ ${whoseAgent(e.actor, e.agent)} edited this file ${minutesAgo(e.created_at)} — coordinate first.`;
-  const chips: RuleChip[] = rules.map((m) => ({ id: m.id, slug: m.slug, title: m.title, scopeId: m.scopeId, locked: m.locked }));
-  return { markdown: `${md}\n\n${pack.markdown}`, repo, file: f, rules: chips, memoryIds: pack.memoryIds };
+  const rules = mems.map((m) => cardRow(m, dir));
+  return { markdown: `${md}\n\n${pack.markdown}`, repo, file: f, rules, header: cardHeader(rules), memoryIds: pack.memoryIds };
 }
-type RuleChip = { id: string; slug: string; title: string; scopeId: string; locked: boolean };
 
 function server(c: Ctx) {
   return createMcpHandler(
@@ -76,10 +125,14 @@ function server(c: Ctx) {
             repo: z.string().optional().describe("Repo scope, e.g. 'export-service' or 'repo/export-service'. Defaults to the connector's repo."),
             file: z.string().optional().describe("Repo-relative path of the file you're about to edit, e.g. 'src/export.ts'."),
           }),
+          _meta: { ui: { resourceUri: CARD_URI } },
         },
         async ({ repo, file }) => {
           const r = await teamRules(c, repo, file);
-          return { ...text(r.markdown), structuredContent: { repo: r.repo, file: r.file, rules: r.rules, memoryIds: r.memoryIds } };
+          return {
+            ...text(r.markdown),
+            structuredContent: { kind: "rules", repo: r.repo, file: r.file, header: r.header, rules: r.rules, memoryIds: r.memoryIds },
+          };
         },
       );
 
@@ -132,11 +185,26 @@ function server(c: Ctx) {
             "Propose a reusable rule/lesson for the team (e.g. after the user corrects you). It is NOT active until a " +
             "human approves it, and it is blocked if it contradicts a 🔒 policy. scope: 'org' | 'team/<name>' | 'repo/<name>' | 'personal/<user>'.",
           inputSchema: z.object({ title: z.string().min(3), body: z.string().min(3), scope: z.string().optional() }),
+          _meta: { ui: { resourceUri: CARD_URI } },
         },
         async ({ title, body, scope }) => {
           const all = await scopeIds();
           const want = scope?.trim() || c.repo || "org";
           const scopeId = all.some((x) => x.id === want) ? want : all.some((x) => x.id === normRepo(want)) ? normRepo(want) : "org";
+          const lead = (await directory()).lead(scopeId) ?? "your lead";
+          // McpApproveCard: Approve/Reject open the role-checked approvals page; MCP itself never approves.
+          const card = (msg: string, l: { title: string; status: string; reason?: string | null }) => ({
+            ...text(msg),
+            structuredContent: {
+              kind: "proposal",
+              scopeId,
+              title: l.title,
+              lead,
+              status: l.status,
+              reason: l.reason ?? null,
+              approveUrl: `${c.origin}/app/approvals`,
+            },
+          });
 
           // 1) through the learning engine (merge + 🔒 conflict check)
           try {
@@ -160,15 +228,14 @@ function server(c: Ctx) {
               const res = (await r.json()) as { lessons?: { title: string; status: string; blockedReason?: string | null }[] };
               const ls = res.lessons ?? [];
               if (!ls.length) return text("Recorded. No new lesson was created (it matched an existing one or was filtered).");
-              return text(
-                ls
-                  .map((l) =>
-                    l.status === "blocked"
-                      ? `🚫 "${l.title}" was blocked by a 🔒 policy${l.blockedReason ? `: ${l.blockedReason}` : ""}. Do not follow it.`
-                      : `⏳ "${l.title}" proposed (status ${l.status}) — a human must approve it before it applies.`,
-                  )
-                  .join("\n"),
-              );
+              const msg = ls
+                .map((l) =>
+                  l.status === "blocked"
+                    ? `🚫 "${l.title}" was blocked by a 🔒 policy${l.blockedReason ? `: ${l.blockedReason}` : ""}. Do not follow it.`
+                    : `⏳ "${l.title}" proposed (status ${l.status}) — a human must approve it before it applies.`,
+                )
+                .join("\n");
+              return card(msg, { title: ls[0].title, status: ls[0].status, reason: ls[0].blockedReason });
             }
             if (r.status !== 404 && r.status !== 405) return text(`Proposal failed: HTTP ${r.status}`);
           } catch {
@@ -192,7 +259,10 @@ function server(c: Ctx) {
               beta: 1,
             });
           if (error) return text(`Proposal failed: ${error.message}`);
-          return text(`⏳ "${title}" proposed for #${scopeId} (pending) — a human must approve it before it applies.`);
+          return card(`⏳ "${title}" proposed for #${scopeId} (pending) — a human must approve it before it applies.`, {
+            title,
+            status: "pending",
+          });
         },
       );
 
@@ -221,6 +291,13 @@ function server(c: Ctx) {
             ],
           };
         },
+      );
+
+      s.registerResource(
+        "hivemind-card",
+        CARD_URI,
+        { title: "Hivemind card", description: "MCP Apps view for get_team_rules / propose_memory.", mimeType: CARD_MIME },
+        async (uri) => ({ contents: [{ uri: uri.href, mimeType: CARD_MIME, text: CARD_HTML }] }),
       );
 
       s.registerResource(
