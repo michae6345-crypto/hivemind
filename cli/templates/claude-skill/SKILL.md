@@ -16,8 +16,23 @@ Choose the subcommand from the first word of the arguments.
 1. Call the `get_team_rules` tool on the `hivemind` MCP server. Pass `file` (repo-relative) if the user named one or you
    are about to edit a specific file.
 2. If that MCP tool isn't available, run `{{HIVEMIND_CLI}} rules --agent claude-code`, adding `--file <path>` for one file.
-3. Show the locked rules first, word for word, then the most relevant lessons and owners (as @handles). Never soften a
-   locked rule. Keep it short, and use words, not emojis.
+3. Show the result in Hivemind's terminal style. No emojis, no tables, no bold-heavy markdown. Start with one line
+   `Hivemind · {n} team rules for #{repo}` (or `… for {file}`). Then one block per rule, locked rules first, word for word.
+   Never soften a locked rule:
+
+   ```
+   LOCKED RULE · #org
+   Never mix data from different lab customers
+   Set by @maya · Head of Security · locked 14 Oct
+
+   TEAM LESSON · #repo/export-service
+   Exports call assertSingleCustomer() before writing
+   Learned from @alex's correction · 3h ago · approved by @jordan
+   ```
+
+   Keep the label, title and provenance lines exactly as the tool returns them. Add the one-line body only if it says
+   something the title doesn't. End with owners as @handles (`Ask @jordan about #repo/export-service`) and any
+   `Hivemind · Heads up: …` lines as returned.
 
 ## `teach <rule>`: teach every agent on the team
 
@@ -25,12 +40,12 @@ Choose the subcommand from the first word of the arguments.
 2. Call `propose_memory` with a short title (8 words or fewer) and the rule as the body. Scope it to this repo unless the
    user says it applies team-wide.
 3. If that MCP tool isn't available, run `{{HIVEMIND_CLI}} teach "<rule>" --agent claude-code`.
-4. Tell the user the lesson is pending until a human approves it, and name the approver as an @handle. Never call it
-   active. If it came back blocked by a locked rule, name that rule.
+4. Relay the tool's one line as is: `Hivemind · Lesson proposed for #{scope}: "{title}". Pending approval by @{lead}; not active until then.`
+   Never call it active. If it came back blocked, relay `Hivemind · Blocked "{title}": conflicts with a locked rule: …` and name that rule.
 
 ## `status`: check the connection
 
-Run `{{HIVEMIND_CLI}} status --agent claude-code` and summarise:
+Run `{{HIVEMIND_CLI}} status --agent claude-code` and summarise in three plain lines, each starting with `Hivemind · `:
 
 - Is the API reachable?
 - How many rules are in the pack, and how many lessons are pending?
