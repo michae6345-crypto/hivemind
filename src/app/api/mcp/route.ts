@@ -276,10 +276,14 @@ function detectAgent(req: Request, url: URL, rpc: unknown): AgentKind {
 
 async function handle(req: Request) {
   const url = new URL(req.url);
+  // Header token = HIVEMIND_TOKEN. URL token = HIVEMIND_CONNECTOR_TOKEN if set (a separate, rotatable secret for
+  // connector URLs, so the hook token never sits in a URL), else HIVEMIND_TOKEN. MCP can only read + propose pending.
   const expected = process.env.HIVEMIND_TOKEN;
   const bearer = (req.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, "");
-  const token = bearer || url.searchParams.get("token") || "";
-  if (expected && token !== expected) return err("missing or bad token (Authorization: Bearer … or ?token=)", 401);
+  const urlToken = url.searchParams.get("token") || "";
+  const ok = !expected || (bearer ? bearer === expected : !!urlToken && urlToken === (process.env.HIVEMIND_CONNECTOR_TOKEN || expected));
+  if (!ok) return err("missing or bad token (Authorization: Bearer … or ?token=)", 401);
+  const token = expected ?? ""; // forwarded to /api/events for propose_memory
 
   let rpc: unknown = null;
   if (req.method === "POST") rpc = await req.clone().json().catch(() => null);
