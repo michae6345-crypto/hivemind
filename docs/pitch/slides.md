@@ -37,11 +37,15 @@ again for the next person's agent. CLAUDE.md only knows what someone wrote down.
 
 **On slide**
 - Headline: "Correct → approve → / every agent knows."
-- Four frames in a row, each a cropped screenshot from the video: Alex corrects · Jordan approves (A) · Noor's agent
-  writes `assertSingleCustomer(rows)` first · the bad lesson stopped by Maya's 🔒 rule.
-- Live demo here if time allows; otherwise play video beats 2–6.
+- Full-bleed hero: the split terminal from video beat 5. Left, Claude Code refuses to mix Lab A and Lab B rows and
+  cites @maya's locked rule. Right, `hivemind watch` on Here with the rose code frame. The status line
+  "⬢ Hivemind · {n} rules" along the bottom. No emoji anywhere on the slide.
+- Under it, three small frames: Alex's correction ("Hivemind · Lesson captured: … Waiting on @jordan.") · Jordan
+  presses `a` in Queue and the hex cells fill · Noor's agent writes `assertSingleCustomer(rows)` first.
+- Live demo here if time allows (two terminal splits and nothing else); otherwise play video beats 2–6.
 
-**Say** (live, or 45 s over the frames): follow `video-script.md` beats 2–7.
+**Say** (live, or 45 s over the frames): follow `video-script.md` beats 2–6. Point at the right pane: "Hivemind
+lives next to the agent, in the terminal you already have open."
 
 ---
 
@@ -49,8 +53,9 @@ again for the next person's agent. CLAUDE.md only knows what someone wrote down.
 
 **On slide**
 - Headline: "Lessons, not logs."
-- A five-step strip: **Correction** (from chat, or an agent's MCP proposal) → **Lesson** ⏳ pending, with evidence →
-  **Approval** by the scope's lead → **Context pack** at every session start (🔒 first, then ranked by confidence,
+- A five-step strip: **Correction** (from chat, `hivemind teach`, or an agent's MCP proposal) → **Lesson**, pending, with
+  evidence → **Approval** by the scope's lead (`a` in `hivemind watch`, or the web app) → **Context pack** at every
+  session start (locked rules first, then ranked by confidence,
   ≤6k chars) → **Confidence** up when no one corrects it, down when someone does.
 - Side note in Shantell Sans with an arrow to the approval step: "agents can only propose".
 - Footer: "Org → team → repo → personal scopes. Locked rules always win."
@@ -60,8 +65,8 @@ owns that code approves it. From then on every agent gets it at startup, ranked 
 propose lessons but never approve them, and nothing can override a locked rule. That's our answer to memory
 poisoning."
 
-**Accuracy check before presenting:** the confidence update and the chat-correction capture are ⏳ in
-`devpost.md`'s build status. If they haven't landed, label those two steps "next".
+**Accuracy check before presenting:** all five steps are on main (build status in `devpost.md`). The
+`hivemind watch` views were working stubs at 234e8b4; if Queue isn't solid, say "approve in the web app".
 
 ---
 
@@ -94,8 +99,8 @@ model, tasks we wrote. The next one runs on the live ranked pack."
   - Factory: Factory agents only. Cursor Team Rules: hand-written.
   - Unblocked: searches docs, doesn't learn (from ~$19/user/mo).
   - Mem0 / Zep / Letta: infrastructure, not a team product.
-- Works with: Claude Code + any MCP client today. Cursor, Gemini CLI, Copilot, Codex, Claude chat, VS Code: list
-  only what's on main at presentation time; the rest goes under "next".
+- Works with (all on main, wired by `hivemind init`): Claude Code, Cursor, Gemini CLI, Codex, Copilot, Windsurf,
+  plus claude.ai and Claude Desktop over MCP. One terminal pane, `hivemind watch`, works next to any of them.
 - Ask: "Design partners: teams running two or more coding agents. Try it on one repo."
 
 **Say** (20 s): "Teams already pay per seat for tools that search their docs. We haven't found a product whose memory learns from

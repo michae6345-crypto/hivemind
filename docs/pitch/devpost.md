@@ -82,7 +82,7 @@ Hivemind is shared memory for AI coding agents, with a chain of command.
    who locked it, and the fix. **Rules** lists what applies, by layer, with who taught each one. **Queue** lets a lead
    approve with `a` or reject with `r`, and an approval plays a short honey-hex celebration ("@alex's lesson is
    live"). **Feed** shows what every agent on the team is doing, labeled by tool. `hivemind statusline` prints one line
-   for Claude Code's status bar: "⬢ Hivemind · 10 rules · 2 waiting". The web app (Approvals, Results) has the same
+   for Claude Code's status bar: "⬢ Hivemind · N rules · N waiting". The web app (Approvals, Results) has the same
    queue and the eval, for people who'd rather click.
 
 ## How it's different from Greptile, CodeRabbit and the rest
