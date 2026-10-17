@@ -34,7 +34,7 @@ Hivemind is shared memory for AI coding agents, with a chain of command.
 
 1. **It learns from corrections.** When an engineer corrects their agent, Hivemind turns the correction into a short,
    attributed lesson ("Exports call `assertSingleCustomer(rows)` before writing", evidence: Alex's correction on
-   `src/export.ts`). Agents can also propose lessons through MCP. Every proposal starts as ⏳ **pending**. *(MCP proposals are on main; capture from chat corrections is ⏳ landing tonight.)*
+   `src/export.ts`). Agents can also propose lessons through MCP. Every proposal starts as ⏳ **pending**.
 2. **A human approves it.** The lead who owns that scope (team, repo) approves or rejects it in the Approvals inbox.
    Agents can only propose. They can never approve. *(Inbox UI is on main; approve/reject routes ⏳ landing tonight.)*
 3. **Every agent gets it.** When any engineer starts a new agent session, a SessionStart hook injects a context pack:
@@ -42,14 +42,14 @@ Hivemind is shared memory for AI coding agents, with a chain of command.
    repo right now. It stays under 6,000 characters (Claude Code caps hook context at 10,000).
 4. **Locked rules can't be overridden.** Security can 🔒 lock an org-wide rule ("Never mix data from different lab
    customers in one export"). Locked rules always come first in the pack and never decay. A proposed lesson that
-   contradicts one is blocked. *(Auto-block: ⏳ landing tonight.)*
+   contradicts one is blocked.
 5. **It watches agents while they work.** A PostToolUse hook records every file edit. If another engineer's agent
    touched the same file in the last 10 minutes, the agent is told: "⚠️ @alex's agent edited export.ts 2 min ago —
    coordinate before changing it." The first time an agent touches a file, it also gets the locked rules that mention
    that file.
 6. **Confidence changes with use.** Each lesson keeps a Beta(α, β) score. Evidence from more people and sessions
    without a repeat correction raise it, and corrections against it lower it. The pack ranks lessons by the Wilson
-   lower bound, so a lesson seen once by one person ranks below one confirmed by five. *(Ranking is on main; the session-end update is ⏳ landing tonight.)*
+   lower bound, so a lesson seen once by one person ranks below one confirmed by five.
 
 The demo company is **Meridian Data**, a fictional AI training-data company with two lab customers (Lab A, Lab B),
 a Head of Security (Maya), a Data Pipelines lead (Jordan) and two engineers (Alex, Noor).
@@ -98,7 +98,7 @@ per-task table and reproduction commands: `docs/eval.md`.
   greedily to the character budget.
 - **Learning engine:** Claude Haiku 5.5 classifies corrections (generalizable rule vs one-off vs noise), merges
   them into existing lessons (Mem0-style ADD/UPDATE/NONE) and checks them against locked rules (a Graphiti-style
-  "both can't be true" prompt). *(⏳ landing tonight.)*
+  "both can't be true" prompt).
 - **Eval harness:** `eval/run.mjs` runs `claude -p` in fresh fixture copies, 6 at a time, diffs against the pristine
   copy, and grades with `eval/check.mjs`. Runs are cached, so the report can be rebuilt from `eval/out/`.
 - **How we worked:** two people, each running Claude Code with planner / implementer / verifier subagents on folders
@@ -165,27 +165,28 @@ per-task table and reproduction commands: `docs/eval.md`.
 
 ## Build status (internal, delete before submitting)
 
-Checked against `origin/main` at **f02fbc7, Fri Oct 16 night**. Only ✅ rows may be described as working in the
-video or on Devpost. ⏳ rows are roadmap until they land.
+Checked against `origin/main` at **86cff0f, Fri Oct 16, 10:50 PM**. Only ✅ rows may be described as working in
+the video or on Devpost. ⏳ rows are roadmap until they land. ✅ means the code is on main; the full run sheet has not
+been rehearsed end to end yet (it waits on approve/reject).
 
 | Feature | Status | Where |
 |---|---|---|
 | Seeded demo company (Meridian Data), scopes, people, roles | ✅ | `src/mocks/data.ts`, `scripts/seed.mjs` |
 | Context pack + SessionStart hook (locked first, Wilson-ranked, ≤6k chars) | ✅ | `src/lib/engine/pack.ts`, `hooks/session-start.mjs` |
 | PostToolUse collision + locked-rule warnings, live activity | ✅ | `src/app/api/hooks/tool`, `src/app/api/activity` |
-| MCP `search_memory` / `propose_memory` (always pending) | ✅ | `src/app/api/mcp/route.ts` |
+| MCP `get_team_rules` / `search_memory` / `propose_memory` (always pending) | ✅ | `src/app/api/mcp/route.ts` |
 | Eval (OFF / placebo / ON, held-out, curve) + `/api/metrics` | ✅ | `eval/`, `docs/eval.md` |
 | UI: Lessons, Approvals, Results on seed data, live when the API answers | ✅ | `src/components/hm/` |
-| Correction typed to the agent → pending lesson (`/api/hooks/prompt` + extractor) | ⏳ not on main | |
-| Approve / reject routes | ⏳ not on main | |
-| Block a lesson that contradicts a 🔒 rule | ⏳ not on main | |
-| Confidence update at session end (`/api/hooks/session-end`) | ⏳ not on main | |
-| Visible "Hivemind loaded N rules" line at session start | ⏳ not on main | |
-| Cross-vendor: Cursor, Gemini CLI, Copilot, Codex, Claude chat; `hivemind init` (agents C, F, G) | ⏳ not on main | `integrations/`, `cli/` |
-| VS Code overlay (agent H) | ⏳ not on main | `vscode-extension/` |
-| Website at `/`, app at `/app` | ⏳ not on main | |
-| Vercel deploy (live link) | ⏳ not on main | `docs/deploy.md` |
+| Website at `/`, app at `/app` | ✅ | `src/app/page.tsx`, `src/app/app/` |
+| Correction typed to the agent → pending lesson (`/api/hooks/prompt` + extractor) | ✅ | `src/app/api/hooks/prompt`, `src/lib/engine/pipeline.ts` |
+| Block a lesson that contradicts a 🔒 rule | ✅ | `src/lib/engine/pipeline.ts` |
+| Confidence update at session end (`/api/hooks/session-end`) | ✅ | `src/app/api/hooks/session-end` |
+| Cross-vendor: `hivemind init / sync / status` for Claude Code, Cursor, Gemini CLI, Copilot, Codex, Windsurf | ✅ | `cli/` |
+| Claude chat (claude.ai, Claude Desktop) and VS Code Copilot through MCP | ✅ | `docs/integrations/` |
+| Demo reset + rehearsal scripts | ✅ | `scripts/reset-demo.mjs`, `scripts/e2e-demo.mjs` |
+| Approve / reject routes, `POST /api/memories` | ⏳ not on main (Michael, top priority) | |
+| Visible "⬢ Hivemind loaded N team rules" line at session start | ⏳ not on main (assigned) | `hooks/session-start.mjs` |
+| VS Code overlay (agent H) | ⏳ source on main; `.vsix` + README not yet | `vscode-extension/` |
+| MCP chat card (real MCP App) | ⏳ in progress; mockups are the fallback | `src/components/site/editor-mocks.tsx` |
+| Vercel deploy (live link) | ⏳ Michael deploying now, auto-deploy from main | `docs/deploy.md` |
 | Decay, invalidation, PR-comment importer | roadmap | |
-
-If the ⏳ learning-engine rows (extract/merge/conflict) don't land by freeze, rewrite "What it does" 1 and 4 and
-the "Learning engine" bullet in "How we built it" in the future tense.
