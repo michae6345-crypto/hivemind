@@ -183,5 +183,8 @@ export async function run(handle, noop) {
     if (process.env.HIVEMIND_DEBUG) process.stderr.write(`hivemind adapter: ${e?.stack ?? e}\n`);
   }
   clearTimeout(guard);
-  process.exit(0);
+  // No process.exit() here: on Windows it can abort inside libuv while fetch's sockets are closing (exit 0xC0000409),
+  // and the agents ignore a hook's output unless it exits 0. Nothing is pending now, so the process ends with 0.
+  // (The timeout guard above still forces an exit: that path exists to escape a hung request.)
+  process.exitCode = 0;
 }

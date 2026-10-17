@@ -48,8 +48,11 @@ function wrap80(text, width = 80) {
 function emit(text, banner) {
   const out = { hookSpecificOutput: { hookEventName: "SessionStart", additionalContext: text } };
   if (banner) out.systemMessage = banner;
+  // No process.exit(): on Windows it can abort inside libuv while fetch's sockets are closing ("Assertion failed:
+  // !(handle->flags & UV_HANDLE_CLOSING)", exit 0xC0000409), and Claude Code ignores a hook's JSON unless it exits 0.
+  // Nothing else is pending once the pack is written, so the process ends on its own with code 0.
   process.stdout.write(JSON.stringify(out));
-  process.exit(0);
+  process.exitCode = 0;
 }
 
 async function readStdin() {
