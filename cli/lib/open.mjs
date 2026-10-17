@@ -173,8 +173,8 @@ export async function cmdOpen(cfg, fail) {
     if (p.then && !dry) await runHere(p.then, cfg.root);
     return;
   }
-  const where = p.how.includes("split") ? "on the right" : `in a ${p.how}`;
-  const done = `${brand()} ${c.gray("opened")} ${where} ${c.gray("·")} watching ${c.repo(`#${cfg.repo}`)} as ${c.handle(`@${user || "you"}`)}`;
+  const split = p.how.includes("split") || !!p.attach;
+  const done = split ? watchingLine(user, cfg.repo) : `${brand()} ${c.gray("opened")} in a ${p.how} ${c.gray("·")} watching ${c.repo(`#${cfg.repo}`)} as ${c.handle(`@${user || "you"}`)}`;
   if (dry) {
     console.log(`${brand()} ${c.gray(`· open (dry run) · ${p.how}`)}`);
     console.log(`  ${c.cyan([p.cmd, ...p.args].map(q).join(" "))}`);
@@ -195,4 +195,22 @@ export async function cmdOpen(cfg, fail) {
 async function runHere(cmd, cwd) {
   const child = spawn(cmd, [], { stdio: "inherit", shell: true, cwd });
   await new Promise((res) => child.on("exit", res));
+}
+
+/**
+ * The left pane's one line after a split (Adrian's watch-v2 §11): `⬢ Hivemind is watching →`, plus `@kevin on
+ * export-service` when it fits. It must never wrap mid-word in a 40-column pane. Node still reports the width from
+ * before the split, so assume this pane kept ~60% of it (the split gives watch the right 40%).
+ */
+export function watchingLine(user, repo, cols = process.stdout.columns || 80) {
+  const room = Math.max(40, Math.floor(cols * 0.6) - 1);
+  const base = `${c.lesson("⬢")} ${c.text("Hivemind is watching →")}`; // 24 cells
+  const name = String(repo ?? "").replace(/^repo\//, "");
+  const tails = [
+    user && name ? ` ${c.handle(`@${user}`)}${c.faint(" on ")}${c.gray(name)}` : "",
+    user ? ` ${c.handle(`@${user}`)}` : "",
+  ].filter(Boolean);
+  const plainLen = (s) => s.replace(/\x1b\[[0-9;]*m/g, "").length;
+  for (const tail of tails) if (plainLen(base + tail) <= room) return base + tail;
+  return base;
 }

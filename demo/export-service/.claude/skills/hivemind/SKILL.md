@@ -20,7 +20,7 @@ reply with its output line only:
 node "../../cli/hivemind.mjs" open
 ```
 
-The output is one line, `⬢ Hivemind opened on the right · watching #repo/<name> as @<user>`. Reply with the output and
+The output is one line, `⬢ Hivemind is watching → @<user> on <name>` (on a narrow pane just `⬢ Hivemind is watching →`). Reply with the output and
 nothing else: no summary, no follow-up question. If the command fails, reply with its error line only.
 
 (The user can skip this turn entirely by typing `!hivemind`, Claude Code's `!` prefix runs it directly.)

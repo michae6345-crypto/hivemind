@@ -10,7 +10,7 @@ In the pane, `1`–`4` switch tabs (Here · Rules · Queue · Feed), `t` teaches
 
 ### 1. Open the side pane
 **Type in Claude Code:** `!hivemind`, or `/hivemind`.
-**See:** `⬢ Hivemind opened on the right · watching #repo/playground as @kevin`. The pane shows the repo's rules and
+**See:** `⬢ Hivemind is watching → @kevin on playground`. The pane shows the repo's rules and
 anything waiting on you. The status line under the prompt shows the rule count.
 
 ### 2. Ask Claude to log an expert's email (locked rule)

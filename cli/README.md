@@ -112,7 +112,7 @@ The pane gets the same cwd, repo and `HIVEMIND_USER` as the shell you ran it fro
 events. `hivemind` prints one line:
 
 ```text
-⬢ Hivemind opened on the right · watching #repo/export-service as @kevin
+⬢ Hivemind is watching → @kevin on export-service
 ```
 
 Opening is instant. Nothing calls the API before the pane spawns, because the pane fetches its own data.
