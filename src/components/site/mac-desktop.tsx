@@ -6,7 +6,7 @@ import { ShieldX } from "lucide-react";
 import { Logo } from "@/components/hm/bits";
 import { cn } from "@/components/hm/utils";
 import { Terminal } from "./terminal";
-import type { Step } from "./demo-script";
+import { SCENES, type Step } from "./demo-script";
 
 type Note = Extract<Step, { kind: "notify" }>;
 
@@ -20,7 +20,7 @@ export function MacDesktop({ className }: { className?: string }) {
   const box = useRef<HTMLDivElement>(null);
   const approveRef = useRef<HTMLButtonElement | null>(null);
   const [notes, setNotes] = useState<Note[]>([]);
-  const [rules, setRules] = useState(12);
+  const [rules, setRules] = useState(SCENES[0].rules);
   const [cursor, setCursor] = useState({ x: 0, y: 0, show: false, click: false });
   const [pressed, setPressed] = useState(false);
 
@@ -56,7 +56,7 @@ export function MacDesktop({ className }: { className?: string }) {
   const onScene = useCallback((_: unknown, i: number) => {
     if (i === 0) {
       setNotes([]);
-      setRules(12);
+      setRules(SCENES[0].rules);
     }
   }, []);
 

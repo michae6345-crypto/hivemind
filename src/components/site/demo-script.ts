@@ -29,7 +29,7 @@ export const HIVE = {
   lessonBlocked: (title: string, rule: string, owner: string) =>
     `🚫 Hivemind blocked "${title}": conflicts with 🔒 ${rule} (${owner})`,
   collision: (who: string, tool: string, file: string, mins: number) =>
-    `⚠️ @${who}'s ${tool} agent edited ${file} ${mins} min ago — coordinate before changing it.`,
+    `⚠️ @${who}'s ${tool} agent edited ${file} ${mins === 0 ? "just now" : `${mins} min ago`} — coordinate before changing it.`,
 } as const;
 
 export const LESSON = "Exports call assertSingleCustomer()";
@@ -79,7 +79,7 @@ export const SCENES: Scene[] = [
       { kind: "say", text: "Added writeCsvExport() for Lab B's monthly report." },
       { kind: "pause", ms: 700 },
       { kind: "prompt", text: PROMPTS.alexCorrect },
-      { kind: "hook", text: HIVE.lessonCaptured(LESSON, "Jordan Reyes"), tone: "honey" },
+      { kind: "hook", text: HIVE.lessonCaptured(LESSON, "@jordan"), tone: "honey" },
       { kind: "say", text: "You're right. Adding the check before the write." },
       {
         kind: "notify",
@@ -132,7 +132,7 @@ export const SCENES: Scene[] = [
       },
       { kind: "pause", ms: 1200 },
       { kind: "tool", name: "Update", arg: "src/export.ts", result: "Updated src/export.ts with 2 additions" },
-      { kind: "hook", text: HIVE.collision("alex", "Cursor", "export.ts", 1), tone: "warn" },
+      { kind: "hook", text: HIVE.collision("alex", "Cursor", "export.ts", 0), tone: "warn" },
       { kind: "pause", ms: 2600 },
     ],
   },
