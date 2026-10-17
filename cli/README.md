@@ -90,6 +90,7 @@ Opening is instant. Nothing calls the API before the pane spawns, because the pa
 | `status` | Pings the API, then shows the rules in the pack, pending lessons, and each agent's MCP, hooks and rules files |
 | `teach "<rule>" [--scope repo/x|team/x]` | Sends the rule to `/api/events` as a correction, so it gets the same extract, merge and 🔒 checks as any other correction. Prints `Lesson proposed — waiting on @<owner>`, or `Blocked by a locked rule`. A `team/…` scope is sent as a proposal for that scope |
 | `rules [--file path]` | Prints the rules that apply now. With `--file`, it prints that file's rules plus live edits, using MCP `get_team_rules`. Output is colored on a TTY and plain markdown when piped |
+| `why [--last | <rule words> | <file>:<line>]` | The history behind one rule, in about 12 lines: who set or taught it and the quote, the evidence (PRs as clickable links), approvals, whether it's in every agent's session pack, how often it was reinforced, and what it blocked. `--last` (the default) picks your most recent block, or the most recent `hivemind check` flag. In Claude Code: `/hivemind why` |
 | `check <file…>` / `check --staged` `[--fix] [--deep]` | Checks files against the team's rules via `POST /api/vscode/check`, the same regex + Haiku engine as the VS Code squiggles. Each violation prints as a code frame. Its header is a clickable `path#Lnn` link (OSC 8 → `permalink()` from `watch/git.mjs`, else `file://`; `NO_HYPERLINKS=1` turns it off), followed by 2 lines of context, the range underlined `~~~~` (rose for locked rules, honey for lessons), the rule, the owner's `@handle` and the quick fix as a diff. `--fix` applies the quick fixes (deduped, bottom-up) and re-checks. Exits 1 while a locked rule is broken, so `hivemind check --staged` works as a pre-commit hook |
 
 Every command accepts `--agent <kind>`, which sets the `x-hm-agent` header. The default is `$HIVEMIND_AGENT`, else `cli`.
@@ -107,6 +108,27 @@ Settings are resolved in this order: flags, then `HIVEMIND_API_URL` / `HIVEMIND_
 `HIVEMIND_REPO`, then `.hivemind.json`. After that the URL defaults to production
 (`https://hivemind-beta-virid.vercel.app`), and the token falls back to the hivemind checkout's `.env.local`. Every request sends
 `Authorization: Bearer $HIVEMIND_TOKEN` and `x-hm-agent: <agent>`.
+
+## `hivemind why`
+
+```text
+$ hivemind why --last
+⬢ Hivemind · why · blocked "Mixing Lab A and Lab B data is fine in tests" 10m ago
+LOCKED RULE · ● #org
+Never mix data from different lab customers
+Set by ● @greg · Head of Security · 7 Sep · Security policy v3
+  "Customer isolation is a contract term with every lab. No exceptions, including test data."
+  ╰ 17 Oct an agent applied the quick fix
+In context every agent in ● #repo/playground at session start · seen today: Claude Code
+Reinforced 30× · 2 evidence · always applies · blocked 2 proposals
+  ╰ latest: "Mixing Lab A and Lab B data is fine in tests" from ● @emily 10m ago
+Only ● @greg can change this rule · open in Hivemind
+```
+
+It uses existing read-only routes: `/api/memories` (the rule's evidence and blocked proposals), `/api/scopes` (people),
+`/api/activity/live` (approvals, agents seen) and `/api/context-pack?log=0` (whether the rule is in the pack).
+`why <file>:<line>` runs the deterministic check on that line. `hivemind check` remembers its most serious flag for
+`why --last`.
 
 ## `hivemind check`
 

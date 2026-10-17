@@ -1,7 +1,7 @@
 ---
 name: hivemind
-description: Opens the Hivemind side pane (hivemind watch) to the right of this terminal. `/hivemind` with no arguments only opens the pane, it never prints rules. `/hivemind rules [file]` lists team rules, `/hivemind teach <rule>` teaches every agent, `/hivemind status` checks the connection. Fastest path, with no model turn at all, is `!hivemind`.
-argument-hint: "[open | rules [file] | teach <rule> | status]"
+description: Opens the Hivemind side pane (hivemind watch) to the right of this terminal. `/hivemind` with no arguments only opens the pane, it never prints rules. `/hivemind rules [file]` lists team rules, `/hivemind teach <rule>` teaches every agent, `/hivemind why [rule]` explains the history behind a block, `/hivemind status` checks the connection. Fastest path, with no model turn at all, is `!hivemind`.
+argument-hint: "[open | rules [file] | teach <rule> | why [rule] | status]"
 allowed-tools: Bash(node *) Bash(hivemind *) PowerShell(node *) PowerShell(hivemind *) mcp__hivemind__get_team_rules mcp__hivemind__propose_memory mcp__hivemind__search_memory
 ---
 
@@ -59,11 +59,22 @@ nothing else: no summary, no follow-up question. If the command fails, reply wit
 Run `node "../../cli/hivemind.mjs" status --agent claude-code` and summarise in three plain lines, each starting with `Hivemind · `:
 API reachable, rules in the pack and pending lessons, agents wired.
 
+## `why [rule]`: the history behind a block or flag
+
+Run exactly one command and print its output verbatim, with no extra prose before or after it:
+
+- no argument, or `last`: `node "../../cli/hivemind.mjs" why --last --agent claude-code` (the most recent block or flag for this user)
+- a rule name, slug or `file:line`: `node "../../cli/hivemind.mjs" why "<argument>" --agent claude-code`
+
+The output is about 12 lines: who set or taught the rule and why (quote, PR or incident), who approved it, which agents
+have it in context, how often it was reinforced, and what it blocked. Don't summarise it, reformat it or add advice.
+
 ## When a team rule blocks a request
 
 When a team rule stops a request, say which rule and who owns it. If the user's goal is legitimate and the rule is only incidentally in the way (e.g. debugging failed payouts), suggest a compliant way to the same goal (e.g. log expert_id + trace_id and look the email up by payout_id). If the request itself is what the rule forbids (mixing Lab A and Lab B data, logging an expert's email, skipping the tenant filter), decline with no workarounds or alternative paths, name the rule's owner who can change it, and stop.
 
 ## Anything else
 
-Print these usages: `/hivemind` (open the pane), `/hivemind rules <file>`, `/hivemind teach <rule>`, `/hivemind status`,
+Print these usages: `/hivemind` (open the pane), `/hivemind rules <file>`, `/hivemind teach <rule>`, `/hivemind why [rule]`,
+`/hivemind status`,
 and the instant path `!hivemind`.

@@ -28,7 +28,7 @@ const GENERIC = { id: "other", label: "Any MCP agent", rules: { file: "AGENTS.md
 const agentOf = (id) => byId[id] ?? (id === "other" ? GENERIC : null);
 
 // ---------- args ----------
-const BOOLEAN = new Set(["dry-run", "no-sync", "no-vscode", "copilot-cli", "no-statusline", "personal", "help", "json", "staged", "fix", "deep", "version", "once", "snapshot", "notify", "no-motion", "claude", "auto", "open"]);
+const BOOLEAN = new Set(["dry-run", "no-sync", "no-vscode", "copilot-cli", "no-statusline", "personal", "help", "json", "staged", "fix", "deep", "version", "once", "snapshot", "notify", "no-motion", "claude", "auto", "open", "last"]);
 function parseArgs(argv) {
   // `hivemind --open` / `hivemind --user ben`: flags with no subcommand → cmd "" (main decides: open or help).
   const [cmd = "", ...rest] = argv[0]?.startsWith("--") && !["--help", "--version"].includes(argv[0]) ? ["", ...argv] : argv;
@@ -421,6 +421,7 @@ function help() {
     cmd("check", "<file…> | --staged [--fix]", "team-rule violations as code frames"),
     cmd("rules", "[--file <path>]", "the rules that apply here, or to one file"),
     cmd("teach", '"<rule>" [--scope team/<name>]', "propose a lesson; a human approves it"),
+    cmd("why", "[--last | <rule words> | <file>:<line>]", "a rule's history: who, evidence, reach, blocks"),
     "",
     group("Keep in sync"),
     cmd("sync", "[--dry-run]", "refresh rules files for agents without hooks"),
@@ -457,7 +458,7 @@ const watchCmd = (file) => async (cfg) => {
   if (!scoped.actor && file !== "statusline.mjs") fail(WHO_ARE_YOU);
   return (await import(`../watch/${file}`)).run(process.argv.slice(3), scoped);
 };
-const commands = { watch: watchCmd("index.mjs"), statusline: watchCmd("statusline.mjs"), open: (cfg) => cmdOpen(cfg, fail), init: cmdInit, sync: cmdSync, status: cmdStatus, teach: cmdTeach, rules: cmdRules, check: (cfg, pos) => cmdCheck(cfg, pos, fail) };
+const commands = { watch: watchCmd("index.mjs"), statusline: watchCmd("statusline.mjs"), open: (cfg) => cmdOpen(cfg, fail), why: async (cfg, pos) => (await import("./why.mjs")).cmdWhy(cfg, pos, fail), init: cmdInit, sync: cmdSync, status: cmdStatus, teach: cmdTeach, rules: cmdRules, check: (cfg, pos) => cmdCheck(cfg, pos, fail) };
 if (cmd === "--version" || cmd === "-v" || cmd === "version" || (flags.version && cmd !== "watch")) {
   console.log(`hivemind ${VERSION}`);
   process.exit(0);

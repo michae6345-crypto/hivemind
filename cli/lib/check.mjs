@@ -6,6 +6,7 @@ import { isAbsolute, relative, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { brand, handleChip, label, useColor } from "./style.mjs";
 import { api, c, plain, post } from "./util.mjs";
+import { recordFlag } from "./why.mjs";
 
 // Code-frame headers are clickable `path#Lnn` links: agent K's watch/git.mjs linkFile() (GitHub blob permalink at HEAD,
 // else the branch, else file://; OSC 8 when colour is on), so `check` and `watch` link the same way. Without watch/,
@@ -249,6 +250,9 @@ export async function cmdCheck(cfg, positional, fail) {
       if (v.locked) locked++;
       else lessons++;
     }
+    // Remember the most serious flag for `hivemind why --last`.
+    const top = violations.find((v) => v.locked) ?? violations[0];
+    if (top) recordFlag({ repo: cfg.repo, user: cfg.actor, file, line: top.startLine + 1, slug: top.ruleSlug, title: top.ruleTitle });
     const fixes = [...new Map(violations.filter((v) => v.fix).map((v) => [fixKey(v.fix), v.fix])).values()];
     fixable += fixes.length;
     if (fixes.length) pendingFixes.push({ file, abs: t.abs, text, fixes });
