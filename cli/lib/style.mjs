@@ -17,6 +17,9 @@ export const SPEC = {
   team: "#8B8DF0",
   repo: "#2DD4BF", // files, paths
   handle: "#E0A955", // @handles
+  hair: "#2E2E32", // card borders, rails
+  pill: "#2A2A2E", // chip / pill background
+  bg: "#1C1C1E",
 };
 /** Our painter names → theme token names. */
 const ALIAS = { link: "blueText", teal: "repo", warn: "lesson" };
@@ -55,6 +58,17 @@ function ownFg(hex) {
 
 /** watch/theme.mjs's painter when present (same truecolor/256 shading as the watch UI), else ours. */
 export const fg = external?.fg ?? ownFg;
+
+function ownBg(hex) {
+  const n = parseInt(hex.slice(1), 16);
+  const [r, g, b] = [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  const open = truecolor ? `\x1b[48;2;${r};${g};${b}m` : `\x1b[48;5;${to256(r, g, b)}m`;
+  return (s) => (useColor ? `${open}${s}\x1b[49m` : String(s));
+}
+/** Background painter (chips, pills), watch's when present. */
+export const bgc = external?.bg ?? ownBg;
+/** Hex for a token, for callers that paint with fg()/bgc() directly. */
+export const hex = (name) => hexOf(name);
 
 const sgr = (open, close) => (s) => (useColor ? `\x1b[${open}m${s}\x1b[${close}m` : String(s));
 

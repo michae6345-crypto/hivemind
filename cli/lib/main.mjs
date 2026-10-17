@@ -20,6 +20,7 @@ import { USE_HINT, locateRepo } from "./locate.mjs";
 import { NOT_IN_REPO, WHO_ARE_YOU, explicitUser, findRepoRoot, nativePath, resolveUser } from "./root.mjs";
 import { liveRecent, readState, remember, setDefault } from "./state.mjs";
 import { brand, handleChip, label, rich, scopeChip } from "./style.mjs";
+import { chip, padEnd } from "./ui.mjs";
 import { rulesFrontmatter } from "./templates.mjs";
 import { END, START, api, banner, c, callerAgent, mcpCall, mergeJson, onPath, post, read, readEnvFile, rel, sym, table, plain, upsertBlock, write } from "./util.mjs";
 
@@ -415,43 +416,55 @@ async function cmdRules(cfg) {
 const VERSION = JSON.parse(read(join(dirname(fileURLToPath(import.meta.url)), "..", "package.json")) ?? "{}").version ?? "0.0.0";
 const SITE = "https://hivemind-q17i.onrender.com";
 
+// L (launch): add `claude` / `setup-shortcut` rows to the "Start" group here; styling is shared.
+const HELP_GROUPS = [
+  [
+    "Start",
+    [
+      ["hivemind", "", "open watch to the right of this terminal (same as hivemind open)"],
+      ["init", "--agents a,b · --url <api>", "connect every coding agent in this repo"],
+      ["use", "<path> · --clear", "the repo to use when you're outside one"],
+      ["watch", "", "live team memory, full screen"],
+    ],
+  ],
+  [
+    "While you work",
+    [
+      ["check", "<file…> · --staged · --fix", "team-rule violations as code frames"],
+      ["why", "--last · <rule> · <file>:<line>", "the history behind a rule or a block"],
+      ["rules", "--file <path>", "the rules that apply here"],
+      ["teach", '"<rule>" · --dry-run', "propose a lesson; a lead approves it"],
+    ],
+  ],
+  [
+    "Keep in sync",
+    [
+      ["status", "", "API, rules, pending lessons, wired agents"],
+      ["sync", "--dry-run", "refresh rules files for agents without hooks"],
+      ["update", "", "pull the latest CLI now (it also updates itself)"],
+    ],
+  ],
+];
+
 function help() {
-  const cmd = (name, args, what) => `    ${c.cyan(name.padEnd(9))}${c.gray(args.padEnd(33))}${what}`;
-  const group = (title) => `  ${c.faint(title.toUpperCase())}`;
-  return [
+  const all = HELP_GROUPS.flatMap(([, items]) => items);
+  const nameW = Math.max(...all.map(([n]) => n.length));
+  const descW = Math.max(...all.filter(([, a]) => a).map(([, , d]) => d.length)); // align args only where there are any
+  const out = ["", `  ${brand()}  ${c.faint(`v${VERSION}`)}`, `  ${c.bold("Correct one agent.")} ${c.gray("Every agent learns.")}`];
+  for (const [title, items] of HELP_GROUPS) {
+    out.push("", `  ${c.faint(title)}`);
+    for (const [name, args, desc] of items) out.push(`  ${chip(name, nameW)}  ${args ? `${padEnd(c.gray(desc), descW)}  ${c.faint(args)}` : c.gray(desc)}`);
+  }
+  const sep = c.faint(" · ");
+  out.push(
     "",
-    `  ${brand()}  ${c.faint(`v${VERSION}`)}`,
-    `  ${c.bold("Correct one agent.")}`,
-    `  ${c.gray("Every agent learns.")}`,
+    `  ${c.faint("Try")}    ${["hivemind", "hivemind check --staged", "hivemind why --last"].map((x) => c.cyan(x)).join(sep)}`,
+    `  ${c.faint("Flags")}  ${c.faint(["--repo", "--user", "--agent", "--url", "--dir", "--dry-run", "--json"].join("  "))}`,
+    `  ${c.faint("Env")}    ${c.faint("HIVEMIND_TOKEN  HIVEMIND_USER  HIVEMIND_REPO  HIVEMIND_API_URL  HIVEMIND_NO_UPDATE=1")}`,
+    `  ${c.faint("Docs")}   ${c.link(SITE)}`,
     "",
-    group("Start"),
-    cmd("init", "[--agents a,b] [--url <api>]", "connect every coding agent in this repo"),
-    cmd("open", "[--claude] [--user <id>]", "watch in a pane on the right; plain `hivemind` does this"),
-    cmd("use", "[<path> | --clear]", "default repo for runs outside one (home, !hivemind); lists recent"),
-    cmd("watch", "", "live team memory; run it in a split pane"),
-    "",
-    group("While you work"),
-    cmd("check", "<file…> | --staged [--fix]", "team-rule violations as code frames"),
-    cmd("rules", "[--file <path>]", "the rules that apply here, or to one file"),
-    cmd("teach", '"<rule>" [--scope team/<name>]', "propose a lesson; a human approves it"),
-    cmd("why", "[--last | <rule words> | <file>:<line>]", "a rule's history: who, evidence, reach, blocks"),
-    "",
-    group("Keep in sync"),
-    cmd("sync", "[--dry-run]", "refresh rules files for agents without hooks"),
-    cmd("status", "", "API, rules, pending lessons, wired agents"),
-    cmd("update", "", "pull the latest CLI now (it also updates itself every 15 min)"),
-    "",
-    group("Flags"),
-    `    ${c.gray("--repo repo/<name>  --user <id>  --agent <kind>  --url <api>  --dir <path>  --dry-run  --json")}`,
-    `    ${c.gray("init: --hivemind-dir <path>  --no-sync  --no-statusline  --no-vscode  --copilot-cli   check: --deep   sync: --personal")}`,
-    "",
-    group("Env"),
-    `    ${c.gray("HIVEMIND_TOKEN  HIVEMIND_USER  HIVEMIND_REPO  HIVEMIND_API_URL")} ${c.faint(`(default ${SITE})`)}`,
-    `    ${c.gray("HIVEMIND_NO_UPDATE=1")} ${c.faint("freeze the CLI: no background fetch, no self-update (e.g. while recording)")}`,
-    "",
-    `  ${c.faint("Docs")}  ${c.link(SITE)}`,
-    "",
-  ].join("\n");
+  );
+  return out.join("\n");
 }
 
 const parsed = parseArgs(process.argv.slice(2));

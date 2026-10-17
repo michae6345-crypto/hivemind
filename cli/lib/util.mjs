@@ -1,7 +1,9 @@
 // Small zero-dep helpers: colors, tables, safe file writes, JSON merge, HTTP.
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { delimiter, dirname, join } from "node:path";
-import { brand, t } from "./style.mjs";
+import { brand, fg, hex, t } from "./style.mjs";
+
+const border = fg(hex("hair")); // table borders: hairline, like watch
 
 // ---------- Colours: every command paints through the shared theme (lib/style.mjs → watch/theme.mjs) ----------
 export const c = {
@@ -31,9 +33,10 @@ const pad = (s, w) => String(s) + " ".repeat(Math.max(0, w - visible(s)));
 /** Box-drawn table. rows: string[][] (cells may contain ANSI). */
 export function table(headers, rows) {
   const widths = headers.map((h, i) => Math.max(visible(h), ...rows.map((r) => visible(r[i] ?? ""))));
-  const line = (l, m, r) => c.gray(l + widths.map((w) => "─".repeat(w + 2)).join(m) + r);
-  const row = (cells) => c.gray("│") + cells.map((cell, i) => ` ${pad(cell ?? "", widths[i])} `).join(c.gray("│")) + c.gray("│");
-  return [line("┌", "┬", "┐"), row(headers.map((h) => c.bold(h))), line("├", "┼", "┤"), ...rows.map(row), line("└", "┴", "┘")].join("\n");
+  // Calm table: rounded corners, hairline borders, muted headers (no heavy grid).
+  const line = (l, m, r) => border(l + widths.map((w) => "─".repeat(w + 2)).join(m) + r);
+  const row = (cells, head) => border("│") + cells.map((cell, i) => ` ${pad(head ? c.gray(cell ?? "") : (cell ?? ""), widths[i])} `).join(border("│")) + border("│");
+  return [line("╭", "┬", "╮"), row(headers, true), line("├", "┼", "┤"), ...rows.map((r) => row(r)), line("╰", "┴", "╯")].join("\n");
 }
 
 export const banner = (cmd) => `${brand()} ${c.gray(`· ${cmd}`)}`;
