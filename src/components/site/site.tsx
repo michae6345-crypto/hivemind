@@ -15,6 +15,7 @@ import { Progression } from "./progression";
 import { Structure } from "./structure";
 import { InitMock } from "./live-work";
 import { TryApprove } from "./try-approve";
+import { Different, GoToMarket } from "./gtm";
 import { LOCKED_RULE, PROMPTS } from "./demo-script";
 import { Note } from "./notes";
 
@@ -45,8 +46,9 @@ export function Site() {
         <YoureTheLead />
         <UnderHood />
         <Built />
-        <Results />
         <GetStarted />
+        <WhyUs />
+        <Market />
         <Closing />
         <Footer />
       </div>
@@ -80,7 +82,7 @@ function Nav() {
             ["How it works", "#how"],
             ["While you work", "#hood"],
             ["How it's built", "#built"],
-            ["Results", "#results"],
+            ["Why Hivemind", "#results"],
           ].map(([label, href]) => (
             <a
               key={href}
@@ -308,54 +310,33 @@ function Built() {
   );
 }
 
-// ── Results ─────────────────────────────────────────────────────────────────
+// ── How it's different / go to market ──────────────────────────────────────
+// (Replaced the eval cards on 17 Oct: Adrian wanted competitors and GTM at the end. The 22 -> 0 eval line lives in
+// Different as "prevention, not detection"; #results stays the anchor the hero links to.)
 
-function Results() {
-  const d = evalDetail;
+function WhyUs() {
   return (
     <section className="px-4 pt-32">
-      <SectionHead id="results" title={`Without it, agents broke the rule in ${d.targetViolations.off} of ${d.n.off} runs. With it, ${d.targetViolations.on}.`} width={760}>
-        12 coding tasks, 3 runs each, graded by code: did the agent break the team&apos;s rule?
+      <SectionHead id="results" title="Before the agent writes, not after review.">
+        Teams already have rule files, vendor memory and review bots. Here is where Hivemind sits next to them.
       </SectionHead>
-      <Reveal className="mx-auto mt-12 grid max-w-[760px] gap-4 sm:grid-cols-2">
-        <Compare label="Without Hivemind" broke={d.targetViolations.off} of={d.n.off} tone="bad" />
-        <Compare label="With Hivemind" broke={d.targetViolations.on} of={d.n.on} tone="good" />
-      </Reveal>
-      <Reveal className="mx-auto mt-5 max-w-[760px] text-center text-[14px] text-muted">
-        A similar-length pack of 12 unrelated lessons: {d.targetViolations.placebo} of {d.n.placebo}. It&apos;s the lessons that
-        help, not the extra text.
-        <span className="mt-2 block font-mono text-[11.5px]">
-          {d.model ?? "Claude"} · {d.n.off / 3} tasks × 3 runs · method in docs/eval.md
-        </span>
-      </Reveal>
+      <div className="mt-12">
+        <Different />
+      </div>
     </section>
   );
 }
 
-function Compare({ label, broke, of, tone }: { label: string; broke: number; of: number; tone: "bad" | "good" }) {
-  const bad = tone === "bad";
+function Market() {
   return (
-    <div className={cn("hm-card p-6 sm:p-7", !bad && "ring-1 ring-ok/30")}>
-      <div className="flex items-center justify-between text-[14px]">
-        <span className={cn("font-medium", bad ? "text-muted" : "text-fg")}>{label}</span>
+    <section className="px-4 pt-32">
+      <SectionHead id="gtm" title="Free for one team. Paid when security wants it everywhere.">
+        Bottom-up through the engineering lead, then up to the platform and security teams.
+      </SectionHead>
+      <div className="mt-12">
+        <GoToMarket />
       </div>
-      <div className="mt-5 flex items-baseline gap-2">
-        <span className="hm-display text-[64px] leading-none tabular-nums" style={{ color: bad ? "var(--danger)" : "var(--ok)" }}>
-          {broke}
-        </span>
-        <span className="font-mono text-[14px] text-muted">/ {of} runs</span>
-      </div>
-      <div className="mt-1 text-[14px] text-muted">broke the team&apos;s rule</div>
-      <div className="mt-5 h-2 overflow-hidden rounded-full bg-elevated">
-        <motion.div
-          className={cn("h-full rounded-full", bad ? "bg-danger" : "bg-ok")}
-          initial={{ width: 0 }}
-          whileInView={{ width: `${(broke / of) * 100}%` }}
-          viewport={{ once: true }}
-          transition={{ duration: 1.1, ease: EASE, delay: 0.2 }}
-        />
-      </div>
-    </div>
+    </section>
   );
 }
 
