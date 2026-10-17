@@ -324,7 +324,8 @@ export async function cmdWatch(cfg) {
     // Tell the Claude Code status line what watch flagged (statusline.mjs reads it for 30s).
     const flags = state.lastFile ? (state.flags[state.lastFile] ?? []) : [];
     const sig = `${state.lastFile}|${flags.map((v) => `${v.ruleId}:${v.startLine}`).join(",")}`;
-    if (state.lastFile && sig !== lastWatchState) {
+    // Snapshots (e2e, screenshots) never publish: the state file is shared by every watch on this machine.
+    if (!snapshot && state.lastFile && sig !== lastWatchState) {
       lastWatchState = sig;
       writeWatchState(cfg, { file: state.lastFile, flags });
     }
