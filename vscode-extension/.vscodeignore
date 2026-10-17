@@ -1,0 +1,8 @@
+src/**
+node_modules/**
+**/*.map
+tsconfig.json
+esbuild.mjs
+dist/**
+.gitignore
+media/icon.svg

@@ -1,0 +1,102 @@
+{
+  "name": "hivemind-vscode",
+  "displayName": "Hivemind: team memory for AI coding agents",
+  "description": "Your team's lessons and locked rules, inside the editor: CodeLens, hovers, squiggles with quick fixes, ghost text that follows the team's lessons, and collision warnings when another agent is editing your file.",
+  "version": "0.1.0",
+  "publisher": "hivemind",
+  "license": "MIT",
+  "icon": "media/icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/michae6345-crypto/hivemind"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": ["Programming Languages", "Linters", "Other"],
+  "keywords": ["ai", "agents", "memory", "claude", "copilot", "team", "lessons"],
+  "galleryBanner": { "color": "#0E0F12", "theme": "dark" },
+  "activationEvents": ["onStartupFinished"],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      { "command": "hivemind.showRules", "title": "Show team rules", "category": "Hivemind" },
+      { "command": "hivemind.openDashboard", "title": "Open dashboard", "category": "Hivemind" },
+      { "command": "hivemind.checkFile", "title": "Check this file against team rules", "category": "Hivemind" },
+      { "command": "hivemind.teach", "title": "Teach Hivemind a lesson from the selection", "category": "Hivemind" },
+      { "command": "hivemind.refresh", "title": "Refresh", "category": "Hivemind" },
+      { "command": "hivemind.showLog", "title": "Show log", "category": "Hivemind" }
+    ],
+    "menus": {
+      "commandPalette": [
+        { "command": "hivemind.teach", "when": "editorHasSelection" }
+      ],
+      "editor/context": [
+        { "command": "hivemind.teach", "when": "editorHasSelection", "group": "9_hivemind" }
+      ]
+    },
+    "configuration": {
+      "title": "Hivemind",
+      "properties": {
+        "hivemind.apiUrl": {
+          "type": "string",
+          "default": "http://localhost:3000",
+          "markdownDescription": "Hivemind server (the web app). Falls back to `HIVEMIND_API_URL` from the environment when left at the default."
+        },
+        "hivemind.token": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Bearer token (`HIVEMIND_TOKEN`). Falls back to the `HIVEMIND_TOKEN` environment variable."
+        },
+        "hivemind.user": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Your Hivemind person id, e.g. `alex`. Falls back to `HIVEMIND_USER`, then your OS user name."
+        },
+        "hivemind.repo": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Repo scope, e.g. `repo/export-service`. Default: `repo/<workspace folder name>`."
+        },
+        "hivemind.dashboardUrl": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Web app URL for *Open dashboard*. Default: the API URL."
+        },
+        "hivemind.inlineSuggestions": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Ghost-text suggestions that follow the team's lessons (when you open a new function in a file that has rules)."
+        },
+        "hivemind.checkOnType": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Check the file against team rules while you type (debounced). It always runs on open and save."
+        },
+        "hivemind.collisionWarnings": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Warn when another person's agent edited an open file in the last 10 minutes."
+        },
+        "hivemind.shareActivity": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Tell Hivemind when you save a file, so other agents get a collision warning."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "node esbuild.mjs",
+    "watch": "node esbuild.mjs --watch",
+    "typecheck": "tsc --noEmit",
+    "package": "node esbuild.mjs --production && vsce package --no-dependencies --out dist/hivemind-vscode.vsix"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/vscode": "~1.85.0",
+    "@vscode/vsce": "^3.2.0",
+    "esbuild": "^0.25.0",
+    "typescript": "^5.6.0"
+  }
+}
