@@ -127,7 +127,8 @@ for (const [tool, event, payload, pick] of briefs) {
 
 // ---- 2. correction capture ----
 console.log("\n2. Correction capture");
-const correction = `No, don't use console.log in export jobs; use the shared logger from src/log.ts (smoke ${stamp}).`;
+// Novel on purpose (a restatement of an existing lesson is merged, not added). Reject it in the Approvals queue after.
+const correction = `No, that's wrong: in the smoke-fixtures folder never call Date.now() directly, always use the fixtureClock() helper so fixture timestamps stay deterministic (smoke ${stamp}).`;
 const neutral = "Add a unit test for the retry path in export.ts.";
 const prompts = [
   ["cursor", "beforeSubmitPrompt", P.cursor("beforeSubmitPrompt", { prompt: correction, attachments: [] }), correction, (r) => r.json?.continue === true],
@@ -148,11 +149,11 @@ for (const [tool, event, payload, text, outOk] of prompts) {
 if (promptStatus >= 200 && promptStatus < 300) {
   let found = null;
   for (let i = 0; i < 10 && !found; i++) {
-    const m = await fetch(`${BASE}/api/memories?status=pending`, { headers: { "x-hm-user": "noor", "x-hm-role": "security" } }).then((r) => r.json());
+    const m = await fetch(`${BASE}/api/memories?status=pending,active,blocked`, { headers: { "x-hm-user": "noor", "x-hm-role": "security" } }).then((r) => r.json());
     found = (m.memories ?? []).find((x) => JSON.stringify(x).includes(`smoke ${stamp}`));
     if (!found) await new Promise((r) => setTimeout(r, 2000));
   }
-  check(!!found && found.status === "pending", "Cursor correction created a ⏳ pending lesson", found ? `"${found.title}"` : "not found");
+  check(!!found && found.status === "pending", "Cursor correction created (or reinforced) a ⏳ pending lesson", found ? `${found.status}: "${found.title}"` : "not found");
 } else {
   wait("Cursor correction → pending lesson", `/api/hooks/prompt returned HTTP ${promptStatus} (B's route not on this server yet); request shape verified above`);
 }
@@ -194,9 +195,9 @@ check(claude.ok, "Claude Code PostToolUse recorded", `HTTP ${claude.status}`);
 const cur = await adapter("cursor", "afterFileEdit", P.cursor("afterFileEdit", { conversation_id: `smoke-cursor-x-${stamp}`, file_path: `${repoDir}/${shared}`, edits: [] }), { user: "michael" });
 const warnText = cur.json?.additional_context ?? "";
 console.log("   cursor ←", warnText.replace(/\n/g, " | "));
-check(/@adrian's .*agent edited smoke-shared/.test(warnText), "Cursor session is warned about the Claude Code session's edit");
+check(/@adrian's Claude Code agent edited smoke-shared/.test(warnText), "Cursor session is warned about the Claude Code session's edit");
 const gem = await adapter("gemini", "AfterTool", P.gemini("AfterTool", { session_id: `smoke-gemini-x-${stamp}`, tool_name: "write_file", tool_input: { file_path: `${repoDir}/${shared}`, content: "x" } }), { user: "sam" });
-check(/@michael's .*agent edited/.test(gem.json?.systemMessage ?? ""), "…and a Gemini CLI session after that is warned about both", (gem.json?.systemMessage ?? "").split("\n").length - 1 + " warnings");
+check(/@michael's Cursor agent edited/.test(gem.json?.systemMessage ?? "") && /@adrian's Claude Code agent/.test(gem.json?.systemMessage ?? ""), "…and a Gemini CLI session after that is warned about both, by tool", (gem.json?.systemMessage ?? "").split("\n").length - 1 + " warnings");
 
 // ---- session end shape ----
 const se = await adapter("cursor", "sessionEnd", P.cursor("sessionEnd", { session_id: `smoke-cursor-${stamp}`, reason: "completed", duration_ms: 45000, is_background_agent: false, final_status: "completed" }));
