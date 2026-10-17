@@ -478,10 +478,10 @@ export const feed: FeedEvent[] = [
 ];
 
 export const activity: ActivityItem[] = [
-  { id: "a1", sessionId: "s-105", actor: "noor", repo: "export-service", file: "src/export.ts", createdAt: minutesAgo(2), warning: "Alex's agent edited this file 3 min ago" },
-  { id: "a2", sessionId: "s-104", actor: "alex", repo: "export-service", file: "src/export.ts", createdAt: minutesAgo(5) },
-  { id: "a3", sessionId: "s-103", actor: "riley", repo: "eval-harness", file: "graders/math.py", createdAt: minutesAgo(8) },
-  { id: "a4", sessionId: "s-102", actor: "priya", repo: "eval-harness", file: "tasks/registry.yaml", createdAt: minutesAgo(14) },
+  { id: "a1", sessionId: "s-105", actor: "noor", repo: "export-service", file: "src/export.ts", createdAt: minutesAgo(2), warning: "@alex's Cursor agent edited this file 3 min earlier", agent: "claude-code" },
+  { id: "a2", sessionId: "s-104", actor: "alex", repo: "export-service", file: "src/export.ts", createdAt: minutesAgo(5), agent: "cursor" },
+  { id: "a3", sessionId: "s-103", actor: "riley", repo: "eval-harness", file: "graders/math.py", createdAt: minutesAgo(8), agent: "gemini-cli" },
+  { id: "a4", sessionId: "s-102", actor: "priya", repo: "eval-harness", file: "tasks/registry.yaml", createdAt: minutesAgo(14), agent: "copilot" },
 ];
 
 // MOCK — replaced by GET /api/metrics (eval/results.json + session history).

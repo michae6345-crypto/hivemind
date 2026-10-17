@@ -11,6 +11,7 @@ import { Guardrail } from "./guardrail";
 import { StatusPill } from "./bits";
 import { RichText } from "./rich-text";
 import { HexField } from "./hex";
+import { LiveActivity } from "./activity";
 import { approverFor, canApprove, cn, reachFor, scopeLabel, timeAgo } from "./utils";
 
 const SOURCE_TEXT = {
@@ -51,6 +52,7 @@ export function Approvals() {
           <Group title="Waiting on someone else" items={others} selected={selected} onSelect={setSelectedId} />
           {!ordered.length ? <p className="px-3 py-6 text-[13px] text-muted">The queue is empty.</p> : null}
         </div>
+        <LiveActivity />
       </aside>
 
       <div className="relative min-w-0 flex-1 overflow-y-auto">

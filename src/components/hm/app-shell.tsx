@@ -8,6 +8,7 @@ import { AnimatePresence, MotionConfig, motion } from "motion/react";
 import { HivemindProvider, ROLE_USERS, useHivemind } from "./store";
 import { Logo, Wordmark } from "./bits";
 import { Palette } from "./palette";
+import { WORKS_WITH } from "./activity";
 import { NavLink, useRoute, type Route } from "./nav";
 import { canApprove, cn } from "./utils";
 
@@ -225,6 +226,7 @@ function Footer() {
         <span className={cn("size-1.5 rounded-full", on === 3 ? "bg-ok" : on > 0 ? "bg-ok/60" : "bg-muted/50")} />
         {on === 3 ? "Live" : on > 0 ? `Live ${on}/3` : "Seed data"}
       </span>
+      <span className="ml-auto truncate">{WORKS_WITH}</span>
     </footer>
   );
 }
