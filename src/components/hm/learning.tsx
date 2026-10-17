@@ -36,8 +36,10 @@ export function Learning() {
       <div className="mx-auto max-w-6xl px-8 py-8">
         <div className="flex items-start justify-between gap-6">
           <div>
-            <h1 className="text-[28px] leading-tight font-semibold tracking-[-0.02em]">Every agent gets smarter</h1>
-            <p className="mt-1.5 max-w-[60ch] text-[14px] text-muted">
+            <h1 className="font-brand text-[34px] leading-none font-black tracking-[-0.035em] [font-stretch:125%]">
+              Every agent gets smarter
+            </h1>
+            <p className="mt-3 max-w-[60ch] text-[14px] text-muted">
               When one engineer corrects an agent, the lesson spreads to every agent at the company, so the same
               correction doesn&apos;t have to be given twice.
             </p>
@@ -66,11 +68,11 @@ export function Learning() {
           <div className="flex flex-col justify-center border-l border-line pl-6">
             <Label>Corrections per session</Label>
             <div className="flex items-baseline gap-3">
-              <span className="text-[44px] leading-none font-semibold tracking-[-0.03em] text-muted tabular-nums">
+              <span className="font-brand text-[56px] leading-none font-black tracking-[-0.02em] text-muted tabular-nums [font-stretch:75%]">
                 {before.toFixed(1)}
               </span>
               <ArrowRight className="size-6 self-center text-muted" />
-              <span className="text-[44px] leading-none font-semibold tracking-[-0.03em] text-accent tabular-nums">
+              <span className="font-brand text-[56px] leading-none font-black tracking-[-0.02em] text-accent tabular-nums [font-stretch:75%]">
                 {after.toFixed(1)}
               </span>
             </div>
@@ -213,7 +215,7 @@ export function Learning() {
   );
 }
 
-/** Lesson name next to its approval dot, with a halo so it stays legible over the line. */
+/** Lesson name next to its approval dot, hand-written like a note on the chart, with a halo over the line. */
 function DotLabel({ viewBox, text, below }: { viewBox?: { x: number; y: number; width: number; height: number }; text: string; below?: boolean }) {
   if (!viewBox) return null;
   const cx = viewBox.x + viewBox.width / 2;
@@ -223,8 +225,10 @@ function DotLabel({ viewBox, text, below }: { viewBox?: { x: number; y: number; 
       x={cx}
       y={y}
       textAnchor="middle"
-      fontSize={11.5}
-      fill="var(--text)"
+      fontSize={13}
+      fontWeight={600}
+      style={{ fontFamily: "var(--font-shantell), 'Comic Sans MS', cursive", fontVariationSettings: "'INFM' 100, 'BNCE' 40" }}
+      fill="var(--chip-person)"
       stroke="var(--panel)"
       strokeWidth={6}
       strokeLinejoin="round"
