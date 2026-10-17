@@ -28,6 +28,14 @@ const WATCH_FRESH_MS = 30_000;
 const APPROVED_MS = 3 * 60_000; // "lesson approved" stays this long (the spec says until the next prompt)
 
 const hash = (s) => createHash("sha1").update(s).digest("hex").slice(0, 12);
+// watch-v2 status pills (public/brand/terminal/watch-v2.mjs PILL): [background, text, bold]. Pre-blended on #1C1C1E.
+const V2_PILL = {
+  you: ["#3A2F1D", "#F5C26B", true], // needs you: honey, bold
+  lesson: ["#3A2F1D", "#F5C26B", false], // a missed team lesson
+  waiting: ["#2A2A2E", "#A1A1AA", false], // waiting on someone else: grey
+  live: ["#1D3A2B", "#3DD68C", false], // live: green
+  blocked: ["#3A2023", "#FF9592", true], // a locked rule: rose
+};
 const readJson = (p) => {
   try {
     return JSON.parse(readFileSync(p, "utf8"));
@@ -74,7 +82,7 @@ const distinct = (vs, locked) => new Set(vs.filter((v) => !!v.locked === locked)
 /** Build the line from the API. Throws on network failure. */
 async function compute(th, api, cfg, session, root) {
   const { HEX, P, bold, fg, sep, t } = th;
-  const head = `${fg(P.lesson)(HEX)} ${t.text("Hivemind")}`;
+  const head = `${fg(P.lesson)(HEX)} ${bold(t.text("Hivemind"))}`;
   const watch = readJson(watchStatePath(cfg));
   const watchFresh = watch && Date.now() - watch.at < WATCH_FRESH_MS;
   const [rules, live, pack] = await Promise.all([api.rules(""), api.live().catch(() => ({ items: [], feed: [] })), api.pack().catch(() => null)]);
@@ -100,15 +108,25 @@ async function compute(th, api, cfg, session, root) {
   const lessons = distinct(flags, false);
   const lockedN = distinct(flags, true);
 
-  // terminal-spec.md §7, four states:
+  // Status pills, Adrian's watch-v2 atoms (colours inlined here so theme.mjs stays his): tinted background, coloured
+  // text, one space each side. NO_COLOR: just the words.
+  const pill = (kind, text) => {
+    const [bgHex, fgHex, strong] = V2_PILL[kind];
+    return th.COLOR ? th.bg(bgHex)(fg(fgHex)(strong ? bold(` ${text} `) : ` ${text} `)) : text;
+  };
+  // terminal-spec.md §7 states, drawn with the v2 pills:
   if (file && lockedN) {
     const at = Number.isFinite(locked[0]?.startLine) ? `${file}:${locked[0].startLine + 1}` : file;
-    return [head, bold(t.lockedText(`breaks ${plural(lockedN, "locked rule")}`)), t.muted(at)].join(sep());
+    return [head, pill("blocked", `breaks ${plural(lockedN, "locked rule")}`), t.muted(at)].join(sep());
   }
-  if (file && lessons) return [head, t.lessonText(`misses ${plural(lessons, "team lesson")}`), t.muted(plural(n, "rule"))].join(sep());
+  if (file && lessons) return [head, pill("lesson", `misses ${plural(lessons, "team lesson")}`), t.muted(plural(n, "rule"))].join(sep());
   const approvedJustNow = (live.feed ?? []).some((f) => f.type === "approval" && Date.now() - Date.parse(f.at) < APPROVED_MS);
-  if (approvedJustNow) return [head, bold(fg(P.lesson)(plural(n, "rule"))), t.ok("lesson approved")].join(sep());
-  return [head, t.muted(plural(n, "rule")), ...(waiting ? [t.muted(`${waiting} waiting`)] : [])].join(sep());
+  if (approvedJustNow) return [head, t.muted(plural(n, "rule")), pill("live", "lesson live")].join(sep());
+  // "needs you" only when you are the one who decides (the repo's approver, or security); else a neutral "waiting".
+  const me = String(cfg.actor ?? "");
+  const mine = waiting && me && (rules.approver?.id === me || (rules.rules ?? []).some((r) => r.locked && r.ownerId === me));
+  const queue = !waiting ? [] : [mine ? pill("you", `${waiting} need${waiting === 1 ? "s" : ""} you`) : pill("waiting", `${waiting} waiting`)];
+  return [head, t.muted(plural(n, "rule")), ...queue].join(sep());
 }
 
 /** run(argv, cfg): `statusline` (Claude Code) or `statusline --refresh <session|-> <root>` (the detached refresher). */
