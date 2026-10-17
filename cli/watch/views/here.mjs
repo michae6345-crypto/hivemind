@@ -252,7 +252,7 @@ export default {
     const learn = view.learning;
     if (learn?.file === file && now - learn.at < 90000) {
       const tone = { lesson: t.lessonText, ok: t.ok, locked: t.lockedText }[learn.tone] ?? t.muted;
-      out.push(th.clip(th.rich(learn.text, { base: tone }), w));
+      for (const l of String(learn.text).split(/\r?\n/).filter(Boolean)) out.push(th.clip(th.rich(l, { base: tone }), w));
     }
 
     if (!vs.length) {

@@ -92,6 +92,11 @@ export function resultLine(res, { actor, scopes }) {
   const act = res?.actions?.[0];
   const m = res?.lessons?.find((l) => l.id === act?.memoryId) ?? res?.lessons?.[0];
   const title = m ? `"${plain(m.title)}"` : "";
+  // The engine's own sentence(s), verbatim: one line per lesson ("Lesson captured from @kevin's fix in f.ts:6: …").
+  if (typeof res?.message === "string" && res.message.trim()) {
+    const tone = act?.action === "blocked" ? "locked" : act?.action === "reinforced" || act?.action === "updated" ? "ok" : act ? "lesson" : "muted";
+    return { text: res.message.trim(), tone, ...(m ? { memory: m } : {}) };
+  }
   if (!act || !m) return { text: "Hivemind · Saved your fix. The team already knows this one.", tone: "muted" };
   if (act.action === "blocked") return { text: `Hivemind · Blocked: ${plain(act.note ?? `contradicts a locked rule`)}.`.replace(/\.\.$/, "."), tone: "locked", memory: m };
   if (act.action === "reinforced" || act.action === "updated") return { text: `Hivemind · Reinforced: ${title}.`, tone: "ok", memory: m };
@@ -226,8 +231,11 @@ export function fixTracker({ root, cfg, state, actions, skip, code, onSeed }) {
     }
     const r = resultLine(res, { actor: cfg.actor, scopes: state.scopes });
     here.learning = { file, text: r.text, tone: r.tone, at: Date.now() };
-    actions.toast(r.text, r.tone, 8000);
-    actions.pushCard?.({ key: `fix:${res?.id ?? Date.now()}`, kind: "captured", actor: cfg.actor, agent: "cli", line: r.text, ...(r.memory ? { memory: r.memory, scopeId: r.memory.scopeId } : {}) });
+    const lines = r.text.split(/\r?\n/).filter(Boolean);
+    actions.toast(lines.length > 1 ? `${lines[0]} (+${lines.length - 1} more)` : lines[0], r.tone, 8000);
+    lines.forEach((line, i) =>
+      actions.pushCard?.({ key: `fix:${res?.id ?? Date.now()}:${i}`, kind: "captured", actor: cfg.actor, agent: "cli", line, ...(r.memory ? { memory: r.memory, scopeId: r.memory.scopeId } : {}) }),
+    );
     return r;
   }
 
