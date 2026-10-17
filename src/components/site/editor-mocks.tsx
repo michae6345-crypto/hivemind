@@ -45,7 +45,7 @@ function StatusBar() {
   );
 }
 
-/** Boards 1–2: CodeLens, ghost text from Alex's lesson, and a locked-rule squiggle with its Quick Fix. */
+/** Boards 1–2: CodeLens, ghost text from Kevin's lesson, and a locked-rule squiggle with its Quick Fix. */
 export function EditorMock({ className }: { className?: string }) {
   const n = (i: number) => <span className="inline-block w-7 pr-3 text-right text-[#5a5a60] select-none">{i}</span>;
   return (
@@ -70,7 +70,7 @@ export function EditorMock({ className }: { className?: string }) {
         >
           {n(15)}
           <span className="text-[#6b6b72] italic">  assertSingleCustomer(rows);</span>
-          <span className="ml-3 rounded bg-[#f5a5241f] px-1.5 py-px font-sans text-[11px] text-[var(--win-honey)]">Hivemind · from <Handles text="@alex's" dark /> lesson</span>
+          <span className="ml-3 rounded bg-[#f5a5241f] px-1.5 py-px font-sans text-[11px] text-[var(--win-honey)]">Hivemind · from <Handles text="@kevin's" dark /> lesson</span>
         </motion.div>
         <div>{n(16)}  fs.<span className="text-[#dcdcaa]">writeFileSync</span>(path, JSON.<span className="text-[#dcdcaa]">stringify</span>(rows));</div>
         <div>{n(17)}{"}"}</div>
@@ -79,14 +79,14 @@ export function EditorMock({ className }: { className?: string }) {
           {n(19)}<span className="text-[#c586c0]">const</span> fixtures = [...
           <span className="rounded-sm bg-[#f8717114] underline decoration-[var(--win-rose)] decoration-wavy decoration-from-font underline-offset-4">labA.rows, ...labB.rows</span>];
           <span className="ml-2 hidden font-sans text-[11px] text-[#8a8a92] italic xl:inline">
-            ⬢ Hivemind: breaks 🔒 Never mix lab customers&apos; data · <Handles text="@maya" dark />
+            ⬢ Hivemind: breaks 🔒 Never mix lab customers&apos; data · <Handles text="@greg" dark />
           </span>
         </div>
         <div className="relative mt-2 mr-4 ml-10 max-w-[440px] rounded-md border border-white/10 bg-[#252527] p-3 font-sans text-[12px] shadow-xl">
           <div className="flex items-start gap-2">
             <Lock className="mt-0.5 size-3.5 shrink-0 text-[var(--win-rose)]" />
             <span>
-              Breaks a locked rule: {LOCKED_RULE}. <span className="text-[var(--win-muted)]">Locked by <Handles text="@maya" dark />, Head of Security.</span>
+              Breaks a locked rule: {LOCKED_RULE}. <span className="text-[var(--win-muted)]">Locked by <Handles text="@greg" dark />, Head of Security.</span>
             </span>
           </div>
           <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 border-t border-white/10 pt-2 text-[var(--win-honey)]">
@@ -133,7 +133,7 @@ export function ChatMock({ className }: { className?: string }) {
         <McpCheckCard />
         <div className="text-[12.5px] leading-relaxed">
           I&apos;ll call <code className="rounded bg-white/10 px-1" style={MONO}>assertSingleCustomer(rows)</code> before writing, as
-          <Handles text="@alex's" dark /> lesson says.
+          <Handles text="@kevin's" dark /> lesson says.
         </div>
         <McpApproveCard />
       </div>
@@ -159,21 +159,21 @@ export function McpCheckCard() {
           <Lock className="mt-0.5 size-3.5 shrink-0 text-[var(--win-rose)]" />
           <span>
             {LOCKED_RULE}
-            <span className="mt-0.5 block text-[11.5px] text-[var(--win-muted)]"><Handles text="Locked by @maya · #org" dark /></span>
+            <span className="mt-0.5 block text-[11.5px] text-[var(--win-muted)]"><Handles text="Locked by @greg · #org" dark /></span>
           </span>
         </li>
         <li className="flex items-start gap-2.5 px-3 py-2">
           <span className="mt-1 size-2 shrink-0 rounded-full bg-[var(--win-honey)]" />
           <span>
             {LESSON}
-            <span className="mt-0.5 block text-[11.5px] text-[var(--win-muted)]"><Handles text="From @alex's lesson · approved by @jordan · #repo/export-service" dark /></span>
+            <span className="mt-0.5 block text-[11.5px] text-[var(--win-muted)]"><Handles text="From @kevin's lesson · approved by @ben · #repo/export-service" dark /></span>
           </span>
         </li>
         <li className="flex items-start gap-2.5 px-3 py-2">
           <span className="mt-1 size-2 shrink-0 rounded-full bg-[var(--win-honey)]" />
           <span>
             Tag every row with lab_customer_id
-            <span className="mt-0.5 block text-[11.5px] text-[var(--win-muted)]"><Handles text="From @jordan's review · #team/data-pipelines" dark /></span>
+            <span className="mt-0.5 block text-[11.5px] text-[var(--win-muted)]"><Handles text="From @ben's review · #team/data-pipelines" dark /></span>
           </span>
         </li>
       </ul>
@@ -192,7 +192,7 @@ export function McpApproveCard() {
         </span>
       </div>
       <p className="mt-1.5 text-[13px]">“Build test fixtures from synthetic rows, one lab at a time.”</p>
-      <p className="mt-1 text-[11.5px] text-[var(--win-muted)]">Waiting on <Handles text="@jordan" dark />.</p>
+      <p className="mt-1 text-[11.5px] text-[var(--win-muted)]">Waiting on <Handles text="@ben" dark />.</p>
       <div className="mt-2.5 flex gap-1.5">
         <span className="inline-flex h-7 items-center gap-1 rounded-full bg-[var(--win-text)] px-3 text-[12px] font-medium text-window">
           <Check className="size-3.5" /> Approve

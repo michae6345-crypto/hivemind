@@ -8,7 +8,7 @@
 // its `systemMessage`:
 //   - sessionLoaded
 // The blocked lesson's title is written by the extractor (an LLM), so the live take may word it differently.
-// Owners are always @handles (@jordan, @maya), never full names (Michael, 17 Oct); they render as chips (hm/handles.tsx).
+// Owners are always @handles (@ben, @greg), never full names (Michael, 17 Oct); they render as chips (hm/handles.tsx).
 // If any of these change in Michael's code, change them here too.
 
 export const REPO = "export-service";
@@ -35,7 +35,7 @@ export const HIVE = {
 
 export const LESSON = "Exports call assertSingleCustomer()";
 export const LOCKED_RULE = "Never mix data from different lab customers";
-/** Roughly how the extractor titles Noor's bad correction. */
+/** Roughly how the extractor titles Emily's bad correction. */
 export const BAD_LESSON = "Reuse Lab A rows for Lab B test fixtures";
 
 export type DiffLine = { sign: "+" | "-" | " "; text: string; mark?: string };
@@ -53,14 +53,14 @@ export type Step =
 
 export interface Scene {
   /** Who is at the keyboard; the window title reads `<who> — claude — export-service`. */
-  who: "alex" | "noor";
+  who: "kevin" | "emily";
   rules: number;
   steps: Step[];
 }
 
 export const SCENES: Scene[] = [
   {
-    who: "alex",
+    who: "kevin",
     rules: 10,
     steps: [
       { kind: "hook", text: HIVE.sessionLoaded(10, 2), tone: "honey" },
@@ -80,13 +80,13 @@ export const SCENES: Scene[] = [
       { kind: "say", text: "Added writeCsvExport() for Lab B's monthly report." },
       { kind: "pause", ms: 700 },
       { kind: "prompt", text: PROMPTS.alexCorrect },
-      { kind: "hook", text: HIVE.lessonCaptured(LESSON, "@jordan"), tone: "honey" },
+      { kind: "hook", text: HIVE.lessonCaptured(LESSON, "@ben"), tone: "honey" },
       { kind: "say", text: "You're right. Adding the check before the write." },
       {
         kind: "notify",
         id: "lesson",
         title: "A lesson is waiting for you",
-        body: `@alex: “${LESSON}”`,
+        body: `@kevin: “${LESSON}”`,
         action: "Approve",
         tone: "honey",
       },
@@ -95,7 +95,7 @@ export const SCENES: Scene[] = [
       {
         kind: "notify",
         id: "lesson",
-        title: "✅ @jordan approved @alex's lesson",
+        title: "✅ @ben approved @kevin's lesson",
         body: `“${LESSON}”: every agent now knows it.`,
         tone: "honey",
       },
@@ -103,7 +103,7 @@ export const SCENES: Scene[] = [
     ],
   },
   {
-    who: "noor",
+    who: "emily",
     rules: 11,
     steps: [
       { kind: "hook", text: HIVE.sessionLoaded(11, 2), tone: "honey" },
@@ -114,7 +114,7 @@ export const SCENES: Scene[] = [
         kind: "diff",
         lines: [
           { sign: "+", text: "export function writeJsonExport(rows: Row[], path: string) {" },
-          { sign: "+", text: "  assertSingleCustomer(rows);", mark: "from @alex's lesson" },
+          { sign: "+", text: "  assertSingleCustomer(rows);", mark: "from @kevin's lesson" },
           { sign: "+", text: "  fs.writeFileSync(path, JSON.stringify(rows));" },
           { sign: "+", text: "}" },
         ],
@@ -122,18 +122,18 @@ export const SCENES: Scene[] = [
       { kind: "say", text: "Added writeJsonExport(). It checks the rows belong to one customer before writing." },
       { kind: "pause", ms: 1400 },
       { kind: "prompt", text: PROMPTS.noorBad },
-      { kind: "hook", text: HIVE.lessonBlocked(BAD_LESSON, LOCKED_RULE, "@maya"), tone: "rose" },
+      { kind: "hook", text: HIVE.lessonBlocked(BAD_LESSON, LOCKED_RULE, "@greg"), tone: "rose" },
       { kind: "say", text: "I can't mix lab customers, even in tests. I'll generate synthetic rows for Lab B instead." },
       {
         kind: "notify",
         id: "blocked",
-        title: "Blocked a lesson from @noor's agent",
-        body: `It contradicts @maya's locked rule: ${LOCKED_RULE}.`,
+        title: "Blocked a lesson from @emily's agent",
+        body: `It contradicts @greg's locked rule: ${LOCKED_RULE}.`,
         tone: "rose",
       },
       { kind: "pause", ms: 1200 },
       { kind: "tool", name: "Update", arg: "src/export.ts", result: "Updated src/export.ts with 2 additions" },
-      { kind: "hook", text: HIVE.collision("alex", "Cursor", "export.ts", 0), tone: "warn" },
+      { kind: "hook", text: HIVE.collision("kevin", "Cursor", "export.ts", 0), tone: "warn" },
       { kind: "pause", ms: 2600 },
     ],
   },

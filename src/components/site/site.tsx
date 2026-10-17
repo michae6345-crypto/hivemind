@@ -113,9 +113,9 @@ function Hero() {
 
       <p className="mx-auto mt-24 max-w-[60ch] text-center text-[15px] leading-relaxed text-muted">
         <span className="font-medium text-fg">The same thing in a real terminal.</span>{" "}
-        <span className="hm-chip" data-kind="person">@alex</span> corrects Claude Code,{" "}
-        <span className="hm-chip" data-kind="person">@jordan</span> approves, and{" "}
-        <span className="hm-chip" data-kind="person">@noor</span>&apos;s next session gets it right the first time.
+        <span className="hm-chip" data-kind="person">@kevin</span> corrects Claude Code,{" "}
+        <span className="hm-chip" data-kind="person">@ben</span> approves, and{" "}
+        <span className="hm-chip" data-kind="person">@emily</span>&apos;s next session gets it right the first time.
       </p>
       <motion.div
         id="demo"
@@ -213,17 +213,17 @@ function StepCards() {
   return (
       <div className="mx-auto mt-10 grid max-w-[1120px] gap-5 md:grid-cols-3">
         <Reveal className="hm-card p-6" delay={0}>
-          <Step n={1} title="Alex corrects their agent" />
+          <Step n={1} title="Kevin corrects their agent" />
           <div className="mt-4 rounded-[10px] bg-window p-3.5 text-[12px] leading-[1.6] text-[var(--win-text)]" style={{ fontFamily: "var(--font-geist-mono), monospace" }}>
             <div className="text-[var(--win-muted)]">&gt; {PROMPTS.alexCorrect}</div>
-            <div className="mt-1.5 text-[var(--win-honey)]">📝 Hivemind captured a lesson — pending approval by @jordan</div>
+            <div className="mt-1.5 text-[var(--win-honey)]">📝 Hivemind captured a lesson — pending approval by @ben</div>
           </div>
         </Reveal>
         <Reveal className="hm-card p-6" delay={0.08}>
-          <Step n={2} title="Jordan approves it" />
+          <Step n={2} title="Ben approves it" />
           <div className="mt-4 rounded-[12px] p-3.5 shadow-[0_0_0_1px_var(--border)]">
             <div className="flex items-center gap-2 text-[12px] text-muted">
-              <span className="size-2 rounded-full bg-honey" /> From Alex&apos;s correction
+              <span className="size-2 rounded-full bg-honey" /> From Kevin&apos;s correction
             </div>
             <div className="mt-1.5 text-[14px] font-semibold">{LESSON}</div>
             <div className="mt-3 flex gap-1.5">
@@ -233,7 +233,7 @@ function StepCards() {
           </div>
         </Reveal>
         <Reveal className="hm-card p-6" delay={0.16}>
-          <Step n={3} title="Noor's agent gets it right first time" />
+          <Step n={3} title="Emily's agent gets it right first time" />
           <div className="mt-4 rounded-[10px] bg-window p-3.5 text-[12px] leading-[1.6] text-[var(--win-text)]" style={{ fontFamily: "var(--font-geist-mono), monospace" }}>
             <div className="text-[var(--win-muted)]">+ export function writeJsonExport(rows) {"{"}</div>
             <div className="-mx-1 rounded bg-[#f5a52422] px-1 shadow-[inset_2px_0_0_var(--win-honey)]">+   assertSingleCustomer(rows);</div>
@@ -385,7 +385,7 @@ function AnyAgent() {
           <ChatMock />
         </Reveal>
         <Note dir="down-left" className="absolute -top-11 left-[30%] hidden lg:flex" width={190}>
-          ghost text, credited to @alex
+          ghost text, credited to @kevin
         </Note>
       </div>
       <Reveal className="relative mx-auto mt-6 max-w-[1120px]">
@@ -412,7 +412,7 @@ function LockedRules() {
           <div className="flex items-center gap-2 border-b border-line px-6 py-3.5 text-[13.5px]">
             <ShieldX className="size-4 text-danger" />
             <span className="font-semibold text-danger">Blocked by a locked rule</span>
-            <span className="text-muted">· @noor&apos;s agent, just now</span>
+            <span className="text-muted">· @emily&apos;s agent, just now</span>
           </div>
           <div className="grid items-stretch gap-4 p-6 sm:grid-cols-[1fr_auto_1fr]">
             <motion.div
@@ -422,7 +422,7 @@ function LockedRules() {
               transition={{ duration: 0.6, times: [0, 0.4, 0.75, 1], delay: 0.5, ease: "easeOut" }}
               className="relative rounded-[12px] bg-elevated p-4"
             >
-              <div className="text-[12px] text-muted">@noor tried to teach</div>
+              <div className="text-[12px] text-muted">@emily tried to teach</div>
               <p className="mt-1.5 text-[15px] leading-snug text-fg/70 line-through decoration-lock/50">“{PROMPTS.noorBad}”</p>
               <motion.span
                 initial={{ opacity: 0, scale: 1.8, rotate: -14 }}
@@ -447,7 +447,7 @@ function LockedRules() {
               className="rounded-[12px] bg-lock/[0.07] p-4 shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--chip-lock)_35%,transparent)]"
             >
               <div className="flex items-center gap-1.5 text-[12px] text-muted">
-                <Lock className="size-3.5 text-lock" /> Locked by @maya, Head of Security
+                <Lock className="size-3.5 text-lock" /> Locked by @greg, Head of Security
               </div>
               <p className="mt-1.5 text-[15px] leading-snug font-semibold">{LOCKED_RULE}</p>
             </motion.div>

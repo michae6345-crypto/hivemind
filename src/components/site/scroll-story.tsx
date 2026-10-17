@@ -15,22 +15,22 @@ import { Handles } from "@/components/hm/handles";
 //
 // Scroll map, 0..1 across the section:
 //   0.00–0.20  the window rises from below and grows; 0.08–0.20 the headline lifts and blurs out
-//   0.20–0.46  step 1: Alex's correction types out, then Hivemind captures the lesson
+//   0.20–0.46  step 1: Kevin's correction types out, then Hivemind captures the lesson
 //   0.46–0.72  step 2: the lesson lands in Approvals, the cursor glides to Approve and clicks at 0.62
-//   0.72–1.00  step 3: Noor's agent loads one more rule and writes assertSingleCustomer() first
+//   0.72–1.00  step 3: Emily's agent loads one more rule and writes assertSingleCustomer() first
 
 const EASE = [0.22, 1, 0.36, 1] as const;
 const MONO = { fontFamily: "var(--font-geist-mono), ui-monospace, monospace" } as const;
 const RULES_BEFORE = SCENES[0].rules;
 const RULES_AFTER = SCENES[1].rules;
 const NOOR_DIFF = SCENES[1].steps.find((s) => s.kind === "diff")!.lines;
-/** Alex's "lesson captured" line, exactly as the Terminal demo prints it. */
+/** Kevin's "lesson captured" line, exactly as the Terminal demo prints it. */
 const CAPTURED = SCENES[0].steps.find((s) => s.kind === "hook" && s.text.startsWith("📝"));
 
 const STEPS = [
-  { title: "Alex corrects their agent", body: "One correction in plain English. Hivemind turns it into a lesson.", from: 0.2, to: 0.46 },
-  { title: "Jordan approves it", body: "Agents only propose. A lead approves before anything spreads.", from: 0.46, to: 0.72 },
-  { title: "Noor's agent gets it right", body: "Every agent starts its next session with the lesson, credited to Alex.", from: 0.72, to: 1 },
+  { title: "Kevin corrects their agent", body: "One correction in plain English. Hivemind turns it into a lesson.", from: 0.2, to: 0.46 },
+  { title: "Ben approves it", body: "Agents only propose. A lead approves before anything spreads.", from: 0.46, to: 0.72 },
+  { title: "Emily's agent gets it right", body: "Every agent starts its next session with the lesson, credited to Kevin.", from: 0.72, to: 1 },
 ];
 
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
@@ -106,9 +106,9 @@ export function ScrollStory() {
           </motion.ol>
 
           <div className="relative h-[min(470px,62svh)]">
-            {/* 1. Alex's terminal */}
+            {/* 1. Kevin's terminal */}
             <Pane on={f.step === 0}>
-              <Term title={`alex — claude — ${REPO}`} rules={RULES_BEFORE}>
+              <Term title={`kevin — claude — ${REPO}`} rules={RULES_BEFORE}>
                 <Hook>{HIVE.sessionLoaded(RULES_BEFORE, 2)}</Hook>
                 <Prompt>{PROMPTS.alexAsk}</Prompt>
                 <Tool name="Update" arg="src/export.ts" result="Updated src/export.ts with 5 additions" />
@@ -117,12 +117,12 @@ export function ScrollStory() {
                 </div>
                 <Prompt typing={f.typedA < PROMPTS.alexCorrect.length}>{PROMPTS.alexCorrect.slice(0, f.typedA)}</Prompt>
                 <BlurIn show={f.captured}>
-                  <Hook>{CAPTURED?.kind === "hook" ? CAPTURED.text : HIVE.lessonCaptured(LESSON, "@jordan")}</Hook>
+                  <Hook>{CAPTURED?.kind === "hook" ? CAPTURED.text : HIVE.lessonCaptured(LESSON, "@ben")}</Hook>
                 </BlurIn>
               </Term>
             </Pane>
 
-            {/* 2. Jordan's approval queue (the web app, a light window) */}
+            {/* 2. Ben's approval queue (the web app, a light window) */}
             <Pane on={f.step === 1}>
               <div className="flex h-full flex-col overflow-hidden rounded-[14px] bg-white shadow-[0_0_0_0.5px_rgba(0,0,0,.12),0_30px_70px_-18px_rgba(0,0,0,.26),0_10px_24px_-12px_rgba(0,0,0,.14)]">
                 <div className="relative flex h-11 shrink-0 items-center border-b border-line px-4">
@@ -150,11 +150,11 @@ export function ScrollStory() {
                         className="hm-card mx-auto max-w-[520px] p-5"
                       >
                         <div className="flex items-center gap-2 text-[12.5px] text-muted">
-                          <span className="size-2 rounded-full bg-honey" /> From <Handles text="@alex's" /> correction
+                          <span className="size-2 rounded-full bg-honey" /> From <Handles text="@kevin's" /> correction
                           <span className="hm-chip ml-auto" data-kind="repo">#repo/{REPO}</span>
                         </div>
                         <div className="mt-2 text-[17px] font-semibold">{LESSON}</div>
-                        <p className="mt-1 text-[13.5px] text-muted">Proposed by <Handles text="@alex's" /> Claude Code agent · just now</p>
+                        <p className="mt-1 text-[13.5px] text-muted">Proposed by <Handles text="@kevin's" /> Claude Code agent · just now</p>
                         <div className="mt-4 h-9">
                           <AnimatePresence mode="wait" initial={false}>
                             {f.clicked ? (
@@ -169,7 +169,7 @@ export function ScrollStory() {
                                 <span className="flex size-6 items-center justify-center rounded-full bg-ok text-white">
                                   <Check className="size-3.5" strokeWidth={3} />
                                 </span>
-                                Approved by <Handles text="@jordan" /> · in every agent&apos;s next session
+                                Approved by <Handles text="@ben" /> · in every agent&apos;s next session
                               </motion.div>
                             ) : (
                               <motion.div key="ask" exit={{ opacity: 0, transition: { duration: 0.15 } }} className="relative flex gap-2">
@@ -213,9 +213,9 @@ export function ScrollStory() {
               </div>
             </Pane>
 
-            {/* 3. Noor's terminal, one rule richer */}
+            {/* 3. Emily's terminal, one rule richer */}
             <Pane on={f.step === 2}>
-              <Term title={`noor — claude — ${REPO}`} rules={RULES_AFTER}>
+              <Term title={`emily — claude — ${REPO}`} rules={RULES_AFTER}>
                 <Hook>{HIVE.sessionLoaded(RULES_AFTER, 2)}</Hook>
                 <Prompt typing={f.typedC > 0 && f.typedC < PROMPTS.noorAsk.length}>{PROMPTS.noorAsk.slice(0, f.typedC)}</Prompt>
                 <BlurIn show={f.diff > 0}>

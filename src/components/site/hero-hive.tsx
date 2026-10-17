@@ -51,13 +51,13 @@ function spoke(to: { x: number; y: number }) {
   return { x1: C.x + ux * a, y1: C.y + uy * a, x2: to.x - ux * b, y2: to.y - uy * b };
 }
 
-type CellId = "alex" | "noor" | "sam" | "jordan" | "priya";
+type CellId = "kevin" | "emily" | "tom" | "ben" | "lauren";
 const AGENTS: { id: CellId; tool: string; deg: number }[] = [
-  { id: "alex", tool: "Claude Code", deg: 210 },
-  { id: "noor", tool: "Cursor", deg: -30 },
-  { id: "sam", tool: "Codex", deg: 30 },
-  { id: "jordan", tool: "Copilot", deg: 90 },
-  { id: "priya", tool: "Gemini CLI", deg: 150 },
+  { id: "kevin", tool: "Claude Code", deg: 210 },
+  { id: "emily", tool: "Cursor", deg: -30 },
+  { id: "tom", tool: "Codex", deg: 30 },
+  { id: "ben", tool: "Copilot", deg: 90 },
+  { id: "lauren", tool: "Gemini CLI", deg: 150 },
 ];
 const LOCK = at(-90);
 const POS = Object.fromEntries(AGENTS.map((a) => [a.id, at(a.deg)])) as Record<CellId, { x: number; y: number }>;
@@ -68,11 +68,11 @@ const CORRECTION = "No. Exports must call assertSingleCustomer() first.";
 const BAD = "Just reuse Lab A's rows in Lab B's tests.";
 
 const STEPS: { label: ReactNode; ms: number }[] = [
-  { label: <><Chip>@alex</Chip> corrects Claude Code</>, ms: 3400 },
-  { label: <>It becomes a lesson, waiting on <Chip>@jordan</Chip></>, ms: 2600 },
-  { label: <><Chip>@jordan</Chip> approves it</>, ms: 2000 },
+  { label: <><Chip>@kevin</Chip> corrects Claude Code</>, ms: 3400 },
+  { label: <>It becomes a lesson, waiting on <Chip>@ben</Chip></>, ms: 2600 },
+  { label: <><Chip>@ben</Chip> approves it</>, ms: 2000 },
   { label: <>Every agent follows it next session</>, ms: 3200 },
-  { label: <>A bad lesson hits <Chip kind="lock">@maya</Chip>&apos;s 🔒 rule</>, ms: 4200 },
+  { label: <>A bad lesson hits <Chip kind="lock">@greg</Chip>&apos;s 🔒 rule</>, ms: 4200 },
 ];
 
 function Chip({ children, kind = "person" }: { children: ReactNode; kind?: "person" | "lock" }) {
@@ -221,16 +221,16 @@ function Hive() {
           );
         })}
 
-        {/* Lock cell: Maya's rule */}
+        {/* Lock cell: Greg's rule */}
         <LockCell flash={s === 4} key={`lock-${run}`} />
 
         {/* Agent cells */}
         {AGENTS.map((a) => {
           const p = POS[a.id];
           const state =
-            (s === 0 && a.id === "alex") || (s === 2 && a.id === "jordan")
+            (s === 0 && a.id === "kevin") || (s === 2 && a.id === "ben")
               ? "active"
-              : s === 4 && a.id === "noor"
+              : s === 4 && a.id === "emily"
                 ? "warn"
                 : spread
                   ? "knows"
@@ -244,8 +244,8 @@ function Hive() {
         {/* Particles */}
         {!reduce && (
           <g key={`p-${run}`}>
-            {s === 1 && <Particle from="alex" to="hive" color="var(--honey)" delay={0.1} />}
-            {s === 2 && <Particle from="jordan" to="hive" color="var(--ok)" delay={0.15} small />}
+            {s === 1 && <Particle from="kevin" to="hive" color="var(--honey)" delay={0.1} />}
+            {s === 2 && <Particle from="ben" to="hive" color="var(--ok)" delay={0.15} small />}
             {s === 3 &&
               AGENTS.map((a, i) => <Particle key={a.id} from="hive" to={a.id} color="var(--honey)" delay={0.1 + i * 0.09} />)}
             {s === 4 && <Bounce />}
@@ -255,7 +255,7 @@ function Hive() {
         {/* Speech bubbles */}
         <AnimatePresence>
           {s === 0 && !reduce && (
-            <Bubble key={`b0-${run}`} x={8} y={14} w={238} text={CORRECTION} tail={{ x: 120, y: POS.alex.y - R_CELL + 6 }} />
+            <Bubble key={`b0-${run}`} x={8} y={14} w={238} text={CORRECTION} tail={{ x: 120, y: POS.kevin.y - R_CELL + 6 }} />
           )}
           {s === 4 && (
             <Bubble
@@ -264,7 +264,7 @@ function Hive() {
               y={14}
               w={238}
               text={BAD}
-              tail={{ x: POS.noor.x + 30, y: POS.noor.y - R_CELL + 6 }}
+              tail={{ x: POS.emily.x + 30, y: POS.emily.y - R_CELL + 6 }}
               tone="danger"
             />
           )}
@@ -343,7 +343,7 @@ function LockCell({ flash }: { flash: boolean }) {
         <rect x="1" y="8" width="14" height="10" rx="2.5" fill="var(--danger)" stroke="none" />
       </g>
       <text x={x} y={y + 2} textAnchor="middle" className="font-mono" fontSize={14} fontWeight={600} fill="var(--danger)">
-        @maya
+        @greg
       </text>
       <text x={x} y={y + 20} textAnchor="middle" fontSize={11.5} fill="var(--muted)">
         Never mix lab data
@@ -386,7 +386,7 @@ function HiveCore({ learned, approved, blocked, stepKey }: { learned: boolean; a
             ) : blocked ? (
               <motion.div key={`blocked-${stepKey}`} {...swap} className="flex flex-col items-center">
                 <div className="font-mono text-[10.5px] tracking-wide text-danger uppercase">Blocked</div>
-                <div className="mt-1 text-[12.5px] font-medium text-fg">Breaks @maya&apos;s</div>
+                <div className="mt-1 text-[12.5px] font-medium text-fg">Breaks @greg&apos;s</div>
                 <div className="text-[12.5px] font-medium text-fg">🔒 lab-isolation rule</div>
                 <div className="mt-1.5 font-mono text-[10.5px] text-muted">no agent sees it</div>
               </motion.div>
@@ -401,7 +401,7 @@ function HiveCore({ learned, approved, blocked, stepKey }: { learned: boolean; a
                     approved ? "bg-ok text-white" : "border border-dashed border-honey text-[#9a6510]",
                   )}
                 >
-                  {approved ? "✓ approved · @jordan" : "pending · @jordan"}
+                  {approved ? "✓ approved · @ben" : "pending · @ben"}
                 </div>
               </motion.div>
             )}
@@ -450,9 +450,9 @@ function Particle({ from, to, color, delay, small }: { from: CellId | "hive"; to
   );
 }
 
-/** The bad lesson flies at the hive, hits the wall, and bounces back to @noor. */
+/** The bad lesson flies at the hive, hits the wall, and bounces back to @emily. */
 function Bounce() {
-  const l = spoke(POS.noor);
+  const l = spoke(POS.emily);
   const hit = { x: l.x1 + (l.x2 - l.x1) * 0.08, y: l.y1 + (l.y2 - l.y1) * 0.08 };
   const lock = spoke(LOCK);
   return (

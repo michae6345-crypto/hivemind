@@ -14,11 +14,16 @@ import * as mock from "@/mocks";
 import type { ActivityItem, EvalDetail, FeedEvent, Memory, Metrics, Person, Role, Scope } from "@/mocks/types";
 import { approverFor, canApprove, scopeLabel } from "./utils";
 
-export const ROLE_USERS: { role: Role; userId: string; label: string }[] = [
-  { role: "security", userId: "maya", label: "Security" },
-  { role: "lead", userId: "jordan", label: "Lead" },
-  { role: "engineer", userId: "alex", label: "Engineer" },
+// The seed data's names first, then the live database's (it still seeds maya / jordan / alex).
+export const ROLE_USERS: { role: Role; userIds: string[]; label: string }[] = [
+  { role: "security", userIds: ["greg", "maya"], label: "Security" },
+  { role: "lead", userIds: ["ben", "jordan"], label: "Lead" },
+  { role: "engineer", userIds: ["kevin", "alex"], label: "Engineer" },
 ];
+
+/** The demo user for a role: whichever of its ids the loaded people include. */
+export const roleUserId = (people: Person[], r: (typeof ROLE_USERS)[number]) =>
+  r.userIds.find((id) => people.some((p) => p.id === id)) ?? r.userIds[0];
 
 export type Source = "core" | "activity" | "metrics";
 export type ActionResult = { ok: true; memory?: Memory } | { ok: false; error: string; forbidden?: boolean };
@@ -167,8 +172,8 @@ export function HivemindProvider({ children }: { children: ReactNode }) {
   const mode: "mock" | "live" = live.core ? "live" : "mock";
 
   const user = useMemo(() => {
-    const id = ROLE_USERS.find((r) => r.role === role)?.userId;
-    return people.find((p) => p.id === id);
+    const r = ROLE_USERS.find((x) => x.role === role);
+    return r ? people.find((p) => p.id === roleUserId(people, r)) : undefined;
   }, [people, role]);
 
   const headers = useMemo(() => ({ "x-hm-role": role, "x-hm-user": user?.id ?? "" }), [role, user]);

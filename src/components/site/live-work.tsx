@@ -76,12 +76,12 @@ function Who({ name, tool }: { name: string; tool: string }) {
   );
 }
 
-/** Two engineers' agents in one file: Alex's Cursor agent edits it, Noor's Claude Code is told before it edits too. */
+/** Two engineers' agents in one file: Kevin's Cursor agent edits it, Emily's Claude Code is told before it edits too. */
 export function WhileWorking() {
   const { ref, n } = useBeats(5, 650);
   return (
     <div ref={ref} className="relative mx-auto grid max-w-[1120px] gap-6 lg:grid-cols-[1fr_1.15fr]">
-      <Win title={`export.ts — ${REPO}`} who={<Who name="alex" tool="Cursor" />}>
+      <Win title={`export.ts — ${REPO}`} who={<Who name="kevin" tool="Cursor" />}>
         <div className="text-[var(--win-muted)]">12 import {"{ assertSingleCustomer }"} from &quot;./tenancy&quot;;</div>
         <motion.div
           initial={false}
@@ -100,7 +100,7 @@ export function WhileWorking() {
         </Line>
       </Win>
 
-      <Win title={`noor — claude — ${REPO}`} who={<Who name="noor" tool="Claude Code" />}>
+      <Win title={`emily — claude — ${REPO}`} who={<Who name="emily" tool="Claude Code" />}>
         <div className="rounded-[8px] bg-white/[0.04] px-3 py-1.5 shadow-[inset_0_0_0_1px_rgba(255,255,255,.08)]">
           <span className="text-[var(--win-muted)]">&gt; </span>add a header row to the lab CSV export
         </div>
@@ -114,14 +114,14 @@ export function WhileWorking() {
             transition={{ duration: 0.4, delay: 0.25 }}
             className="rounded-[8px] bg-[#f5a5241a] px-3 py-1.5 text-[var(--win-honey)] shadow-[inset_2px_0_0_var(--win-honey)]"
           >
-            {HIVE.collision("alex", "Cursor", "export.ts", 0)}
+            {HIVE.collision("kevin", "Cursor", "export.ts", 0)}
           </motion.div>
         </Line>
         <Line show={n >= 4} className="mt-1.5 rounded-[8px] bg-[#fb71851a] px-3 py-1.5 text-[var(--win-rose)] shadow-[inset_2px_0_0_var(--win-rose)]">
           🔒 Hivemind rule for export.ts: {LOCKED_RULE} (#org).
         </Line>
         <Line show={n >= 5} className="mt-2 text-[var(--win-text)]">
-          @alex just renamed the export function, so I&apos;ll add the header in writeLabCsv() and keep the customer check.
+          @kevin just renamed the export function, so I&apos;ll add the header in writeLabCsv() and keep the customer check.
         </Line>
       </Win>
 
@@ -244,7 +244,7 @@ export function CheckMock() {
           </div>
           <div className={g}>{"   │"}</div>
           <div>
-            <span className={g}>{"   ├─ owner  "}</span>@maya · Head of Security
+            <span className={g}>{"   ├─ owner  "}</span>@greg · Head of Security
           </div>
           <div>
             <span className={g}>{"   ╰─ fix    "}</span>add assertSingleCustomer(rows)

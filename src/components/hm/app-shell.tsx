@@ -6,7 +6,7 @@ import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } fro
 import { ArrowLeft, Check, ChevronDown } from "lucide-react";
 import { Toaster } from "sonner";
 import { AnimatePresence, MotionConfig, motion } from "motion/react";
-import { HivemindProvider, ROLE_USERS, useHivemind } from "./store";
+import { HivemindProvider, ROLE_USERS, roleUserId, useHivemind } from "./store";
 import { Logo, Wordmark } from "./bits";
 import { Palette } from "./palette";
 import { WORKS_WITH } from "./activity";
@@ -141,7 +141,7 @@ function Header() {
   );
 }
 
-/** "Viewing as: Jordan (Lead) ▾": the three demo roles, so the chain of command can be shown live. */
+/** "Viewing as: Ben (Lead) ▾": the three demo roles, so the chain of command can be shown live. */
 function ViewingAs() {
   const { people, role, setRole, user } = useHivemind();
   const [open, setOpen] = useState(false);
@@ -191,7 +191,7 @@ function ViewingAs() {
             className="hm-card absolute right-0 z-40 mt-2 w-64 origin-top-right p-1.5"
           >
             {ROLE_USERS.map((r) => {
-              const p = people.find((x) => x.id === r.userId);
+              const p = people.find((x) => x.id === roleUserId(people, r));
               return (
                 <button
                   key={r.role}
@@ -206,7 +206,7 @@ function ViewingAs() {
                 >
                   <span className="min-w-0 flex-1">
                     <span className="block text-[13px] font-medium">
-                      {first(r.userId)} ({r.label})
+                      {first(roleUserId(people, r))} ({r.label})
                     </span>
                     <span className="block truncate text-[12px] text-muted">{p?.title}</span>
                   </span>

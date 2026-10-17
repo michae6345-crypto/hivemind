@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { BookOpen, FileText, Inbox, LineChart, Lock, PenLine, Search, UserCog } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { ROLE_USERS, useHivemind } from "./store";
+import { ROLE_USERS, roleUserId, useHivemind } from "./store";
 import { useGo, type Route } from "./nav";
 import { cn, scopeLabel } from "./utils";
 
@@ -43,7 +43,7 @@ export function Palette() {
       ...ROLE_USERS.map((r) => ({
         id: `role-${r.role}`,
         group: "Actions",
-        label: `View as ${people.find((p) => p.id === r.userId)?.name.split(" ")[0] ?? r.userId} (${r.label})`,
+        label: `View as ${people.find((p) => p.id === roleUserId(people, r))?.name.split(" ")[0] ?? roleUserId(people, r)} (${r.label})`,
         icon: UserCog,
         run: () => {
           setRole(r.role);

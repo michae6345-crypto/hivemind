@@ -2,7 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 import { AnimatePresence, LayoutGroup, motion } from "motion/react";
-import { Building2, GitBranch, Lock, MessageSquareQuote, User, Users, Workflow } from "lucide-react";
+import { Building2, GitBranch, Hexagon, Lock, MessageSquareQuote, TriangleAlert, User, Users, Workflow } from "lucide-react";
 import { Logo } from "@/components/hm/bits";
 import { cn } from "@/components/hm/utils";
 import { memories, scopes } from "@/mocks/data";
@@ -102,7 +102,7 @@ function chainOf(id: string) {
 
 const live = memories.filter((m) => m.status === "active");
 
-/** What a session-start context pack holds for an agent in this scope: 🔒 first, then org → … → here. */
+/** What a session-start context pack holds for an agent in this scope: locked rules first, then org → … → here. */
 function packFor(id: string) {
   const chain = chainOf(id);
   return live
@@ -120,8 +120,8 @@ const BOXES: Box[] = [
   { id: "repo/dataset-builder", x: 430, y: 336, w: 170, h: 56 },
   { id: "repo/eval-harness", x: 640, y: 336, w: 170, h: 56 },
   { id: "repo/expert-portal", x: 880, y: 336, w: 170, h: 56 },
-  { id: "personal/alex", x: 226, y: 456, w: 124, h: 40 },
-  { id: "personal/noor", x: 374, y: 456, w: 124, h: 40 },
+  { id: "personal/kevin", x: 226, y: 456, w: 124, h: 40 },
+  { id: "personal/emily", x: 374, y: 456, w: 124, h: 40 },
 ];
 const boxOf = Object.fromEntries(BOXES.map((b) => [b.id, b]));
 
@@ -156,10 +156,10 @@ function Company() {
         ))}
 
         <Note dir="left" className="absolute top-[26px] left-[648px]" width={230} delay={0.1}>
-          @maya (Security) locks rules here. Nobody below can override them.
+          @greg (Security) locks rules here. Nobody below can override them.
         </Note>
         <Note dir="right" className="absolute top-[150px] left-[8px]" width={150} delay={0.3}>
-          @jordan approves lessons for the team and its repos
+          @ben approves lessons for the team and its repos
         </Note>
         <Note dir="up-right" className="absolute top-[372px] left-[40px]" width={84} delay={0.5}>
           click any box
@@ -174,7 +174,7 @@ function Company() {
         <div className="flex flex-wrap items-center gap-x-2 text-[var(--win-honey)]">
           <Logo onDark className="size-3.5" />
           An agent in <span className="text-white">#{sel}</span> starts every session with {pack.length} rules
-          <span className="text-[var(--win-muted)]">(🔒 first, then from {scope.level === "org" ? "the company" : "the company down to here"})</span>
+          <span className="text-[var(--win-muted)]">(locked rules first, then from {scope.level === "org" ? "the company" : "the company down to here"})</span>
         </div>
         <motion.ol layout className="mt-3 grid gap-x-6 gap-y-1 sm:grid-cols-2">
           <AnimatePresence initial={false} mode="popLayout">
@@ -188,7 +188,9 @@ function Company() {
                 transition={{ duration: 0.35, ease: EASE }}
                 className="flex min-w-0 items-baseline gap-2"
               >
-                <span className={cn("shrink-0", m.locked ? "text-[var(--win-rose)]" : "text-[var(--win-honey)]")}>{m.locked ? "🔒" : "⬢"}</span>
+                <span className={cn("shrink-0 self-center", m.locked ? "text-[var(--win-rose)]" : "text-[var(--win-honey)]")}>
+                  {m.locked ? <Lock className="size-3.5" /> : <Hexagon className="size-3.5 fill-current" />}
+                </span>
                 <span className="truncate">{m.title}</span>
                 <span className="ml-auto shrink-0 text-[11px] text-[var(--win-muted)]">#{m.scopeId.split("/").pop()}</span>
               </motion.li>
@@ -255,7 +257,10 @@ function ScopeBox({ box, on, selected, onPick }: { box: Box; on: boolean; select
                 {locked}
               </span>
             ) : null}
-            <span>· {here.length - locked} ⬢</span>
+            <span className="flex items-center gap-0.5">
+              · <Hexagon className="size-3 fill-current text-honey" />
+              {here.length - locked}
+            </span>
           </span>
         )}
       </span>
@@ -269,7 +274,7 @@ const AGENTS = ["Claude Code", "Cursor", "Gemini CLI", "Codex", "GitHub Copilot"
 const STEPS = [
   { n: 1, t: "Filter", s: "no model" },
   { n: 2, t: "Extract", s: "a short rule" },
-  { n: 3, t: "Check 🔒 + merge", s: "in parallel" },
+  { n: 3, t: "Check locks", s: "+ merge, in parallel" },
   { n: 4, t: "A lead approves", s: "or rejects" },
 ];
 const PATHS = {
@@ -354,8 +359,8 @@ function Loop() {
       </div>
 
       {/* Path labels */}
-      <PathLabel className="top-[466px] left-[330px]">every session start: a context pack, 🔒 first, then ranked · ≤ 6k chars</PathLabel>
-      <PathLabel className="top-[22px] left-[330px]">while working: ⚠️ who else edited this file · session end: confidence up or down</PathLabel>
+      <PathLabel className="top-[466px] left-[330px]">every session start: a context pack, <Lock className="inline size-3 -translate-y-px text-lock" /> locked rules first, then ranked · ≤ 6k chars</PathLabel>
+      <PathLabel className="top-[22px] left-[330px]">while working: <TriangleAlert className="inline size-3 -translate-y-px text-[#b7791f]" /> who else edited this file · session end: confidence up or down</PathLabel>
 
       <Note dir="down-left" className="absolute top-[132px] left-[372px]" width={300} delay={0.1}>
         drops &ldquo;lgtm&rdquo;, bots, and one-offs like &ldquo;rename this&rdquo;
@@ -474,7 +479,7 @@ function OneLesson() {
         a lead or Security made it active. agents can only propose
       </Note>
       <Note dir="left" className="absolute top-[180px] left-[716px]" width={230} delay={0.8} tone="rose">
-        linked to @maya&apos;s 🔒 rule, never merged into it
+        linked to @greg&apos;s locked rule, never merged into it
       </Note>
       <Note dir="left" className="absolute top-[366px] left-[716px]" width={270} delay={0.95} tone="honey">
         honey counts for it, grey against (both start at 1). a session with no repeat correction adds honey; a correction against it adds grey
