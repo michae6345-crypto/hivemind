@@ -29,6 +29,9 @@ We hardened these after testing with the real model. Each one fixes a failure we
 4. **Human text is never rewritten:** an UPDATE replaces the body only for engine-authored lessons (`source` correction/review/agent). Seeded or human lessons just gain evidence and α.
 5. The extractor is told to restate faithfully, even when the message contradicts served memories, so the guardrail and not the extractor decides what's allowed.
 6. **Reinforcement safety net:** if Haiku returns no rule for a correction or review comment, a heuristic restatement that clearly duplicates an existing lesson still counts as evidence. It can never create a new lesson (`reinforceOnly`).
+7. **Violations are always visible:** if Haiku extracts nothing, but the engineer's message contradicts a 🔒 rule, the message is still recorded as a `blocked` lesson in the engineer's own words. Haiku occasionally declined "mixing Lab A and Lab B data is fine in tests", and then the guardrail had nothing to show.
+
+People are always mentioned as **@handles** (person id), e.g. `pending approval by @jordan` and `(@maya)`, matching the UI's @person chips.
 
 ### Event sources
 | Source | Route | Event type | Weight w |
@@ -55,8 +58,8 @@ We hardened these after testing with the real model. Each one fixes a failure we
 ### Hook feedback
 `/api/hooks/prompt` answers within 4.6s; the Claude Code hook timeout is 5s. With Haiku, a full capture (extract, then conflict ‖ merge, plus DB writes) takes about 3–4s. Measured locally: 3.2–3.8s per hook call; the heuristic path takes about 0.3–0.5s. If the pipeline runs past the budget, the route returns `{}` and Next's `after()` finishes the learning in the background, so the lesson still lands. When something is learned, the agent sees a message like:
 
-- `📝 Hivemind captured a lesson: "Exports must call assertSingleCustomer() before writing" — pending approval by Jordan Reyes` (new lesson, or evidence added to a still-pending one)
-- `🚫 Hivemind blocked "Mixing Lab A and Lab B data is fine in tests": conflicts with 🔒 Never mix data from different lab customers (Maya Chen)`
+- `📝 Hivemind captured a lesson: "Exports must call assertSingleCustomer() before writing" — pending approval by @jordan` (new lesson, or evidence added to a still-pending one)
+- `🚫 Hivemind blocked "Mixing Lab A and Lab B data is fine in tests": conflicts with 🔒 Never mix data from different lab customers (@maya)`
 - `📝 Hivemind reinforced an existing lesson: "…" (active)` (evidence added to an already-approved lesson)
 
 The captured/blocked strings are mirrored in `src/components/site/demo-script.ts` (`HIVE.lessonCaptured` / `lessonBlocked`). Keep them identical.

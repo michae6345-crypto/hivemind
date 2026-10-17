@@ -57,7 +57,8 @@ async function loadCtx(): Promise<Ctx> {
 }
 
 const personOf = (ctx: Ctx, id: string) => ctx.people.find((p) => p.id === id);
-const displayName = (ctx: Ctx, id: string | null | undefined) => (id ? (personOf(ctx, id)?.name ?? id) : null);
+/** People are mentioned as @handles (person id) everywhere the engine speaks, matching the UI's @person chips. */
+const handle = (id: string | null | undefined) => (id ? `@${id.replace(/^@/, "")}` : null);
 
 /** 'export-service' | 'repo/export-service' | 'acme/export-service' | 'C:\\code\\export-service' → 'repo/export-service' */
 export function normalizeRepo(repo: string | null | undefined): string | null {
@@ -263,6 +264,18 @@ async function learnFromEvent(eventId: string, input: EventInput): Promise<Outco
         .map((h) => ({ ...h, reinforceOnly: true }));
       if (candidates.length) console.log(`[engine] extract: llm returned none; heuristic restatement of existing lesson → reinforce`);
     }
+    if (!candidates.length && text) {
+      // Guardrail visibility: an engineer telling an agent something that breaks a 🔒 rule must show up as blocked,
+      // even if the extractor declined to turn it into a lesson (the loop below blocks it via the raw-text guard).
+      const locked = (await memsFor(repoChain)).filter((m) => m.locked && m.status !== "blocked");
+      if (heuristicConflict({ title: text, body: "" }, locked)) {
+        candidates = heuristicExtract(text, "correction").candidates.slice(0, 1);
+        if (candidates.length) {
+          isCorrection = true;
+          console.log(`[engine] extract: no lesson extracted, but the message contradicts a 🔒 rule → record it as blocked`);
+        }
+      }
+    }
   }
 
   const evidence: Evidence = {
@@ -289,7 +302,7 @@ async function learnFromEvent(eventId: string, input: EventInput): Promise<Outco
 
     const block = async (lock: MemRow, faithful?: Candidate) => {
       const b = faithful ?? c; // when only the raw-text guard fired, show what the engineer actually said
-      const lockOwner = displayName(ctx, lock.author ?? ownerFor(ctx, lock.scope_id));
+      const lockOwner = handle(lock.author ?? ownerFor(ctx, lock.scope_id));
       const reason = `Conflicts with 🔒 ${lock.title}${lockOwner ? ` (${lockOwner})` : ""}`;
       const blockedDupes = mems.filter((m) => m.status === "blocked" && !m.locked);
       const dup = heuristicMerge(b, blockedDupes);
@@ -328,7 +341,7 @@ async function learnFromEvent(eventId: string, input: EventInput): Promise<Outco
       captured.push({
         action: d.event === "UPDATE" ? "updated" : "reinforced",
         memory: toMemory(row),
-        owner: displayName(ctx, ownerFor(ctx, row.scope_id)),
+        owner: handle(ownerFor(ctx, row.scope_id)),
         note: `${humanActors(row.evidence).size} engineer(s) agree · ${fmtConfidence(row.alpha, row.beta)}`,
       });
       continue;
@@ -348,7 +361,7 @@ async function learnFromEvent(eventId: string, input: EventInput): Promise<Outco
         source, author: actor, evidence: [evidence], alpha: 1 + w, beta: 1,
       }),
     );
-    captured.push({ action: "added", memory: toMemory(row), owner: displayName(ctx, owner) });
+    captured.push({ action: "added", memory: toMemory(row), owner: handle(owner) });
   }
 
   console.log(
