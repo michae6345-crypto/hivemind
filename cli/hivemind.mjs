@@ -112,19 +112,18 @@ async function runSync(cfg, agents) {
   if (!targets.size) return { rows: [], note: "Nothing to sync: Claude Code gets the live pack from its SessionStart hook." };
 
   const packUser = typeof cfg.flags.user === "string" && cfg.flags.user && cfg.flags.personal ? cfg.flags.user : "team";
-  const fetchPack = (agent) =>
-    api(cfg, `/api/context-pack?${new URLSearchParams({ repo: cfg.repo, user: packUser, agent, log: "0" })}`, { agent });
+  // One pack serves every file (the pack doesn't vary by agent yet); x-hm-agent names the first target.
+  const agent = [...targets.values()][0].agent.id;
+  const qs = new URLSearchParams({ repo: cfg.repo, user: packUser, agent, log: "0" });
+  const res = await api(cfg, `/api/context-pack?${qs}`, { agent }).catch((e) => e);
 
   const rows = [];
-  const results = await Promise.allSettled([...targets.values()].map(({ agent }) => fetchPack(agent.id)));
-  let i = 0;
   for (const [file, { agent, rules }] of targets) {
-    const r = results[i++];
-    if (r.status === "rejected") {
-      rows.push({ file, agent: agent.label, action: "failed", detail: r.reason?.message ?? String(r.reason) });
+    if (res instanceof Error) {
+      rows.push({ file, agent: agent.label, action: "failed", detail: res.message });
       continue;
     }
-    const pack = r.value.data;
+    const pack = res.data;
     const block = shapePack(pack.markdown ?? "", cfg);
     const p = join(cfg.root, file);
     const before = read(p);
@@ -132,7 +131,7 @@ async function runSync(cfg, agents) {
     const action = before === null ? "created" : before === after ? "unchanged" : "updated";
     if (action !== "unchanged") write(p, after, cfg.dryRun);
     const locked = (block.match(/^- 🔒/gm) ?? []).length;
-    rows.push({ file, agent: agent.label, action, detail: `${pack.memoryIds?.length ?? 0} rules · ${locked} locked`, ms: r.value.ms });
+    rows.push({ file, agent: agent.label, action, detail: `${pack.memoryIds?.length ?? 0} rules · ${locked} locked` });
   }
   return { rows };
 }

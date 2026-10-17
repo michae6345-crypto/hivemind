@@ -3,7 +3,8 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { delimiter, dirname, join } from "node:path";
 
 // ---------- ANSI ----------
-const useColor = !process.env.NO_COLOR && (process.stdout.isTTY || !!process.env.FORCE_COLOR);
+const force = process.env.FORCE_COLOR;
+const useColor = !process.env.NO_COLOR && force !== "0" && (process.stdout.isTTY || !!force);
 const wrap = (open, close) => (s) => (useColor ? `\x1b[${open}m${s}\x1b[${close}m` : String(s));
 export const c = {
   bold: wrap(1, 22),
@@ -115,7 +116,7 @@ export function onPath(name) {
 }
 
 // ---------- HTTP ----------
-export async function api(cfg, path, { agent = "other", timeout = 8000 } = {}) {
+export async function api(cfg, path, { agent = "other", timeout = 20000 } = {}) {
   const t0 = Date.now();
   const res = await fetch(cfg.url + path, {
     headers: { Authorization: `Bearer ${cfg.token ?? ""}`, "x-hm-user": cfg.actor, "x-hm-agent": agent },
