@@ -7,7 +7,7 @@
 //   warm = one shared HOME + TMP, one discarded priming run, then N timed runs
 // Network: every run talks to scripts/mock-api.mjs on 127.0.0.1 (80ms latency, like prod), never to a real server.
 // --base <ref> also benchmarks the CLI at that git ref (e.g. origin/main), interleaved run by run with this checkout so
-// machine load hits both equally. The "node -e 0" row is the floor: Node's own startup on this machine.
+// machine load hits both equally. "node -e 0" / "node empty.mjs" are the floor: Node's own startup on this machine.
 import { spawn, spawnSync } from "node:child_process";
 import { cpSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -57,9 +57,12 @@ if (BASE) {
   clis.unshift({ name: BASE, entry: join(base, "cli", "hivemind.mjs") });
 }
 
+const EMPTY = join(work, "empty.mjs");
+writeFileSync(EMPTY, "");
 const hookInput = JSON.stringify({ session_id: "bench", cwd: repo, workspace: { current_dir: repo, project_dir: repo } });
 const COMMANDS = [
   { id: "node -e 0", node: ["-e", "0"] },
+  { id: "node empty.mjs", node: [EMPTY] }, // the real floor for an ESM entry
   { id: "--version", args: ["--version"] },
   { id: "status", args: ["status"] },
   { id: "open --dry-run", args: ["open", "--dry-run"] },

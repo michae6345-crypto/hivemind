@@ -34,6 +34,10 @@ function hasWt() {
 const trimDir = (d) => d.replace(/[\\/]+$/, "").toLowerCase(); // PATH entries may end in "\" (PowerShell's often do)
 const nodeBin = () =>
   (process.env.PATH ?? "").split(delimiter).some((d) => d && trimDir(d) === trimDir(dirname(process.execPath))) ? "node" : process.execPath;
+/** Is `claude` installed? Like util.onPath, but only the extensions it ships as (npm: claude.cmd, native: claude.exe):
+ *  every PATHEXT in both cases is ~1000 stats on Windows, ~90ms on the instant path. */
+const hasClaude = () =>
+  (process.env.PATH ?? "").split(delimiter).some((d) => d && (process.platform === "win32" ? [".cmd", ".exe"] : [""]).some((x) => existsSync(join(d, `claude${x}`))));
 const insideClaude = () => !!process.env.CLAUDECODE || !!process.env.CLAUDE_CODE_ENTRYPOINT;
 
 /** argv for the watch pane. `node <cli>` works whether or not `hivemind` is installed globally (no .cmd shim issues). */
@@ -157,7 +161,7 @@ export async function cmdOpen(cfg, fail) {
   // `hm c` needs Claude Code itself; say how to get it instead of opening a pane next to an error.
   const wantClaude = !!cfg.flags.claude && !insideClaude();
   const dry = cfg.flags["dry-run"] || cfg.dryRun;
-  if (wantClaude && !onPath("claude")) {
+  if (wantClaude && !hasClaude()) {
     const msg = "Claude Code isn't installed (no `claude` on PATH). Install it: npm i -g @anthropic-ai/claude-code";
     if (dry) console.log(`${c.yellow("!")} ${msg}`);
     else fail(msg);
