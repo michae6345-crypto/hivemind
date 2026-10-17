@@ -17,6 +17,7 @@ export const c = {
   cyan: wrap(36, 39),
   gray: wrap(90, 39),
   amber: (s) => (useColor ? `\x1b[38;5;214m${s}\x1b[39m` : String(s)),
+  rose: (s) => (useColor ? `\x1b[38;5;204m${s}\x1b[39m` : String(s)),
 };
 export const sym = { ok: c.green("✓"), warn: c.yellow("!"), fail: c.red("✗"), dot: c.gray("·"), arrow: c.amber("›") };
 

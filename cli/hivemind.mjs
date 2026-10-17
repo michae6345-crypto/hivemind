@@ -6,6 +6,7 @@
 //   hivemind status [--repo …] [--url …] [--dir …]
 //   hivemind teach "<rule>" [--scope repo/x|team/x]
 //   hivemind rules  [--file path]
+//   hivemind check  <file…> | --staged [--fix]
 // Every command takes --agent <kind> (else HIVEMIND_AGENT, else "cli") for x-hm-agent attribution.
 // Precedence: flag > env (HIVEMIND_API_URL, HIVEMIND_TOKEN, HIVEMIND_USER, HIVEMIND_REPO) > .hivemind.json > defaults
 // (URL: production; token: <hivemind>/.env.local).
@@ -13,6 +14,7 @@ import { existsSync, statSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { AGENTS, SKILL_FILE, byId, mcpWired } from "./lib/agents.mjs";
+import { cmdCheck } from "./lib/check.mjs";
 import { rulesFrontmatter } from "./lib/templates.mjs";
 import { END, START, api, banner, c, callerAgent, mcpCall, mergeJson, onPath, post, read, readEnvFile, rel, sym, table, upsertBlock, write } from "./lib/util.mjs";
 
@@ -23,7 +25,7 @@ const GENERIC = { id: "other", label: "Any MCP agent", rules: { file: "AGENTS.md
 const agentOf = (id) => byId[id] ?? (id === "other" ? GENERIC : null);
 
 // ---------- args ----------
-const BOOLEAN = new Set(["dry-run", "no-sync", "no-vscode", "copilot-cli", "personal", "help", "json"]);
+const BOOLEAN = new Set(["dry-run", "no-sync", "no-vscode", "copilot-cli", "personal", "help", "json", "staged", "fix"]);
 function parseArgs(argv) {
   const [cmd = "help", ...rest] = argv;
   const flags = {};
@@ -383,6 +385,7 @@ ${c.bold("Usage")}
   hivemind status [--repo …] [--url …] [--dir …]
   hivemind teach  "<rule>" [--scope repo/<name>|team/<name>]   propose a lesson (a human approves it)
   hivemind rules  [--file <path>]                              print the rules that apply (to a file)
+  hivemind check  <file…> | --staged [--fix]                   team-rule violations as code frames; --fix applies quick fixes
 
   Any command: --agent <claude-code|cursor|…> (x-hm-agent; default HIVEMIND_AGENT or "cli"), --user <id>
 
@@ -390,7 +393,7 @@ ${c.bold("Env")}  HIVEMIND_API_URL  HIVEMIND_TOKEN  HIVEMIND_USER  HIVEMIND_REPO
 
 const { cmd, flags, positional } = parseArgs(process.argv.slice(2));
 if (typeof flags.agent === "string") process.env.HIVEMIND_AGENT = flags.agent;
-const commands = { init: cmdInit, sync: cmdSync, status: cmdStatus, teach: cmdTeach, rules: cmdRules };
+const commands = { init: cmdInit, sync: cmdSync, status: cmdStatus, teach: cmdTeach, rules: cmdRules, check: (cfg, pos) => cmdCheck(cfg, pos, fail) };
 if (!commands[cmd] || flags.help) {
   console.log(HELP);
   process.exit(commands[cmd] || cmd === "help" || cmd === "--help" ? 0 : 1);
