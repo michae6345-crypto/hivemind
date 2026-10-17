@@ -5,6 +5,7 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { isAbsolute, relative, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { brand, handleChip, label, useColor } from "./style.mjs";
+import { pill, printHeader, spin } from "./ui.mjs";
 import { api, c, plain, post } from "./util.mjs";
 import { recordFlag } from "./why.mjs";
 
@@ -140,7 +141,8 @@ function frame(file, lines, v, rule, loc) {
   } else {
     out.push(`${" ".repeat(width)} ${c.gray("╰─")} ${c.gray("fix    no automatic fix; follow the rule above")}`);
   }
-  return out.join("\n");
+  // A slim bar in the finding's colour down the whole frame (rose = locked rule, honey = lesson); none without colour.
+  return useColor ? out.map((l) => `${tone(v.locked)("▎")} ${l}`).join("\n") : out.join("\n");
 }
 
 /** Diff-style preview of a quick fix (1-based line numbers). */
@@ -208,12 +210,12 @@ const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
 function summary(totLocked, totLessons, fixable, nFiles, { fixHint }) {
   const dot = c.gray(" · ");
-  if (!totLocked && !totLessons) return `${brand()}${dot}${c.green("no team-rule violations")} in ${plural(nFiles, "file")}`;
+  if (!totLocked && !totLessons) return pill(`${brand()}${dot}${c.green("no team-rule violations")} in ${plural(nFiles, "file")}`);
   const parts = [];
   if (totLocked) parts.push(c.rose(c.bold(`${plural(totLocked, "locked rule")} broken`)));
   if (totLessons) parts.push(c.lesson(plural(totLessons, "lesson")));
-  if (fixHint && fixable) parts.push(c.gray(`run with ${c.cyan("--fix")} to apply ${plural(fixable, "quick fix", "quick fixes")}`));
-  return [brand(), ...parts].join(dot);
+  const hint = fixHint && fixable ? c.gray(`  run with ${c.cyan("--fix")} to apply ${plural(fixable, "quick fix", "quick fixes")}`) : "";
+  return `${pill([brand(), ...parts].join(dot))}${hint}`; // the verdict as a pill; the next step beside it
 }
 
 // ---------- command ----------
@@ -238,12 +240,13 @@ export async function cmdCheck(cfg, positional, fail) {
     });
   }
 
+  await printHeader("check", `#${cfg.repo} · ${plural(targets.length, "file")}`);
   let locked = 0, lessons = 0, fixable = 0;
   const pendingFixes = [];
   for (const t of targets) {
     const file = toPosix(relative(cfg.root, t.abs)) || toPosix(t.abs);
     const text = t.read();
-    const { violations, rules } = await checkOne(cfg, file, text).catch((e) => fail(`check failed for ${file}: ${e.message}`));
+    const { violations, rules } = await spin(`checking ${file}`, checkOne(cfg, file, text)).catch((e) => fail(`check failed for ${file}: ${e.message}`));
     const lines = text.split(/\r?\n/);
     for (const v of violations) {
       console.log(`\n${frame(file, lines, v, rules.get(v.ruleId), { abs: t.abs, root: cfg.root })}`);
