@@ -11,7 +11,7 @@ import type { CheckRequest, CheckResponse, QuickFix, Violation, VsRule } from ".
 // finish the LLM call after the response (next/server after()) and cache the merged result for the client's follow-up.
 export const maxDuration = 30;
 const MAX_LLM_LINES = 400;
-const BUDGET_MS = 1200;
+const BUDGET_MS = 1000;
 const cache = lru<CheckResponse>(200);
 
 type LlmOut = {

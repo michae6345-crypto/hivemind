@@ -14,6 +14,7 @@ export async function GET(req: Request) {
     const ctx = await loadRules(url.searchParams.get("repo") ?? "", a.user, file);
     const res: RulesResponse = {
       repo: ctx.repo,
+      org: ctx.org,
       file,
       rules: ctx.rules,
       pending: {

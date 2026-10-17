@@ -39,6 +39,26 @@ function spans(lines: string[]): Span[] {
   return fns;
 }
 
+/** Narrow a violation to the exact offending expression (columns), so the editor highlights just that code. */
+const cols = (v: Violation, startCol: number, endCol: number): Violation => (startCol >= 0 && endCol > startCol ? { ...v, startCol, endCol } : v);
+
+/** End column (exclusive) of the expression starting at `from`: through the bracket/paren that opens first and
+ *  its balanced close; the trimmed line end if it doesn't close on this line. */
+function exprEnd(s: string, from: number): number {
+  let depth = 0;
+  for (let c = from; c < s.length; c++) {
+    const ch = s[c];
+    if ("([{".includes(ch)) depth++;
+    else if (")]}".includes(ch) && --depth <= 0) return c + 1;
+  }
+  return s.replace(/[\s;,{]+$/, "").length;
+}
+/** Widen a match start leftwards over a receiver chain: `r.payout_cents` instead of `payout_cents`. */
+const receiverStart = (s: string, at: number) => {
+  while (at > 0 && /[\w$.]/.test(s[at - 1])) at--;
+  return at;
+};
+
 export function detect(lines: string[], rules: VsRule[]): Violation[] {
   const R = pickRules(rules);
   const out: Violation[] = [];
@@ -52,7 +72,7 @@ export function detect(lines: string[], rules: VsRule[]): Violation[] {
       const mix = labMix(lines, seg, seg.sig ? undefined : fns);
       if (!mix) continue;
       if (seg.sig) mixedFns.add(seg);
-      out.push(violation(R.lab, mix.line, mix.line, "regex", mix.fix, mix.why));
+      out.push(cols(violation(R.lab, mix.line, mix.line, "regex", mix.fix, mix.why), mix.startCol, mix.endCol));
     }
   }
 
@@ -80,7 +100,9 @@ export function detect(lines: string[], rules: VsRule[]): Violation[] {
       }
       const fix: QuickFix | undefined =
         f.end > sig.braceLine! && at <= f.end ? { title: `Fix: add assertSingleCustomer(${arg})`, kind: "insertBefore", line: at, text: `${indent}assertSingleCustomer(${arg});` } : undefined;
-      out.push(violation(R.lab, sig.line, sig.line, "regex", fix));
+      const sl = lines[sig.line];
+      const nameAt = sl.search(new RegExp(`\\b${sig.name}\\b`));
+      out.push(cols(violation(R.lab, sig.line, sig.line, "regex", fix), nameAt, nameAt < 0 ? -1 : exprEnd(sl, nameAt)));
     }
   }
 
@@ -97,7 +119,11 @@ export function detect(lines: string[], rules: VsRule[]): Violation[] {
         const field = pii[2] ?? pii[0];
         const fixed = s.replace(PII_ACCESS, (_m, obj: string) => `${obj}.id`).replace(PII_KEY, "expertId:");
         const fix: QuickFix | undefined = fixed !== s ? { title: "Fix: log the expert id instead", kind: "replaceLines", line: i, endLine: i, text: fixed } : undefined;
-        out.push(violation(R.pii, i, i, "regex", fix, `Logs an expert's ${field.replace(/_/g, " ").toLowerCase()}.`));
+        const v = violation(R.pii, i, i, "regex", fix, `Logs an expert's ${field.replace(/_/g, " ").toLowerCase()}.`);
+        const onLine = s.match(PII_VALUE) ?? s.match(PII); // prefer the value (`expert.email`) over a key
+
+        const pAt = onLine?.index ?? -1;
+        out.push(onLine ? cols(v, pAt, pAt + onLine[0].length) : cols(v, call.index!, exprEnd(s, call.index!)));
       }
     }
     if (R.log && call[1] === "console") {
@@ -109,7 +135,7 @@ export function detect(lines: string[], rules: VsRule[]): Violation[] {
         endLine: i,
         text: s.replace(new RegExp(CONSOLE_RE.source, "g"), (_, f: string) => `logger.${LOGGER[f]}(`),
       };
-      out.push(violation(R.log, i, i, "regex", fix));
+      out.push(cols(violation(R.log, i, i, "regex", fix), m.index!, exprEnd(s, m.index!)));
     }
   }
 
@@ -123,7 +149,9 @@ export function detect(lines: string[], rules: VsRule[]): Violation[] {
       const [re, why, fixer] = hit;
       const fixed = fixer?.(s, re);
       const fix: QuickFix | undefined = fixed && fixed !== s ? { title: "Fix: keep money in integer cents", kind: "replaceLines", line: i, endLine: i, text: fixed } : undefined;
-      out.push(violation(R.money, i, i, "regex", fix, why));
+      const m = s.match(re)!;
+      const from = receiverStart(s, m.index!);
+      out.push(cols(violation(R.money, i, i, "regex", fix, why), from, m.index! + m[0].length));
     }
   }
   return out.sort((a, b) => a.startLine - b.startLine || Number(b.locked) - Number(a.locked));
@@ -135,7 +163,9 @@ const FETCH_CALL = /\b((?!assert)\w*(?:Customer|Lab)\w*)\s*\(\s*([^()]*?)\s*\)/g
 const LAB_IDENT = /\blab[-_]?([A-Z0-9]|[a-z0-9](?=[A-Z_]|Rows|Data|Records))\w*/g; // labARows, labB, lab_a_rows
 const COMBINE = /\[\s*\.\.\.[\w.]+[^\]]*,\s*\.\.\.[\w.]+|\.concat\s*\(|\.push\s*\(\s*\.\.\.|Object\.assign\s*\(|\bmerge\w*\s*\(/;
 
-function labMix(lines: string[], seg: Span, excludeFns?: Span[]): { line: number; why: string; fix?: QuickFix } | null {
+type Mix = { line: number; why: string; fix?: QuickFix; startCol: number; endCol: number };
+
+function labMix(lines: string[], seg: Span, excludeFns?: Span[]): Mix | null {
   const skip = (i: number) => isComment(lines[i]) || !!excludeFns?.some((f) => i >= f.start && i <= f.end);
   const calls = new Map<string, number>(); // distinct fetch args → line
   const idents = new Map<string, number>();
@@ -146,7 +176,9 @@ function labMix(lines: string[], seg: Span, excludeFns?: Span[]): { line: number
     // one line that selects two labs at once: `id === "lab-a" || id === "lab-b"`, ["lab-a", "lab-b"].includes(…)
     const lits = new Set([...s.matchAll(LAB_LIT)].map((m) => m[2].toLowerCase()));
     if (lits.size >= 2 && /\|\||\.includes\s*\(|\bin\s*\[|\.filter\s*\(/.test(s)) {
-      return { line: i, why: `Selects rows from ${[...lits].slice(0, 2).join(" and ")} together.` };
+      const all = [...s.matchAll(LAB_LIT)];
+      const last = all[all.length - 1];
+      return { line: i, why: `Selects rows from ${[...lits].slice(0, 2).join(" and ")} together.`, startCol: all[0].index!, endCol: last.index! + last[0].length };
     }
     for (const m of s.matchAll(FETCH_CALL)) if (m[2] && !calls.has(m[2])) calls.set(m[2], i);
     for (const m of s.matchAll(LAB_IDENT)) {
@@ -170,7 +202,21 @@ function labMix(lines: string[], seg: Span, excludeFns?: Span[]): { line: number
   const after = v ? lines.slice(line + 1, seg.end + 1).join("\n") : "";
   if (v && new RegExp(`assertSingleCustomer\\s*\\(\\s*${v}\\b`).test(after)) return null;
   const fix: QuickFix | undefined = v ? { title: `Fix: add assertSingleCustomer(${v})`, kind: "insertBefore", line: line + 1, text: `${indentOf(lines[line])}assertSingleCustomer(${v});` } : undefined;
-  return { line, why, fix };
+  // Highlight the combining expression (`[...labARows, ...labBRows]`, `a.concat(b)`), else the second lab's fetch call.
+  const s = lines[line];
+  const cm = line === combineLine ? s.match(COMBINE) : null;
+  let startCol = -1, endCol = -1;
+  if (cm) {
+    startCol = cm[0].startsWith("[") ? cm.index! : receiverStart(s, cm.index!);
+    endCol = exprEnd(s, cm.index!);
+  } else {
+    const call = [...s.matchAll(FETCH_CALL)].pop();
+    if (call) {
+      startCol = call.index!;
+      endCol = call.index! + call[0].length;
+    }
+  }
+  return { line, why, fix, startCol, endCol };
 }
 
 // ---------- logging ----------
@@ -179,7 +225,8 @@ const CONSOLE_RE = /\bconsole\.(log|info|warn|error|debug)\(/;
 const LOG_CALL = /\b(console|logger|log)\.(log|info|warn|error|debug|trace)\s*\(/;
 const PII_FIELDS = "email|emailAddress|email_address|phone|phoneNumber|phone_number|fullName|full_name|firstName|first_name|lastName|last_name|ssn|payout_account|payoutAccount|bank_account|bankAccount|home_address|homeAddress";
 const PII = new RegExp(`\\b(?:(\\w+)\\.)?(${PII_FIELDS})\\b|\\bexpert\\w*\\.name\\b`, "i");
-const PII_ACCESS = new RegExp(`\\b(\\w+)\\.(?:${PII_FIELDS}|name)\\b`, "g");
+const PII_VALUE = new RegExp(`\\b\\w+\\.(?:${PII_FIELDS})\\b|\\bexpert\\w*\\.name\\b`, "i");
+const PII_ACCESS =new RegExp(`\\b(\\w+)\\.(?:${PII_FIELDS}|name)\\b`, "g");
 const PII_KEY = new RegExp(`\\b(?:${PII_FIELDS})\\s*:`, "g");
 
 /** The log call starting on line i, up to its closing paren (max 6 lines). */

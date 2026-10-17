@@ -1,5 +1,6 @@
 // Wire types for /api/vscode/* (agent H). The VS Code extension keeps a copy in vscode-extension/src/types.ts —
 // change both together. Lines are 0-based (VS Code convention). All routes: bearer token + x-hm-agent: vscode.
+// Display text is emoji-free (titles/summaries are stripped server-side); people are @handles.
 
 /** One team rule as the editor sees it. */
 export type VsRule = {
@@ -25,6 +26,8 @@ export type VsRule = {
   taughtAt: string;
   /** Where it was learned, one line: `Alex corrected an agent: "exports must call assertSingleCustomer"`. Null for hand-written rules. */
   learnedFrom: string | null;
+  /** Structured provenance for hovers: "Learned from @alex's correction · 3h ago". Null for hand-written rules. */
+  learnedVia: { kind: "correction" | "review" | "manual" | "agent"; by: string; at: string } | null;
   evidenceCount: number;
   /** Wilson lower bound 0..1 (locked rules = 1). */
   confidence: number;
@@ -37,6 +40,8 @@ export type VsRule = {
 /** GET /api/vscode/rules?repo=&file=&user= */
 export type RulesResponse = {
   repo: string; // normalized 'repo/<name>'
+  /** Org display name for the status bar: "Meridian Data". */
+  org: string;
   file: string;
   /** locked + active rules in the scope chain, ranked: locked → mentionsFile → confidence×specificity. */
   rules: VsRule[];
@@ -63,6 +68,9 @@ export type Violation = {
   owner: string; // "@maya"
   startLine: number;
   endLine: number;
+  /** Exact offending expression (0-based columns: startCol on startLine, endCol exclusive on endLine). Absent → whole trimmed lines. */
+  startCol?: number;
+  endCol?: number;
   /** Squiggle text (Adrian's wording, public/brand/vscode/wording.md). Locked: `Breaks a locked rule: Never mix data from different lab customers. Locked by @maya (Security).`
    *  Lesson: `Doesn't follow a team lesson: Use logger, not console.log. From @alex's lesson.` LLM hits append ` <explanation>`. */
   message: string;

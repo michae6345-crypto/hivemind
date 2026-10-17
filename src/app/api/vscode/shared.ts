@@ -20,8 +20,10 @@ export function auth(req: Request, userParam?: string | null): { user: string } 
 // ---------- wording (public/brand/vscode/wording.md) ----------
 const ROLE_WORD: Record<string, string> = { security: "Security", lead: "Lead", engineer: "Engineer" };
 const isAgent = (id: string) => id.startsWith("agent");
+/** Editor text is emoji-free (Michael's call): strip pictographs like the lock in rule bodies. */
+export const plain = (s: string) => s.replace(/\p{Extended_Pictographic}️?/gu, "").replace(/[ \t]{2,}/g, " ").trim();
 export const clip = (s: string, n: number) => {
-  const t = s.replace(/\s+/g, " ").trim();
+  const t = plain(s).replace(/\s+/g, " ").trim();
   return t.length > n ? t.slice(0, n - 1).trimEnd() + "…" : t;
 };
 
@@ -72,6 +74,8 @@ export function symbolsOf(text: string): string[] {
   return [...out];
 }
 
+const VIA: Record<string, NonNullable<VsRule["learnedVia"]>["kind"]> = { correction: "correction", review_comment: "review", manual: "manual", agent: "agent" };
+
 function toVsRule(m: Memory, people: Map<string, Person>, matches: (t: string) => boolean): VsRule {
   const p = people.get(m.author);
   const agent = isAgent(m.author) || !p;
@@ -84,7 +88,7 @@ function toVsRule(m: Memory, people: Map<string, Person>, matches: (t: string) =
   return {
     id: m.id,
     slug: m.slug,
-    title: m.title,
+    title: plain(m.title),
     summary: clip(m.body, 320),
     scopeId: m.scopeId,
     kind: m.kind,
@@ -97,6 +101,7 @@ function toVsRule(m: Memory, people: Map<string, Person>, matches: (t: string) =
     ownerRole: agent ? "Agent" : (ROLE_WORD[p.role] ?? "Engineer"),
     taughtAt: ev?.at || m.createdAt,
     learnedFrom,
+    learnedVia: ev ? { kind: VIA[ev.type] ?? "manual", by: at(ev.actor), at: ev.at || m.createdAt } : null,
     evidenceCount: m.evidence.length,
     confidence: m.locked ? 1 : Math.round(wilsonLB(m.alpha, m.beta) * 1000) / 1000,
     mentionsFile: matches(`${m.title}\n${m.body}`),
@@ -110,6 +115,7 @@ const byRank = (a: VsRule, b: VsRule) =>
 
 export type RuleCtx = {
   repo: string;
+  org: string;
   /** Active (non-expired) rules in the chain, ranked; includes kind "owner". */
   all: VsRule[];
   /** What the editor shows / checks against: `all` minus owner entries (unless they mention the file). */
@@ -139,7 +145,7 @@ async function fetchRules(repoIn: string, user: string, file: string): Promise<R
   const sb = db();
   const repoId = normRepo(repoIn);
   const [{ data: scopeRows }, { data: peopleRows }] = await Promise.all([
-    sb.from("scopes").select("id, parent_id, owner"),
+    sb.from("scopes").select("id, parent_id, owner, name"),
     sb.from("people").select("*"),
   ]);
   const scopes = (scopeRows ?? []).map((s) => ({ id: s.id as string, parentId: s.parent_id as string | null, owner: s.owner as string | null }));
@@ -173,6 +179,7 @@ async function fetchRules(repoIn: string, user: string, file: string): Promise<R
 
   return {
     repo: repoId || base,
+    org: (scopeRows ?? []).find((s) => s.id === "org")?.name ?? "org",
     all,
     rules: all.filter((r) => r.kind !== "owner" || r.mentionsFile),
     pending,
