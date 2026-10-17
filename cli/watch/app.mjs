@@ -1,7 +1,7 @@
 // `hivemind watch`: the shell. Header, tab bar (Here · Rules · Queue · Feed), key routing, the teach input docked at
 // the bottom, toasts, polling, resize, alternate screen. Views live in ./views/<id>.mjs (contract: ./README.md).
-import { appendFileSync } from "node:fs";
-import { relative } from "node:path";
+import { appendFileSync, readFileSync } from "node:fs";
+import { relative, resolve } from "node:path";
 import * as theme from "./theme.mjs";
 import { HEX, P, REDUCED, bold, fg, label, plain, scopeChip, sep, t } from "./theme.mjs";
 import { Screen, clip, keys, padEnd, spread, strip, width } from "./term.mjs";
@@ -49,7 +49,8 @@ export async function cmdWatch(cfg) {
   };
 
   const api = makeApi(cfg, () => state);
-  const tty = !!process.stdout.isTTY && !cfg.flags.once;
+  const snapshot = !!(cfg.flags.once || cfg.flags.snapshot);
+  const tty = !!process.stdout.isTTY && !snapshot;
   const screen = new Screen();
   const recordFile = typeof cfg.flags.record === "string" ? cfg.flags.record : null;
 
@@ -383,11 +384,29 @@ export async function cmdWatch(cfg) {
     process.exit(0);
   }
 
-  if (cfg.flags.once) {
+  if (snapshot) {
+    // One frame, no screen/keys/timers: --view here|rules|queue|feed, --file <path> (checked first), --wait <ms> (watch first).
     await poll(true);
-    if (typeof cfg.flags.tab === "string") state.tab = cfg.flags.tab;
+    const view = cfg.flags.view ?? cfg.flags.tab;
+    if (typeof view === "string") state.tab = view;
+    if (typeof cfg.flags.file === "string") {
+      const abs = resolve(cfg.root, cfg.flags.file);
+      const file = relative(cfg.root, abs).replace(/\\/g, "/");
+      const text = readFileSync(abs, "utf8");
+      state.lastFile = file;
+      state.files[file] = { text, at: Date.now(), checking: false };
+      const res = await api.check(file, text).catch((e) => ({ violations: [], error: e }));
+      state.flags[file] = (res.violations ?? []).filter((v) => v.source !== "llm");
+      if (typeof view !== "string") state.tab = "here";
+    } else if (cfg.flags.wait !== undefined) {
+      const stop = startWatcher({ root: cfg.root, cfg, state, api, actions: { ...actions, render() {}, setTab: (id) => (state.tab = view ?? id), toast() {} }, hooks }) ?? (() => {});
+      await new Promise((r) => setTimeout(r, Number(cfg.flags.wait) || 1500));
+      stop();
+    }
+    state.toast = null;
+    animUntil = 0;
     process.stdout.write(compose().lines.join("\n") + "\n");
-    return;
+    process.exit(0);
   }
   if (!tty) return logMode(cfg, state, poll, hooks);
 
