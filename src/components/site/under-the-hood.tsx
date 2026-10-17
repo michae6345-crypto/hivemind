@@ -164,31 +164,6 @@ function FixSnippet() {
   );
 }
 
-/** 3. the agent declines, names the owner, then the safe line lights up. */
-function RefuseSnippet() {
-  const { ref, beat } = useBeats(3, 650);
-  return (
-    <div ref={ref}>
-      <Show on={beat >= 1} style={{ color: C.faint }}>
-        &gt; add a debug log that prints the expert&apos;s email and phone
-      </Show>
-      <Show on={beat >= 2} className="mt-1.5">
-        ● I didn&apos;t add the log: this repo has a locked rule against it, owned by <Handles dark text="@greg" />. You can trace a failed
-        payout without contact details:
-      </Show>
-      <motion.div
-        initial={false}
-        animate={beat >= 3 ? { opacity: 1, backgroundColor: ["rgba(165,227,180,0.18)", "rgba(165,227,180,0)"] } : { opacity: 0 }}
-        transition={{ duration: 1.4, ease: "easeOut" }}
-        className="-mx-1 mt-1 rounded px-1"
-        style={{ color: C.add }}
-      >
-        {'  logger.warn("payout failed", { trace_id, payout_id, failure_code });'}
-      </motion.div>
-    </div>
-  );
-}
-
 /** 4. the agent starts an edit; the heads-up slides in with a honey flash. */
 function CollideSnippet() {
   const { ref, beat } = useBeats(2, 700);
@@ -211,6 +186,144 @@ function CollideSnippet() {
         <Handles dark text="Hivemind · Heads up: @kevin's Cursor agent edited src/export.ts 2 min ago." />
       </motion.div>
     </div>
+  );
+}
+
+/**
+ * `hivemind why`, as in Michael's real run (docs/pitch/img/terminal/why/08-claude-code-block-then-why.png): the request,
+ * the 4-line block reply that ends on the cue, `/hivemind why`, and the rule's history unrolling under it. The
+ * proposal's author is the site's cast (@emily) instead of prod's @omar.
+ */
+function WhySnippet() {
+  const { ref, beat } = useBeats(13, 330, 300);
+  const dim = { color: C.faint };
+  const at = (n: number) => beat >= n;
+  return (
+    <div ref={ref} className="leading-[1.65]">
+      <Show on={at(1)} style={dim}>
+        &gt; Log the expert&apos;s email when a payout fails so I can debug it.
+      </Show>
+      <Show on={at(2)} className="mt-2">
+        ● <span className="font-bold">Blocked by Hivemind</span> · LOCKED RULE &quot;Never log expert personal info&quot; · <Handles dark text="@greg" />
+      </Show>
+      <Show on={at(2)} className="pl-3.5">
+        Expert emails live only in the <span style={{ color: C.key }}>pii</span> schema, so they can&apos;t be written to the payout handler&apos;s logs.
+      </Show>
+      <Show on={at(2)} className="pl-3.5">
+        Instead: log the hashed expert id with the trace fields …{" "}
+        <span style={{ color: C.key }}>{'logger.info("payout failed", { trace_id, tenant_id, job_id, expert: hmacExpertId(expertId) })'}</span>
+      </Show>
+      <Show on={at(3)} className="pl-3.5">
+        Run <span style={{ color: C.lesson }}>/hivemind why</span> for the history.
+      </Show>
+      <Show on={at(4)} className="mt-2">
+        <span style={dim}>&gt;</span> /hivemind why
+      </Show>
+      <div className="mt-1 pl-3.5">
+        <Show on={at(5)}>
+          <span style={dim}>⎿ </span>
+          <span style={{ color: "#f5a524" }}>⬢</span> <span className="font-bold">Hivemind</span> <span style={dim}>· why</span>
+        </Show>
+        <div className="pl-5">
+          <Show on={at(6)}>
+            <span className="font-bold" style={{ color: C.locked }}>LOCKED RULE</span> · <Handles dark text="#org" />
+          </Show>
+          <Show on={at(7)} className="font-bold">
+            Never log expert personal info
+          </Show>
+          <Show on={at(8)}>
+            <span style={dim}>Set by</span> <Handles dark text="@greg" /> <span style={dim}>· Head of Security · 16 Sep ·</span>{" "}
+            <span style={{ color: C.key }}>Incident INC-27</span>
+          </Show>
+          <Show on={at(9)} className="pl-3">
+            &quot;A stack trace with an expert&apos;s email reached our error tracker. Never again.&quot;
+          </Show>
+          <Show on={at(10)}>
+            <span style={dim}>In context</span> every agent in <Handles dark text="#repo/export-service" /> at session start{" "}
+            <span style={dim}>· seen today: Claude Code</span>
+          </Show>
+          <Show on={at(11)}>
+            <span style={dim}>Reinforced 23× · 1 evidence · always applies ·</span> <span style={{ color: C.locked }}>blocked 1 proposal</span>
+          </Show>
+          <Show on={at(12)} className="pl-3" style={dim}>
+            ╰ latest: &quot;Log the expert&apos;s email when a payout fails&quot; from <Handles dark text="@emily" /> 1h ago
+          </Show>
+          <Show on={at(13)}>
+            <span style={dim}>Only</span> <Handles dark text="@greg" /> <span style={dim}>can change this rule ·</span>{" "}
+            <span style={{ color: C.key }}>open in Hivemind</span>
+          </Show>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** The wide card: the explanation on the left, the run on the right. */
+function WhyCard() {
+  return (
+    <motion.article
+      initial={{ opacity: 0, y: 14 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, amount: 0.25 }}
+      transition={{ duration: 0.7, ease: EASE }}
+      className="hm-card overflow-hidden md:col-span-2 lg:grid lg:grid-cols-[minmax(0,0.75fr)_minmax(0,1.6fr)]"
+    >
+      <div className="relative p-6 lg:p-8">
+        <div className="font-mono text-[11.5px] text-muted tabular-nums">03</div>
+        <h3 className="mt-1.5 font-brand text-[24px] leading-tight font-medium tracking-[-0.02em]">Blocked? Ask why.</h3>
+        <p className="mt-2 text-[14.5px] leading-relaxed text-muted">
+          The agent says what it can&apos;t do and what to do instead. Then <code className="text-fg">/hivemind why</code> lays out the rule&apos;s
+          history: who set it, the incident behind it, how often it&apos;s been reinforced, and what it has blocked.
+        </p>
+        <p className="mt-3 text-[13.5px] leading-relaxed text-muted">
+          Also <code className="text-fg">hivemind why &lt;file&gt;:&lt;line&gt;</code> in any terminal, or <code className="text-fg">w</code> in{" "}
+          <code className="text-fg">hivemind watch</code>.
+        </p>
+        <div className="mt-6 hidden lg:block">
+          <Note dir="right" width={190} tone="honey" delay={1.2}>
+            the reason, not just the rule
+          </Note>
+        </div>
+      </div>
+      <div className="overflow-x-auto bg-[#1c1c1e] px-5 py-5 text-[12.5px] text-[#e4e4e7] lg:px-6" style={MONO}>
+        <WhySnippet />
+      </div>
+    </motion.article>
+  );
+}
+
+/** Which agents it works with, and how to start: a small card instead of a loose strip. */
+function AgentsCard() {
+  return (
+    <motion.article
+      initial={{ opacity: 0, y: 14 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, amount: 0.3 }}
+      transition={{ duration: 0.7, ease: EASE, delay: 0.08 }}
+      whileHover={{ y: -3 }}
+      className="hm-card flex flex-col p-6"
+    >
+      <div className="font-mono text-[11.5px] text-muted tabular-nums">05</div>
+      <h3 className="mt-1.5 font-brand text-[21px] leading-tight font-medium tracking-[-0.02em]">It works with the agents you already use</h3>
+      <div className="mt-4 flex flex-wrap gap-2 text-[13px]">
+        {["Claude Code", "Cursor", "Codex", "GitHub Copilot", "Gemini CLI", "Windsurf"].map((a, i) => (
+          <motion.span
+            key={a}
+            initial={{ opacity: 0, scale: 0.9 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.3 + i * 0.07, type: "spring", stiffness: 420, damping: 22 }}
+            className="rounded-full bg-bg px-3 py-1 shadow-[0_0_0_1px_var(--border)]"
+          >
+            {a}
+          </motion.span>
+        ))}
+      </div>
+      <p className="mt-auto pt-5 text-[14px] leading-relaxed text-muted">
+        <code className="rounded bg-panel px-1 font-mono text-[13px] text-fg">hivemind init</code> connects a repo to all of them.{" "}
+        <code className="rounded bg-panel px-1 font-mono text-[13px] text-fg">!hivemind</code> opens watch next to Claude Code.
+      </p>
+    </motion.article>
   );
 }
 
@@ -247,18 +360,7 @@ export function UnderTheHood() {
           }
           snippet={<FixSnippet />}
         />
-        <Card
-          n={3}
-          delay={0.16}
-          title="Agents say no, then offer a safe way"
-          body="Asked to break a locked rule, the agent declines and names its owner. If the goal is fine, it suggests a way to reach it that follows the rule."
-          note={
-            <Note dir="down-left" width={150} delay={0.8}>
-              only when the goal itself is fine
-            </Note>
-          }
-          snippet={<RefuseSnippet />}
-        />
+        <WhyCard />
         <Card
           n={4}
           delay={0.24}
@@ -271,21 +373,9 @@ export function UnderTheHood() {
           }
           snippet={<CollideSnippet />}
         />
+        <AgentsCard />
       </div>
 
-      <div className="mt-8 flex flex-col items-center gap-3 text-center">
-        <div className="flex flex-wrap justify-center gap-2 text-[13px]">
-          {["Claude Code", "Cursor", "Codex", "GitHub Copilot", "Gemini CLI", "Windsurf"].map((a) => (
-            <span key={a} className="rounded-full bg-white px-3 py-1 shadow-[0_0_0_1px_var(--border)]">
-              {a}
-            </span>
-          ))}
-        </div>
-        <p className="text-[14px] text-muted">
-          Open it from Claude Code with <code className="rounded bg-panel px-1 font-mono text-[13px] text-fg">!hivemind</code>, or connect a repo to
-          every agent it uses with <code className="rounded bg-panel px-1 font-mono text-[13px] text-fg">hivemind init</code>.
-        </p>
-      </div>
     </div>
   );
 }
