@@ -3,9 +3,12 @@
 //   stdin: { session_id, transcript_path, cwd, workspace: { current_dir, project_dir }, model, … }. Every stdout line is a
 //   row; ANSI colour is allowed. Claude Code debounces at 300ms and cancels a run still in flight, so this must be fast.
 //
-//   ⬢ Hivemind · 12 rules · 2 waiting               normal
-//   ⬢ Hivemind · 1 locked · 1 lesson · export.ts     "the file" breaks rules (locked in rose, lessons in honey)
-//   ⬢ Hivemind · offline                             no answer and nothing cached
+//   ⬢ Hivemind · 10 rules · 2 waiting                       normal (muted counts)
+//   ⬢ Hivemind · breaks 1 locked rule · src/export.ts:18     "the file" breaks a locked rule (rose, bold)
+//   ⬢ Hivemind · misses 1 team lesson · 10 rules             … or only misses lessons (honey)
+//   ⬢ Hivemind · 11 rules · lesson approved                  for a few minutes after an approval (honey + green)
+//   ⬢ Hivemind · offline                                     no answer and nothing cached
+// (Adrian's terminal-spec.md §7.)
 //
 // "The file": what `hivemind watch` last flagged (its state file, if fresh), else the newest /api/activity/live item
 // for this session_id (the PostToolUse hook records every edit), checked with POST /api/vscode/check.
@@ -22,6 +25,7 @@ const TTL_MS = 10_000;
 const INLINE_BUDGET_MS = 250;
 const LOCK_MS = 15_000;
 const WATCH_FRESH_MS = 30_000;
+const APPROVED_MS = 3 * 60_000; // "lesson approved" stays this long (the spec says until the next prompt)
 
 const hash = (s) => createHash("sha1").update(s).digest("hex").slice(0, 12);
 const readJson = (p) => {
@@ -38,7 +42,7 @@ export const watchStatePath = (cfg) => join(tmpdir(), `hivemind-watch-${hash(`${
 /** Called by `hivemind watch` whenever its flags change: { file: "src/export.ts", flags: Violation[] }. */
 export function writeWatchState(cfg, { file, flags = [] }) {
   try {
-    writeFileSync(watchStatePath(cfg), JSON.stringify({ at: Date.now(), file, flags: flags.map((v) => ({ ruleId: v.ruleId, locked: !!v.locked })) }));
+    writeFileSync(watchStatePath(cfg), JSON.stringify({ at: Date.now(), file, flags: flags.map((v) => ({ ruleId: v.ruleId, locked: !!v.locked, startLine: v.startLine })) }));
   } catch {
     /* best effort */
   }
@@ -69,38 +73,41 @@ const distinct = (vs, locked) => new Set(vs.filter((v) => !!v.locked === locked)
 
 /** Build the line from the API. Throws on network failure. */
 async function compute(th, api, cfg, session, root) {
-  const { HEX, P, fg, sep, t } = th;
+  const { HEX, P, bold, fg, sep, t } = th;
   const head = `${fg(P.lesson)(HEX)} ${t.text("Hivemind")}`;
   const watch = readJson(watchStatePath(cfg));
-  const [rules, live] = await Promise.all([
-    api.rules(""),
-    !watch || Date.now() - watch.at > WATCH_FRESH_MS ? (session ? api.live().catch(() => ({ items: [] })) : { items: [] }) : null,
-  ]);
+  const watchFresh = watch && Date.now() - watch.at < WATCH_FRESH_MS;
+  const [rules, live] = await Promise.all([api.rules(""), api.live().catch(() => ({ items: [], feed: [] }))]);
   const n = rules.rules?.length ?? 0;
   const waiting = rules.pending?.count ?? 0;
-  const normal = [head, t.muted(plural(n, "rule")), ...(waiting ? [t.muted(`${waiting} waiting`)] : [])].join(sep());
 
+  // "The file": what watch last flagged, else this session's newest edit (checked now).
   let file;
-  let flags;
-  if (!live) {
+  let flags = [];
+  if (watchFresh) {
     file = watch.file;
     flags = watch.flags ?? [];
   } else {
-    const mine = (live.items ?? []).find((a) => a.sessionId === session);
+    const mine = session ? (live.items ?? []).find((a) => a.sessionId === session) : null;
     const path = mine && resolve(root, mine.file);
-    if (!path || !existsSync(path)) return normal;
-    file = mine.file;
-    flags = (await api.check(mine.file, readFileSync(path, "utf8")))?.violations ?? [];
+    if (path && existsSync(path)) {
+      file = mine.file;
+      flags = (await api.check(mine.file, readFileSync(path, "utf8")))?.violations ?? [];
+    }
   }
-  const locked = distinct(flags, true);
+  const locked = flags.filter((v) => v.locked).sort((x, y) => x.startLine - y.startLine);
   const lessons = distinct(flags, false);
-  if (!file || (!locked && !lessons)) return normal;
-  return [
-    head,
-    ...(locked ? [t.locked(`${locked} locked`)] : []),
-    ...(lessons ? [t.lesson(plural(lessons, "lesson"))] : []),
-    t.muted(basename(file)),
-  ].join(sep());
+  const lockedN = distinct(flags, true);
+
+  // terminal-spec.md §7, four states:
+  if (file && lockedN) {
+    const at = Number.isFinite(locked[0]?.startLine) ? `${file}:${locked[0].startLine + 1}` : file;
+    return [head, bold(t.lockedText(`breaks ${plural(lockedN, "locked rule")}`)), t.muted(at)].join(sep());
+  }
+  if (file && lessons) return [head, t.lessonText(`misses ${plural(lessons, "team lesson")}`), t.muted(plural(n, "rule"))].join(sep());
+  const approvedJustNow = (live.feed ?? []).some((f) => f.type === "approval" && Date.now() - Date.parse(f.at) < APPROVED_MS);
+  if (approvedJustNow) return [head, bold(fg(P.lesson)(plural(n, "rule"))), t.ok("lesson approved")].join(sep());
+  return [head, t.muted(plural(n, "rule")), ...(waiting ? [t.muted(`${waiting} waiting`)] : [])].join(sep());
 }
 
 /** run(argv, cfg): `statusline` (Claude Code) or `statusline --refresh <session|-> <root>` (the detached refresher). */

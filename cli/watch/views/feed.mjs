@@ -1,31 +1,138 @@
-// Feed (owner: H). Newest on top; each card eases in; collisions get an amber bar. STUB: replace freely, keep the contract.
+// Feed (owner: H). Adrian's terminal-spec.md §4 "Feed row" + shots/feed.png:
+//
+//   NOW · 3
+//   ● @noor     Cursor       edited src/export.ts  just now        handle chip (11 cells), tool faint (13), verb text,
+//   ● @alex     Claude Code  edited src/export.ts  2m              object muted, age faint
+//   ▎ Heads up: two agents in src/export.ts within 10 minutes     collision: one honey line (▎ bar when it's the file
+//                                                                  watch last flagged)
+//   EARLIER · 4
+//   ● @noor     Claude Code  blocked by a locked rule  21m         "blocked" in locked text
+//
+// Newest first. NOW = the last 10 minutes. A row that just arrived starts on the selected wash and steps back to the
+// background over 3 frames, 100 ms apart (spec §6). ↑↓ move the selection (selected row on the wash); enter opens the
+// lesson behind a card. Empty: "No agents working right now." (editor-spec wording).
+const NOW_MS = 10 * 60000;
+const EDIT_WINDOW_MS = 30 * 60000; // edits older than this are noise
+const WASH = ["#232A45", "#21263A", "#1F222F"]; // selected wash, then two steps back (pre-blended on #1C1C1E)
+const CHIP_CELLS = 11;
+const TOOL_CELLS = 13;
+
+/** verb + object for each card kind (data.toCards). */
+function words(c) {
+  switch (c.kind) {
+    case "edit":
+      return ["edited", c.file ?? "a file"];
+    case "session": {
+      const n = String(typeof c.line === "string" ? c.line : "").match(/loaded (\d+)/)?.[1];
+      return ["loaded", n ? `${n} team rules` : "the team rules"];
+    }
+    case "approved":
+      return ["approved", "a lesson"];
+    case "rejected":
+      return ["rejected", "a lesson"];
+    case "blocked":
+      return ["blocked", "by a locked rule"];
+    case "proposed":
+      return ["proposed", "a lesson"];
+    case "captured":
+    case "correction":
+      return ["corrected", "its agent"];
+    case "flag":
+      return ["broke", "a team rule"];
+    default:
+      return [c.kind, ""];
+  }
+}
+
+const ago = (iso, now) => {
+  const s = (now - Date.parse(iso)) / 1000;
+  return s < 45 ? "just now" : s < 3600 ? `${Math.round(s / 60)}m` : s < 86400 ? `${Math.round(s / 3600)}h` : `${Math.round(s / 86400)}d`;
+};
+
+/** Paint a whole row on a wash: re-open the background after every inner reset (chips close their own bg). */
+function washed(th, line, hex, width) {
+  if (!hex) return line;
+  const open = th.bg(hex)("\u0000").split("\u0000")[0];
+  if (!open) return line; // NO_COLOR
+  const padded = th.fit(line, width);
+  return open + padded.replace(/\x1b\[49m/g, "\x1b[49m" + open) + "\x1b[49m";
+}
+
+function visible(state, now) {
+  return (state.cards ?? []).filter((c) => (c.kind === "edit" ? now - Date.parse(c.at) < EDIT_WINDOW_MS : true));
+}
+
 export default {
   id: "feed",
   title: "Feed",
-  keys: () => [],
+  keys: (state) => (visible(state, Date.now()).some((c) => c.memory) ? [["↑↓", "move"], ["enter", "open"]] : [["↑↓", "move"]]),
+
   render(state, ctx) {
     const { theme: th, width: w, now } = ctx;
-    const out = [""];
-    const cards = state.cards.filter((c) => c.kind !== "edit" || now - Date.parse(c.at) < 10 * 60000);
-    if (!cards.length) return ["", "  " + th.t.muted("No agents working right now."), "  " + th.t.faint("Corrections, approvals and collisions show up here as they happen.")];
-    for (const c of cards) {
-      const a = c.born ? th.ease((now - c.born) / 350) : 1;
-      th.faded(a, () => {
-        const bar = th.fg(th.labelColor(c.kind))("▌");
-        const line = typeof c.line === "function" ? c.line(now) : c.line;
-        const tool = c.agent ? th.badge(th.toolName(c.agent)) + " " : "";
-        out.push(th.spread(` ${bar} ${th.label(c.kind)}`, `${tool}${th.t.faint(shortAgo(c.at, now))} `, w));
-        out.push(th.clip(` ${bar} ${th.rich(th.plain(line))}`, w));
-        if (c.meta) out.push(th.clip(` ${bar} ${th.t.muted(c.meta)}`, w));
-        out.push("");
-      });
+    const cards = visible(state, now).filter((c) => c.kind !== "collision");
+    const collisions = (state.cards ?? []).filter((c) => c.kind === "collision" && now - Date.parse(c.at) < NOW_MS);
+    if (!cards.length && !collisions.length) {
+      return ["", `  ${th.t.muted("No agents working right now.")}`, `  ${th.t.faint("Edits, corrections, approvals and collisions show up here as they happen.")}`];
+    }
+    const sel = Math.min(state.view.feed?.sel ?? -1, cards.length - 1);
+    const fresh = cards.some((c) => c.born && now - c.born < WASH.length * 100);
+    if (fresh && !th.REDUCED) ctx.actions?.animate?.(WASH.length * 100 + 50);
+
+    const row = (c, i) => {
+      const isAgent = !c.actor || /^agent|^agent:/.test(c.actor);
+      const chip = isAgent ? ` ${th.t.muted("an agent")}` : th.handleChip(c.actor);
+      const pad = " ".repeat(Math.max(0, CHIP_CELLS - th.width(chip)));
+      const tool = th.t.faint(` ${th.toolName(c.agent) || (c.kind === "approved" || c.kind === "rejected" ? "Hivemind" : "")}`.padEnd(TOOL_CELLS));
+      const [verb, obj] = words(c);
+      const v = c.kind === "blocked" ? th.t.lockedText(verb) : th.t.text(verb);
+      const line = ` ${chip}${pad}${tool}${v}${obj ? th.t.muted(` ${obj}`) : ""}  ${th.t.faint(ago(c.at, now))}`;
+      const age = c.born ? Math.floor((now - c.born) / 100) : Infinity;
+      const wash = i === sel ? WASH[0] : age < WASH.length ? WASH[age] : null;
+      return washed(th, th.clip(line, w), wash, w);
+    };
+
+    // Collisions: one honey line under the newest edit of that file; ▎ bar when it's the file watch last flagged.
+    const headsUp = new Map();
+    for (const col of collisions) {
+      const f = col.file;
+      if (!f || headsUp.has(f)) continue;
+      const bar = state.lastFile && (state.lastFile === f || state.lastFile.endsWith(`/${f}`) || f.endsWith(`/${state.lastFile}`)) ? th.fg(th.P.lesson)("▎") : " ";
+      headsUp.set(f, th.clip(`${bar}${th.t.lessonText(` Heads up: two agents in ${f} within 10 minutes`)}`, w));
+    }
+
+    const out = [];
+    const groups = [
+      ["NOW", cards.filter((c) => now - Date.parse(c.at) < NOW_MS)],
+      ["EARLIER", cards.filter((c) => now - Date.parse(c.at) >= NOW_MS)],
+    ];
+    let i = 0;
+    for (const [name, list] of groups) {
+      if (!list.length) {
+        if (name === "NOW" && headsUp.size) out.push("", ` ${th.bold(th.t.faint(name))}`, ...headsUp.values());
+        continue;
+      }
+      out.push("", ` ${th.bold(th.t.faint(name))}${th.t.faint(` · ${list.length}`)}`);
+      for (const c of list) {
+        out.push(row(c, i++));
+        const h = c.kind === "edit" && c.file ? headsUp.get(c.file) : null;
+        if (h) {
+          out.push(h);
+          headsUp.delete(c.file);
+        }
+        if (out.length > ctx.height) break;
+      }
+      if (name === "NOW") out.push(...headsUp.values()); // collisions whose edits scrolled out of NOW
       if (out.length > ctx.height) break;
     }
     return out;
   },
-};
 
-function shortAgo(iso, now) {
-  const s = (now - Date.parse(iso)) / 1000;
-  return s < 45 ? "now" : s < 3600 ? `${Math.round(s / 60)}m` : s < 86400 ? `${Math.round(s / 3600)}h` : `${Math.round(s / 86400)}d`;
-}
+  onKey(key, state, ctx) {
+    const list = visible(state, Date.now()).filter((c) => c.kind !== "collision");
+    const v = (state.view.feed ??= { sel: -1 });
+    if (key.name === "down" || key.ch === "j") return (v.sel = Math.min(list.length - 1, v.sel + 1)), true;
+    if (key.name === "up" || key.ch === "k") return (v.sel = Math.max(-1, v.sel - 1)), true;
+    if (key.name === "return" && list[v.sel]?.memory) return ctx.actions.openDetail(list[v.sel].memory.id), true;
+    return false;
+  },
+};
