@@ -34,7 +34,7 @@ export function clip(s, w, ellipsis = "…") {
     used += cw(ch);
     i += ch.length;
   }
-  return out + ellipsis + "\x1b[0m";
+  return out + ellipsis + (s.includes("\x1b") ? "\x1b[0m" : ""); // no stray reset under NO_COLOR
 }
 export const padEnd = (s, w) => {
   const c = clip(s, w);

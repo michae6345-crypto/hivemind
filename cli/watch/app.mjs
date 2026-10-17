@@ -5,7 +5,7 @@ import { basename, relative, resolve } from "node:path";
 import * as theme from "./theme.mjs";
 import { HEX, P, REDUCED, bold, fg, label, plain, scopeChip, sep, t } from "./theme.mjs";
 import { Screen, clip, keys, padEnd, spread, strip, width } from "./term.mjs";
-import { chainOf, makeApi, ownerOf, plainError, toCards } from "./data.mjs";
+import { blockedBy, chainOf, makeApi, ownerOf, plainError, toCards } from "./data.mjs";
 import here from "./views/here.mjs";
 import rules from "./views/rules.mjs";
 import queue from "./views/queue.mjs";
@@ -13,18 +13,18 @@ import feed from "./views/feed.mjs";
 import detail from "./views/detail.mjs";
 import { celebration } from "./celebrate.mjs";
 import { startWatcher } from "./watcher.mjs";
+import { writeWatchState } from "./statusline.mjs";
 
 const TABS = [here, rules, queue, feed];
 const POLL_MS = 2000;
 const SLOW_MS = 15000;
-const SPIN = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
 
 export async function cmdWatch(cfg) {
   const short = cfg.repo.replace(/^repo\//, "");
   const state = {
     me: null, // Person
     role: "engineer",
-    workspace: { org: "Hivemind", project: short, root: cfg.root },
+    workspace: { org: null, project: short, root: cfg.root }, // org arrives with the rules (spec §0.5: no guesses)
     repo: cfg.repo,
     actor: cfg.actor,
     scopes: [],
@@ -76,10 +76,11 @@ export async function cmdWatch(cfg) {
       actions.animate(ms + 50);
     },
     celebrate: (lesson) => {
-      state.celebration = celebration(lesson, { now: Date.now(), reduced: REDUCED, me: state.actor });
-      actions.animate(state.celebration.duration ?? 6000);
+      // lesson.approver = who approved it (the approved card's actor); rules = the count that ticks 10 → 11.
+      state.celebration = celebration(lesson, { now: Date.now(), reduced: REDUCED, me: state.actor, rules: state.rules.length });
+      actions.animate(1700); // the motion is 1.6s; the card then holds until a key (or its duration) without redraws
     },
-    /** Keep redrawing at ~30fps for `ms` (eases, the seal, the spinner). Nothing loops forever. */
+    /** Keep redrawing at ~20fps for `ms` (eases, the seal). Nothing loops forever. */
     animate: (ms) => {
       animUntil = Math.max(animUntil, Date.now() + (REDUCED ? 0 : ms));
       if (!timer) tick();
@@ -87,10 +88,11 @@ export async function cmdWatch(cfg) {
     },
     busy: async (labelText, fn) => {
       state.busy = { label: labelText, since: Date.now() };
-      actions.animate(60000);
+      const later = setTimeout(render, 420); // the word appears after 400ms; no spinner
       try {
         return await fn();
       } finally {
+        clearTimeout(later);
         state.busy = null;
         render();
       }
@@ -103,7 +105,7 @@ export async function cmdWatch(cfg) {
   };
   function tick() {
     render();
-    timer = Date.now() < animUntil ? setTimeout(tick, 33) : null;
+    timer = Date.now() < animUntil ? setTimeout(tick, 50) : null;
   }
 
   async function decide(m, how) {
@@ -133,6 +135,7 @@ export async function cmdWatch(cfg) {
         state.scopes = sc.scopes ?? [];
         state.people = sc.people ?? [];
         state.me = state.people.find((p) => p.id === state.actor) ?? null;
+        theme.setPeople(state.people);
         state.role = typeof cfg.flags.role === "string" ? cfg.flags.role : (state.me?.role ?? "engineer");
         state.chain = chainOf(cfg.repo, state.scopes);
       }
@@ -177,7 +180,7 @@ export async function cmdWatch(cfg) {
 
   function onNew(c) {
     actions.animate(400); // the card's ease-in
-    if (c.kind === "approved") actions.celebrate(c.memory);
+    if (c.kind === "approved") actions.celebrate({ ...c.memory, approver: c.actor });
     if (c.kind === "collision") actions.toast(`Heads up: ${typeof c.line === "function" ? c.line(Date.now()) : c.line}`, "lesson", 5000);
     hooks.onCard?.(c);
   }
@@ -197,92 +200,99 @@ export async function cmdWatch(cfg) {
     };
   }
 
+  const KEY = (k, what) => `${bold(t.blueText(k))} ${t.faint(what)}`;
+  const hairline = (n) => fg(P.hair)("─".repeat(Math.max(0, n)));
+
+  /** One line (terminal-spec §0.2): `⬢ Hivemind · Org / project` left, who you are right. Counts live on the tabs. */
   function header(w) {
-    const who = state.me ? `${t.handle(`@${state.me.id}`)}${sep()}${t.muted(cap(state.role))}` : t.handle(`@${state.actor}`);
-    const left = ` ${fg(P.lesson)(HEX)} ${bold(t.text("Hivemind"))}${sep()}${t.text(state.workspace.org)}${t.faint(" / ")}${t.text(state.workspace.project)}${sep()}${who}`;
-    const status = state.online === null ? t.faint("connecting") : state.online ? `${t.ok("●")} ${t.muted("live")}` : `${t.faint("○")} ${t.faint("offline")}`;
-    const locked = state.rules.filter((r) => r.locked).length;
-    const waiting = state.pending?.count ?? 0;
-    const counts = ` ${t.muted(`${state.rules.length} rules`)}${sep()}${t.muted(`${locked} locked`)}${sep()}${waiting ? t.lessonText(`${waiting} waiting`) : t.muted("0 waiting")}${state.approver && waiting ? t.faint(` on @${state.approver.id}`) : ""}`;
-    const watching = state.lastFile ? t.faint(`last change ${state.lastFile}`) : t.faint(`watching ${basename(cfg.root)}`);
-    return [spread(left, status + " ", w), spread(counts, watching + " ", w)];
+    const mark = ` ${fg(P.lesson)(HEX)} ${bold(t.text("Hivemind"))}`;
+    const me = `${theme.handleChip(state.actor)} ${t.faint(cap(state.role))}`;
+    const where = state.workspace.org ? `${state.workspace.org} / ${state.workspace.project}` : state.workspace.project;
+    const full = `${mark}${sep()}${t.muted(where)}`;
+    const short = `${mark}${sep()}${t.muted(state.workspace.project)}`;
+    if (width(full) + width(me) + 2 <= w) return [spread(full, me, w)];
+    if (width(short) + width(me) + 2 <= w) return [spread(short, me, w)];
+    return [clip(short, w), clip(`   ${me}`, w)];
   }
 
+  /** Labels, then a hairline with a heavy chrome-blue segment under the active tab. Under 50 columns: H R Q F. */
   function tabBar(w) {
-    let top = " ";
-    let under = t.hair("─");
+    const narrow = w < 50;
+    let row = "";
+    let bar = "";
     for (const v of TABS) {
       const n = typeof v.count === "function" ? v.count(state) : null;
-      const name = ` ${v.title}${n ? ` ${n}` : ""} `;
-      const active = state.tab === v.id && !state.detail;
-      top += (active ? bold(t.text(` ${v.title}`)) + (n ? t.lessonText(` ${n}`) : "") + " " : t.muted(` ${v.title}`) + (n ? t.faint(` ${n}`) : "") + " ") + " ";
-      under += (active ? t.blue("━".repeat(width(name))) : t.hair("─".repeat(width(name)))) + t.hair("─");
+      const text = narrow ? ` ${v.title[0]} ` : ` ${v.title}${n ? ` ${n}` : ""} `;
+      const on = state.tab === v.id && !state.detail;
+      row += (on ? bold(t.text(text)) : t.faint(text)) + " ";
+      bar += (on ? t.blue("━".repeat(width(text))) : hairline(width(text))) + hairline(1);
     }
-    under += t.hair("─".repeat(Math.max(0, w - width(under))));
-    const hint = state.detail ? t.faint("esc back ") : t.faint("tab switch ");
-    return [spread(top, hint, w), clip(under, w, "")];
+    return [clip(row, w), clip(bar + hairline(w - width(bar)), w, "")];
   }
 
-  function teachBox(w) {
-    const focus = state.teach.focus;
-    const border = focus ? t.blue : t.hair;
+  /** The teach box: only while open (t), docked at the bottom like a chat input. */
+  function teachBox(w, now) {
+    const tt = state.teach;
+    const sent = tt.sent && now - tt.sent.at < tt.sent.ms ? tt.sent : null;
+    if (!tt.focus && !tt.sending && !sent) return { lines: [], caret: null };
+    const b = t.blue;
     const inner = w - 4;
-    const chipText = scopeChip(cfg.repo);
-    const room = inner - width(chipText) - 4;
-    const text = state.teach.text;
-    const shown = text.length > room ? "…" + text.slice(text.length - room + 1) : text;
-    const body = text ? t.text(shown) : t.faint(focus ? "Teach Hivemind a rule…  (enter sends, esc cancels)" : "Teach Hivemind a rule…");
-    const send = text ? t.blue("↵") : t.faint(focus ? "↵" : "t");
-    const line = `${chipText} ${body}`;
-    return {
-      lines: [
-        " " + border("╭" + "─".repeat(w - 4) + "╮"),
-        " " + border("│") + " " + spread(line, send, inner - 2) + " " + border("│"),
-        " " + border("╰" + "─".repeat(w - 4) + "╯"),
-      ],
-      caret: focus ? { col: 3 + width(chipText) + 1 + width(shown) } : null,
-    };
-  }
-
-  function footer(w, now) {
-    const k = (key, what) => `${t.blueText(key)} ${t.faint(what)}`;
-    const v = state.detail ? detail : TABS.find((x) => x.id === state.tab);
-    const own = (v?.keys?.(state) ?? []).map(([a, b]) => k(a, b));
-    const hints = state.teach.focus
-      ? [k("enter", "send"), k("esc", "cancel")]
-      : [...own, k("t", "teach"), k("?", "rules here"), k("q", "quit")];
-    let left = " " + hints.join(t.faint("  "));
-    if (state.busy && now - state.busy.since > 400) {
-      const f = SPIN[Math.floor((now - state.busy.since) / 80) % SPIN.length];
-      left = ` ${t.blue(f)} ${t.muted(state.busy.label + "…")}`;
+    const top = `${b("╭─ ")}${bold(t.text("Teach Hivemind"))} ${b("─".repeat(Math.max(0, w - 19)) + "╮")}`;
+    let mid;
+    let caret = null;
+    if (sent) {
+      const col = sent.tone === "locked" ? t.lockedText : t.lessonText;
+      mid = theme.rich(plain(sent.msg), { base: col });
+    } else {
+      const room = inner - 3;
+      const text = tt.text;
+      const shown = text.length > room ? "…" + text.slice(text.length - room + 1) : text;
+      mid = `${t.blueText("›")} ${tt.sending ? t.muted(shown) : text ? t.text(shown) : t.faint("Teach Hivemind a rule…")}`;
+      if (tt.focus) caret = { col: 4 + width(shown) };
     }
-    return clip(left, w);
+    const chipText = scopeChip(cfg.repo);
+    const right = tt.sending ? t.faint("sending") : t.blueText("enter");
+    const bottom = `${b("╰─ ")}${chipText} ${b("─".repeat(Math.max(0, w - 12 - width(chipText) - width(right))))} ${right} ${b("─╯")}`;
+    return { lines: [clip(top, w, ""), `${b("│")} ${padEnd(mid, inner)} ${b("│")}`, clip(bottom, w, "")], caret };
   }
 
+  /** A hairline, then key hints: key bold in chrome text, the word faint, three spaces between pairs. */
+  function footer(w, now) {
+    const v = state.detail ? detail : TABS.find((x) => x.id === state.tab);
+    const own = (v?.keys?.(state) ?? []).map(([a, b]) => KEY(a, b));
+    let hints = state.teach.focus
+      ? [KEY("enter", "send"), KEY("esc", "cancel")]
+      : [...own, KEY("t", "teach"), KEY("?", "rules here"), KEY("tab", "switch"), KEY("q", "quit")];
+    if (state.busy && now - state.busy.since > 400) hints = [t.muted(`${state.busy.label}…`)]; // a word, not a spinner
+    return [hairline(w), clip(" " + hints.join("   "), w)];
+  }
+
+  /** One line above the footer for errors and confirmations (403s in plain words, approvals). */
   function toastLine(w, now) {
     const tt = state.toast;
-    if (!tt || now - tt.at > tt.ms) return "";
-    const age = now - tt.at;
-    const a = REDUCED ? 1 : Math.min(1, age / 200, (tt.ms - age) / 300);
-    return theme.faded(a, () => {
-      const col = { ok: t.ok, locked: t.lockedText, lesson: t.lessonText, muted: t.muted }[tt.tone] ?? t.muted;
-      const mark = { ok: t.ok, locked: t.locked, lesson: t.lesson, muted: t.faint }[tt.tone] ?? t.faint;
-      return clip(` ${mark(HEX)} ${col(theme.rich(plain(tt.msg), { base: col }))}`, w);
-    });
+    if (!tt || now - tt.at > tt.ms) return null;
+    const col = { ok: t.ok, locked: t.lockedText, lesson: t.lessonText, muted: t.muted }[tt.tone] ?? t.muted;
+    return clip(` ${theme.rich(plain(tt.msg), { base: col })}`, w);
   }
 
   let lastFrame = [];
+  let lastWatchState = "";
   function compose() {
     const w = Math.max(40, tty ? screen.cols : Number(cfg.flags.cols) || 100);
-    const h = Math.max(16, tty ? screen.rows : Number(cfg.flags.rows) || 36);
+    const h = Math.max(12, tty ? screen.rows : Number(cfg.flags.rows) || 36);
     const now = Date.now();
-    const top = [...header(w), "", ...tabBar(w)];
-    const box = teachBox(w);
-    const bottom = [toastLine(w, now), ...box.lines, footer(w, now)];
-    const bodyH = h - top.length - bottom.length;
+    const top = [...header(w), ...tabBar(w)];
+    const box = teachBox(w, now);
+    const toast = toastLine(w, now);
+    const bottom = [...(toast ? [toast] : []), ...box.lines, ...footer(w, now)];
+    const bodyH = Math.max(1, h - top.length - bottom.length);
     const ctx = ctxFor(w, bodyH);
 
     let body = [];
+    if (state.online === false) {
+      body.push("", clip(`  ${t.muted("Not connected to Hivemind. Set ")}${t.blueText("HIVEMIND_TOKEN")}${t.muted(" and restart watch.")}`, w));
+      ctx.height = bodyH - body.length;
+    }
     const cel = state.celebration;
     if (cel && !cel.done(now)) {
       body.push(...cel.lines({ ...ctx, height: bodyH }, now), "");
@@ -292,12 +302,12 @@ export async function cmdWatch(cfg) {
     try {
       body.push(...view.render(state, ctx));
     } catch (e) {
-      body.push(t.lockedText(` view ${view.id} crashed: ${e.message}`));
+      body.push(t.lockedText(` ${view.id} view crashed: ${e.message}`));
     }
     body = body.slice(0, bodyH).map((l) => clip(l, w));
     while (body.length < bodyH) body.push("");
     const lines = [...top, ...body, ...bottom];
-    const caret = box.caret ? { row: h - 4, col: box.caret.col } : null;
+    const caret = box.caret ? { row: h - 2 - 2, col: box.caret.col } : null;
     return { lines, caret };
   }
 
@@ -305,28 +315,44 @@ export async function cmdWatch(cfg) {
     const { lines, caret } = compose();
     lastFrame = lines;
     if (tty) screen.draw(lines, caret);
-    if (recordFile) appendFileSync(recordFile, `\x1b[2J\x1b[H${lines.join("\n")}\n␞\n`);
+    if (recordFile) appendFileSync(recordFile, `\x1b[2J\x1b[H${lines.join("\n")}\n\u241E\n`);
+    // Tell the Claude Code status line what watch flagged (statusline.mjs reads it for 30s).
+    const flags = state.lastFile ? (state.flags[state.lastFile] ?? []) : [];
+    const sig = `${state.lastFile}|${flags.map((v) => `${v.ruleId}:${v.startLine}`).join(",")}`;
+    if (state.lastFile && sig !== lastWatchState) {
+      lastWatchState = sig;
+      writeWatchState(cfg, { file: state.lastFile, flags });
+    }
   }
 
   // ---------- keys ----------
   async function sendTeach() {
     const text = state.teach.text.trim();
-    state.teach = { focus: false, text: "" };
-    if (!text) return render();
+    if (!text) {
+      state.teach = { focus: false, text: "" };
+      return render();
+    }
+    state.teach = { focus: false, text, sending: true };
+    const done = (msg, tone, ms = 3000) => {
+      state.teach = { focus: false, text: "", sent: { msg, tone, at: Date.now(), ms } };
+      actions.animate(0);
+      setTimeout(render, ms + 20); // the box closes on its own
+    };
     try {
       const res = await actions.busy("Teaching", () => api.teach(text));
       const m = res.lessons?.[0];
-      if (!m) return actions.toast("Nothing new to learn: Hivemind already knows that, or found no reusable rule.", "muted");
-      const owner = ownerOf(m.scopeId, state.scopes) ?? "a lead";
-      if (m.status === "blocked") {
-        const memById = new Map(state.memories.map((x) => [x.id, x]));
-        const { blockedBy } = await import("./data.mjs");
-        const b = blockedBy(m, memById);
-        actions.toast(`Blocked: contradicts @${b.owner}'s locked rule "${plain(b.title)}".`, "locked", 6000);
-      } else actions.toast(`Lesson proposed. Waiting on @${owner}.`, "lesson", 3000);
+      const act = (res.actions ?? []).find((x) => x.memoryId === m?.id);
+      const owner = m ? (ownerOf(m.scopeId, state.scopes) ?? "a lead") : null;
+      if (!m) done("Nothing new to learn: Hivemind already knows that.", "muted");
+      else if (m.status === "blocked") {
+        const b = blockedBy(m, new Map(state.memories.map((x) => [x.id, x])));
+        done(`Blocked: contradicts @${b.owner}'s locked rule "${plain(b.title)}".`, "locked", 6000);
+      } else if (act?.action === "reinforced" || act?.action === "updated" || m.status === "active")
+        done(`Already known. Your correction was added as evidence${m.status === "pending" ? `; still waiting on @${owner}` : ""}.`, "lesson");
+      else done(`Lesson proposed. Waiting on @${owner}.`, "lesson");
       await poll(true);
     } catch (e) {
-      actions.toast(plainError(e), "locked", 5000);
+      done(plainError(e, { scopes: state.scopes }), "locked", 5000);
     }
   }
 
@@ -343,6 +369,10 @@ export async function cmdWatch(cfg) {
     const key = { ...raw, name: raw.name ?? str, ch: str };
     if (key.ctrl && key.name === "c") return quit();
     if (state.teach.focus) return onTeachKey(str, key);
+    if (state.celebration && !state.celebration.moving?.(Date.now())) {
+      state.celebration = null;
+      if (key.name === "escape") return render();
+    }
     const ctx = ctxFor(screen.cols, screen.rows);
     if (state.detail) {
       if (key.name === "escape" || key.name === "backspace") return actions.closeDetail();
@@ -358,7 +388,7 @@ export async function cmdWatch(cfg) {
     if (key.name === "left") return actions.setTab(TABS[(i + TABS.length - 1) % TABS.length].id);
     if (/^[1-4]$/.test(str ?? "")) return actions.setTab(TABS[Number(str) - 1].id);
     if (key.name === "t") {
-      state.teach.focus = true;
+      state.teach = { focus: true, text: "" };
       return render();
     }
     if (str === "?") {

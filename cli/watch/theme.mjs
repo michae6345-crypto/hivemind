@@ -13,14 +13,16 @@ export const P = {
   text: "#E4E4E7",
   muted: "#A1A1AA",
   faint: "#71717A",
-  hair: "#3F3F46",
+  hair: "#2E2E32", // dividers, the tab bar's rest, the timeline rail
   org: "#E4E4E7",
-  team: "#8B8DF0",
+  team: "#8B93FF",
   repo: "#2DD4BF",
   personal: "#A1A1AA",
   handle: "#E0A955",
-  pill: "#27272A", // neutral tool badge
-  bg: "#18181B", // what fades mix toward (close to Windows Terminal / VS Code dark backgrounds)
+  pill: "#2A2A2E", // every chip's background
+  sel: "#232A45", // selected row wash (chrome blue ~14%)
+  okWash: "#1D3A2B", // the approve flash
+  bg: "#1C1C1E", // fades mix toward this (terminal-spec §2: washes are pre-blended onto #1C1C1E)
 };
 
 const env = process.env;
@@ -96,17 +98,29 @@ export function scopeChip(scopeId) {
   const col = layerColor(scopeId);
   const dot = scopeId.startsWith("personal/") ? "○" : "●";
   const label = scopeId === "org" ? "#org" : `#${scopeId}`;
-  return pill(col, `${fg(col)(dot)} ${t.text(label)}`);
+  return pill(`${fg(col)(dot)} ${t.text(label)}`);
 }
-/** `● @jordan` in the handle colour. */
-export function handleChip(h) {
-  const name = h.startsWith("@") ? h : `@${h}`;
-  return pill(P.handle, fg(P.handle)(`● ${name}`));
-}
-const pill = (col, inner) => (COLOR ? bg(mix(col, P.bg, 0.14))(` ${inner} `) : inner);
 
-/** Neutral tool badge: ` Claude Code ` on zinc. */
-export const badge = (label) => (COLOR ? bg(P.pill)(t.muted(` ${label} `)) : `[${label}]`);
+// A person's dot is their layer: Security = org, a lead = team, an engineer = repo (terminal-spec §4).
+const ROLE = new Map();
+export function setPeople(people = []) {
+  ROLE.clear();
+  for (const p of people) ROLE.set(p.id, p.role);
+}
+const personColor = (id) => {
+  const r = ROLE.get(id);
+  return r === "security" ? P.org : r === "lead" ? P.team : r === "engineer" ? P.repo : P.handle;
+};
+/** ` ● @jordan ` on the chip background; { pos: true } puts the possessive inside: ` ● @alex's `. */
+export function handleChip(h, { pos = false } = {}) {
+  const id = String(h ?? "").replace(/^@/, "");
+  if (!id || id.startsWith("agent")) return t.muted(pos ? "an agent's" : "an agent");
+  return pill(`${fg(personColor(id))("●")} ${t.text(`@${id}${pos ? "'s" : ""}`)}`);
+}
+const pill = (inner) => (COLOR ? bg(P.pill)(` ${inner} `) : inner);
+
+/** Tool names are plain faint text (terminal-spec §4), not pills. */
+export const badge = (label) => t.faint(label);
 
 /**
  * Inline tokens in server text → colour: @handles, #scopes, `code` (honey, or rose in a locked rule), [[slug]] → slug.
