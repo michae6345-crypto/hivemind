@@ -39,6 +39,12 @@ exports.run = async function run() {
   const uri = vscode.Uri.joinPath(folder, "src", "export.ts");
   const doc = await vscode.workspace.openTextDocument(uri);
   const editor = await vscode.window.showTextDocument(doc);
+  const original = doc.getText();
+  const restore = async () => {
+    const d = editor.document;
+    await editor.edit((e) => e.replace(new vscode.Range(d.positionAt(0), d.positionAt(d.getText().length)), original));
+    await d.save();
+  };
 
   await step("codeLens", async () => {
     const lenses = await until(async () => {
@@ -108,6 +114,7 @@ exports.run = async function run() {
   });
 
   await step("diagnostics", async () => {
+    await restore();
     await appendText(editor, '\n\nexport async function dumpAll(rows: Row[]) {\n  console.log("dump", rows.length);\n  return rows;\n}\n');
     await editor.document.save();
     const t0 = Date.now();
@@ -136,6 +143,7 @@ exports.run = async function run() {
         const gone = await until(() => !hmDiags(uri).some((d) => d.severity === vscode.DiagnosticSeverity.Error), 20000);
         res.lockedSquiggleGoneAfterFix = !!gone;
         res.remaining = hmDiags(uri).map((d) => d.message);
+        res.finalFunction = editor.document.getText().slice(editor.document.getText().indexOf("export async function dumpAll"));
       }
     }
     return res;

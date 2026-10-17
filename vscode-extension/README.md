@@ -5,7 +5,7 @@ lessons, and this extension shows them where the code is written:
 
 | Feature | What you see |
 |---|---|
-| **Status bar** | `⬡ Hivemind: 12 rules, 2 waiting`. Click it for every rule, who taught it, and the dashboard |
+| **Status bar** | `⬡ Hivemind: 10 rules, 2 waiting`. Click it for every rule, who taught it, and the dashboard |
 | **CodeLens** | Top of the file and above each function: `🔒 1 locked rule · 2 team lessons apply`. Click it to see the rules with owner and where each one was learned |
 | **Hover** | Hover a symbol a rule names (`assertSingleCustomer`, `console.log`, `logger`…): title, `Alex taught this on Oct 14. Applies to #org.`, and the correction it came from |
 | **Squiggles + Quick Fix** | Red: `Breaks a locked rule: Never mix data from different lab customers. Locked by Maya, Security.` Yellow for team lessons. `Ctrl+.` → `Fix: add assertSingleCustomer(rows)` |
@@ -65,8 +65,8 @@ Other settings: `hivemind.inlineSuggestions`, `hivemind.checkOnType`, `hivemind.
 
 | # | Do this | The judge sees |
 |---|---|---|
-| 1 | Open `src/export.ts` | Status bar (bottom right): `⬡ Hivemind: 12 rules, 2 waiting`. Top of the file: `⬡ Hivemind · 🔒 1 locked rule · 3 team lessons apply to this file`. Above `buildExport`: `🔒 1 locked rule · 2 team lessons apply` |
-| 2 | Click the CodeLens above `buildExport` | A list: 🔒 *Never mix data from different lab customers*, `Maya, Security`; 💡 *Use logger, not console.log*, `Alex's lesson`, with the correction quote under each |
+| 1 | Open `src/export.ts` (counts depend on the database; these are after Alex's lesson is approved) | Status bar (bottom right): `⬡ Hivemind: 10 rules, 2 waiting`. Top of the file: `⬡ Hivemind · 🔒 1 locked rule · 2 team lessons apply to this file`. Above `buildExport`: `🔒 1 locked rule · 2 team lessons apply` |
+| 2 | Click the CodeLens above `buildExport` | A list: 🔒 *Never mix data from different lab customers* (`Maya, Security`), 💡 *Use logger, not console.log* and *Every export calls assertSingleCustomer()* (`Alex's lesson`), with the correction quote under each. Pick one for its full card |
 | 3 | Hover `assertSingleCustomer` inside `buildExport` | Card: *Never mix data from different lab customers*, `Maya locked this on …. Applies to #org.` |
 | 4 | Go to the end of the file and type `export async function writeExport(rows: Row[]) {`, then press **Enter** | Grey ghost text `assertSingleCustomer(rows);` and a faint `⬡ Hivemind · from Alex's lesson` at the end of the line. Press **Tab** to accept |
 | 5 | Below it, type `export async function dumpAll(rows: Row[]) {`, Enter, `console.log("dump", rows.length);`, Enter, `return rows;`, then **Ctrl+S**. Escape any ghost text in this shot | A red squiggle on `dumpAll`: `Breaks a locked rule: Never mix data from different lab customers. Locked by Maya, Security.` A yellow one on `console.log`: `Doesn't follow a team lesson: Use logger, not console.log. From Alex's lesson.` |
@@ -98,7 +98,8 @@ curl -s -X POST http://localhost:3000/api/activity \
 cd vscode-extension
 npm install
 npm run typecheck
-npm run package        # esbuild bundle + vsce → dist/hivemind-vscode.vsix
+npm run package < /dev/null   # esbuild bundle + vsce → dist/hivemind-vscode.vsix (stdin closed: vsce can wait on a prompt)
+node test/run.mjs http://localhost:3107   # integration test in a real VS Code against a running server (pnpm dev -p 3107)
 ```
 
 `npm run icon-font` regenerates `media/hivemind.woff` (the `$(hivemind)` glyph in the status bar and CodeLens).
