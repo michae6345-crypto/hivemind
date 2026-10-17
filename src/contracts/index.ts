@@ -36,7 +36,7 @@ export const MemSource = z.enum(["human", "correction", "review", "agent"]);
 export type MemSource = z.infer<typeof MemSource>;
 
 export const Evidence = z.object({
-  type: z.enum(["correction", "review_comment", "manual", "agent"]),
+  type: z.enum(["correction", "review_comment", "manual", "agent", "fix"]), // fix: learned from a code fix (quote = diff excerpt)
   quote: z.string(),
   actor: z.string(), // person id or 'agent:<session>'
   at: z.string(),
@@ -159,13 +159,15 @@ export const ContextPack = z.object({
 export type ContextPack = z.infer<typeof ContextPack>;
 
 /** POST /api/events → { id, lessons: Memory[] } */
-export const EventType = z.enum(["correction", "review_comment", "session_start", "session_end", "edit", "approval", "agent_proposal"]);
+export const EventType = z.enum(["correction", "review_comment", "session_start", "session_end", "edit", "approval", "agent_proposal", "fix"]);
 export const EventInput = z.object({
   type: EventType,
   actor: z.string(),
   sessionId: z.string().optional(),
   repo: z.string().optional(), // 'repo/export-service'
-  payload: z.record(z.string(), z.unknown()).default({}), // correction: {text, context?}; review_comment: {text,url,file?}
+  // correction: {text, context?}; review_comment: {text,url,file?};
+  // fix: {file, diff (unified, ≤4KB), before?, after?, previousAuthor ("agent:claude-code" | "@kevin"), violationRuleId?}
+  payload: z.record(z.string(), z.unknown()).default({}),
 });
 export type EventInput = z.infer<typeof EventInput>;
 export const EventResult = z.object({ id: z.string(), lessons: z.array(Memory) });
