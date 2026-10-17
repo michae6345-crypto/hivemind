@@ -21,6 +21,7 @@ export const P = {
   handle: "#E0A955",
   pill: "#2A2A2E", // every chip's background
   sel: "#232A45", // selected row wash (chrome blue ~14%)
+  tabBg: "#1C2333", // the active tab pill
   okWash: "#1D3A2B", // the approve flash
   bg: "#1C1C1E", // fades mix toward this (terminal-spec §2: washes are pre-blended onto #1C1C1E)
 };

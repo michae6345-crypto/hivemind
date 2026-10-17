@@ -213,13 +213,15 @@ export async function cmdWatch(cfg) {
     };
   }
 
-  const KEY = (k, what) => `${bold(t.blueText(k))} ${t.faint(what)}`;
+  // Footer keycaps: the key on a dim chip, the word faint (Cursor-style). Under NO_COLOR the chip is just the key.
+  const KEY = (k, what) => `${theme.COLOR ? theme.bg(P.pill)(` ${t.blueText(k)} `) : k} ${t.faint(what)}`;
   const hairline = (n) => fg(P.hair)("─".repeat(Math.max(0, n)));
 
   /** One line (terminal-spec §0.2): `⬢ Hivemind · Org / project` left, who you are right. Counts live on the tabs. */
   function header(w) {
     const mark = ` ${fg(P.lesson)(HEX)} ${bold(t.text("Hivemind"))}`;
-    const me = `${theme.handleChip(state.actor)} ${t.faint(cap(state.role))}`;
+    // Right side: who you are; a small rose dot joins it only while Hivemind is unreachable (nothing in the corner when live).
+    const me = `${state.online === false ? `${t.locked("●")} ` : ""}${theme.handleChip(state.actor)} ${t.faint(cap(state.role))}`;
     const where = state.workspace.org ? `${state.workspace.org} / ${state.workspace.project}` : state.workspace.project;
     const full = `${mark}${sep()}${t.muted(where)}`;
     const short = `${mark}${sep()}${t.muted(state.workspace.project)}`;
@@ -239,7 +241,12 @@ export async function cmdWatch(cfg) {
       const text = narrow ? ` ${v.title[0]} ` : ` ${v.title}${n ? ` ${n}` : ""} `;
       const on = state.tab === v.id && !state.detail;
       layout.tabs.push({ id: v.id, from: width(row), to: width(row) + width(text) });
-      row += (on ? bold(t.text(text)) : t.faint(text)) + " ";
+      // Pills: the active tab sits on a soft blue tint (and keeps the blue underline below); the rest are muted.
+      const label = narrow ? text : ` ${v.title}${n ? " " : ""}`;
+      const count = !narrow && n ? `${n} ` : narrow ? "" : " ";
+      row += (on
+        ? theme.bg(P.tabBg)(bold(t.text(label)) + (n && !narrow ? t.blueText(count) : t.text(count)))
+        : t.muted(label) + t.faint(count)) + " ";
       bar += (on ? t.blue("━".repeat(width(text))) : hairline(width(text))) + hairline(1);
     }
     return [clip(row, w), clip(bar + hairline(w - width(bar)), w, "")];
@@ -321,7 +328,7 @@ export async function cmdWatch(cfg) {
     const w = Math.max(40, tty ? screen.cols : Number(cfg.flags.cols) || 100);
     const h = Math.max(12, tty ? screen.rows : Number(cfg.flags.rows) || 36);
     const now = Date.now();
-    const top = [...header(w), ...tabBar(w)];
+    const top = [...header(w), ...tabBar(w), ""]; // one quiet line under the tabs: the body never touches the bar
     const box = teachBox(w, now);
     const bottom = [...toastLines(w, now), ...box.lines, ...footer(w, now)];
     const bodyH = Math.max(1, h - top.length - bottom.length);
@@ -343,7 +350,10 @@ export async function cmdWatch(cfg) {
     const view = state.detail ? detail : TABS.find((v) => v.id === state.tab);
     const bodyStart = body.length;
     try {
-      body.push(...(state.help ? helpLines(w) : view.render(state, ctx)));
+      const rendered = state.help ? helpLines(w) : view.render(state, ctx);
+      // The shell already leaves one quiet line under the tabs; a view's own leading blank would make it two.
+      if (!body.length && rendered.length && !strip(rendered[0]).trim() && !ROW_MARK_RE.test(rendered[0])) rendered.shift();
+      body.push(...rendered);
     } catch (e) {
       body.push(t.lockedText(` ${view.id} view crashed: ${e.message}`));
     }
@@ -362,7 +372,8 @@ export async function cmdWatch(cfg) {
     while (body.length < bodyH) body.push("");
     const lines = [...top, ...body, ...bottom];
     const boxFrom = top.length + bodyH + toastLines(w, now).length;
-    layout = { ...layout, tabsRow: top.length - 2, bodyTop: top.length, marks, boxFrom, boxTo: boxFrom + box.lines.length - 1, footerRow: h - 1 };
+    // top = header line(s) · tabs · bar · spacer
+    layout = { ...layout, tabsRow: top.length - 3, bodyTop: top.length, marks, boxFrom, boxTo: boxFrom + box.lines.length - 1, footerRow: h - 1 };
     const caret = box.caret ? { row: h - 2 - 2, col: box.caret.col } : null;
     return { lines, caret };
   }

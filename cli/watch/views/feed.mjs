@@ -118,7 +118,7 @@ export default {
       // The age stays on the row however narrow the pane: when the row doesn't fit, the object is cut, not "just …".
       const head = ` ${chip}${pad}${c.kind === "fix" ? toolCell : tool}${v}${object}`;
       const when = th.t.faint(ago(c.at, now));
-      const line = c.kind === "fix" || th.width(head) + 2 + th.width(when) > w ? th.spread(head, ` ${when}`, w) : `${head}  ${when}`;
+      const line = th.spread(head, ` ${when} `, w); // ages right-aligned, faint (one column of air at the edge)
       const age = c.born ? Math.floor((now - c.born) / 100) : Infinity;
       const wash = i === sel ? WASH[0] : age < WASH.length ? WASH[age] : null;
       return washed(th, th.clip(th.rowMark(i) + line, w), wash, w);
