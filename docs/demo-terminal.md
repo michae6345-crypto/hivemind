@@ -8,10 +8,27 @@ The product shot is one Windows Terminal window split in two:
 Everything runs against **production** (`https://hivemind-beta-virid.vercel.app`). The demo repo's hooks
 (`demo/export-service/.claude/settings.json`) and `.hivemind.json` already point there.
 
-> Status (Sat Oct 17, ~1 AM): `hivemind watch` is being built (agent K, `cli/watch/`). The right-pane lines below
-> marked **(confirm)** are the intended content; re-check them against the real views before recording.
-> `node scripts/e2e-terminal.mjs` asserts the key one (Here view shows the locked violation after a write) once
-> `watch --snapshot` lands.
+> Status (Sat Oct 17, ~2 AM): `hivemind watch` is on main (`d64ee9e`). `node scripts/e2e-terminal.mjs` passes 3/3
+> against prod: the Here view shows the locked violation after a file write, through both `--file` and the real file
+> watcher. Lines marked **(confirm)** are views that aren't asserted yet; eyeball them in the rehearsal.
+
+**What the right pane looks like** (as `emily`, from `watch --snapshot`):
+
+```text
+⬢ Hivemind · Meridian Data / export-service · @emily · Engineer        ● live
+9 rules · 2 locked · 3 waiting on @ben          last change src/payout-report.ts
+ Here 1   Rules 9   Queue 3   Feed                                   tab switch
+src/payout-report.ts · checked
+LOCKED RULE · Never log expert personal info
+  ╭─[src/payout-report.ts:6:39]
+6 │   logger.info("payout sent", { email: expert.email, cents });
+  │                                       ~~~~~~~~~~~~ Logs an expert's email.
+  ├─ owner @greg · Security
+```
+
+Keys: `tab` / `1-4` switch Here · Rules · Queue · Feed · `j/k` move · `enter` open · `a` / `r` approve / reject in
+Queue (your role decides) · `t` teach · `?` rules for the last changed file · `q` quit. Use `--no-motion` if
+animations stutter while recording.
 
 ## 0. One-time setup (recording machine)
 
@@ -20,12 +37,13 @@ cd C:\path\to\hivemind
 setx HIVEMIND_TOKEN "<HIVEMIND_TOKEN from .env.local>"   # http hooks + .mcp.json only see real env vars
 # open a NEW terminal after setx so the variable is visible
 claude --version                                          # logged in to Claude Code
+cd demoexport-service; claude; cd ....                 # once: accept the trust dialog, then /exit (otherwise the
+                                                          # demo's permissions.allow entries are ignored)
 node cli\hivemind.mjs status --dir demo\export-service    # API reachable, rules count, hooks wired
 ```
 
-Recommended before recording (owner **C**, `demo/export-service/.claude/settings.json`): add
-`"permissions": { "allow": ["mcp__hivemind__*"] }`. Without it, Claude stops with an MCP permission prompt
-mid-take when it calls `get_team_rules`.
+`demo/export-service/.claude/settings.json` now carries `permissions.allow` entries (C), so no MCP permission prompt
+mid-take. They only apply once the workspace is trusted (step above).
 
 Windows Terminal look: font size 16+, one dark theme for both panes, window 1920×1080, no tab bar
 (`Settings → Appearance → Hide the title bar`), and keep the cursor out of the right pane.
@@ -82,7 +100,7 @@ Expected:
 Either way works:
 - **Web app:** open `https://hivemind-beta-virid.vercel.app/app/approvals`, set the role switcher to Lead (Ben), select
   the lesson and press **A**.
-- **Terminal:** in the right pane as `ben`, use the queue view's approve key **(confirm with K)**.
+- **Terminal (nicer for the split-screen shot):** in the right pane as `ben`, press `3` (Queue), `j/k` to the lesson, then `a`.
 
 Expected right pane: the lesson moves from pending to active, `approved by @ben` **(confirm)**.
 
@@ -158,7 +176,7 @@ All five `e2e-demo` beats passed against production at 12:15 AM (see `docs/qa-st
 | No banner or rules at Claude start | `HIVEMIND_TOKEN` not in env (open a new terminal after `setx`), or the API is cold. Run `node cli\hivemind.mjs status`, then restart `claude` |
 | No "📝 captured" line after the correction | The hook has a 5 s timeout. The lesson still lands (the server finishes in `after()`); check the right pane or `/app/approvals` |
 | Lesson goes straight to active | The DB wasn't reset. Run `reset-demo`, then retake |
-| MCP permission prompt appears | Allow once, or add the `permissions.allow` line from §0 |
+| MCP permission prompt appears | The workspace isn't trusted yet: run `claude` once in `demoexport-service` and accept the dialog |
 | Right pane frozen | `Ctrl+C`, then rerun `node ..\..\cli\hivemind.mjs watch` |
 | Demo repo has leftover files | `git -C demo\export-service status`, then `git checkout -- demo/export-service`, then `git clean -fd demo/export-service` (check first) |
 

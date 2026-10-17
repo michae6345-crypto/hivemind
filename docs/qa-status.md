@@ -1,7 +1,7 @@
 # QA status (agent D)
 
-_Last updated: Sat Oct 17, ~12:20 AM PT, on main `1c92141`._
-Re-run after each big merge: `pnpm build` · `node scripts/e2e-demo.mjs` (server on :3104) · `node scripts/reset-demo.mjs --dry-run`
+_Last updated: Sat Oct 17, ~2:15 AM PT. Terminal pivot: `hivemind watch` is the hero (runbook: `docs/demo-terminal.md`)._
+Re-run after each big merge: `pnpm typecheck` · `pnpm build` · `node cli/hivemind.mjs watch --help` · `node scripts/e2e-terminal.mjs` · `node scripts/e2e-demo.mjs --base https://hivemind-beta-virid.vercel.app` (then `reset-demo`)
 
 ## Build
 
@@ -12,6 +12,20 @@ Re-run after each big merge: `pnpm build` · `node scripts/e2e-demo.mjs` (server
 | Prod deploy fail ~11:54 PM (`hivemind-4b4fizv9y`) | ✅ fixed. Root cause: a CLI deploy uploaded a working copy in which a demo session had edited `demo/export-service/src/export.ts` (logged `expert_email`). The root tsconfig typechecked `demo/`, so it failed with `TS2339: Property 'expert_email' does not exist on type 'Row'`. Committed `main` was fine. Fix: `demo` added to `tsconfig.json` `exclude` (ESLint already ignores it). The demo repo is a fictional target that agents edit live, and it must never gate the app build |
 | Migrations | ✅ fixed the filename collision: `0002_people_title_rejection_event.sql` → `0003_…`. It was already applied, so this is a rename only. If anyone uses the Supabase CLI migration history, note the new prefix |
 | Gotcha | If the build fails with `.next/dev/types/validator.ts … Cannot find module '../../../src/app/(ui)/approvals/page.js'`, stale dev-server types from before the `/app` move are the cause. Run `rm -rf .next/dev`. Vercel isn't affected |
+
+## Terminal demo: `node scripts/e2e-terminal.mjs` (prod, 3/3 runs green, ~2 AM)
+
+| Step | Result |
+|---|---|
+| 1 `watch --help` prints watch usage | ✅ |
+| 2 Here view before the bad write: no violation on that file | ✅ |
+| 4 `hivemind check` → `locked rule: Never log expert personal info`, `owner @greg · Security`, exit 1 | ✅ |
+| 5 `watch --snapshot --file` after the write → `LOCKED RULE · Never log expert personal info` frame | ✅ |
+| 6 real file watcher (`--snapshot --wait 5000`, file written 1.5 s in) → same frame | ✅ |
+
+`e2e-demo` on the **new personas** (kevin corrects, ben approves, emily 403 + fresh session) against prod: (a) (b) (d) (e) ✅
+in the full run and (c) ✅ re-run alone. In the full run, (c) failed with `claude -p exit=1` at the same moment a local
+build OOMed, which points to machine memory pressure with 12 Claude sessions open. Watch it.
 
 ## Demo beats: `node scripts/e2e-demo.mjs --base https://hivemind-beta-virid.vercel.app` (PRODUCTION, ~12:15 AM, on `b6475d1`)
 
@@ -27,12 +41,14 @@ Re-run after each big merge: `pnpm build` · `node scripts/e2e-demo.mjs` (server
 
 ## Open issues
 
+0. **Local `pnpm build` can OOM** (`FATAL ERROR … JavaScript heap out of memory`, exit 134) while many Claude sessions
+   run on this machine. Re-running alone passes (23 pages). Vercel builds of main are green. Not a code issue.
+
 1. ~~Beat 0:15 auto-promoted / merged into the 🔒 rule~~ → **fixed by B in `b6475d1`** (no auto-promotion, never merge
    into locked rules). It works with the default seed, so no `--drop` is needed.
-2. **MCP permission prompt during the demo.** Owner: **C**. In (c), the agent tried `get_team_rules` (Hivemind MCP) and
-   was denied for lack of permission. That's harmless headless (the pack already carried the lesson), but in an
-   interactive recording it shows up as a permission prompt. Fix: add
-   `"permissions": { "allow": ["mcp__hivemind__*"] }` to `demo/export-service/.claude/settings.json`.
+2. ~~MCP permission prompt~~: C added `permissions.allow` to the demo settings. They apply only in a **trusted**
+   workspace, so run `claude` once interactively in `demo/export-service` on the recording machine (see the runbook §0).
+
 3. **`demo/export-service/.claude/settings.json` http hooks still say `localhost:3000`.** Owner: **C**. Fine when
    recording against local `pnpm dev`. Point them at production if recording against prod.
 4. *(Watch)* One hung SessionStart hook earlier (Windows) hasn't reproduced. `e2e-demo.mjs` kills the tree after 240 s.
