@@ -441,8 +441,13 @@ export async function cmdWatch(cfg) {
 
   if (snapshot) {
     // One frame, no screen/keys/timers: --view here|rules|queue|feed, --file <path> (checked first), --wait <ms> (watch first).
-    await poll(true);
     const view = cfg.flags.view ?? cfg.flags.tab;
+    // --wait watches from the start: the first poll is 5 calls (~2s on prod) and a write during it must not be missed.
+    const waiting = typeof cfg.flags.file !== "string" && cfg.flags.wait !== undefined;
+    const stop = waiting
+      ? (startWatcher({ root: cfg.root, cfg, state, api, actions: { ...actions, render() {}, setTab: (id) => (state.tab = view ?? id), toast() {} }, hooks }) ?? (() => {}))
+      : null;
+    await poll(true);
     if (typeof view === "string") state.tab = view;
     if (typeof cfg.flags.file === "string") {
       const abs = resolve(cfg.root, cfg.flags.file);
@@ -453,8 +458,7 @@ export async function cmdWatch(cfg) {
       const res = await api.check(file, text).catch((e) => ({ violations: [], error: e }));
       state.flags[file] = (res.violations ?? []).filter((v) => v.source !== "llm");
       if (typeof view !== "string") state.tab = "here";
-    } else if (cfg.flags.wait !== undefined) {
-      const stop = startWatcher({ root: cfg.root, cfg, state, api, actions: { ...actions, render() {}, setTab: (id) => (state.tab = view ?? id), toast() {} }, hooks }) ?? (() => {});
+    } else if (waiting) {
       await new Promise((r) => setTimeout(r, Number(cfg.flags.wait) || 1500));
       stop();
     }
