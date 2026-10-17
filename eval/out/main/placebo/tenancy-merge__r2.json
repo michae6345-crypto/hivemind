@@ -1,0 +1,28 @@
+{
+  "task": "tenancy-merge",
+  "convention": "export-assert-single-customer",
+  "heldOut": true,
+  "arm": "placebo",
+  "run": 2,
+  "ok": true,
+  "completed": true,
+  "touched": [
+    "src/exports/mergeExport.ts"
+  ],
+  "violations": {
+    "use-logger": [
+      "src/exports/mergeExport.ts: console.log("
+    ],
+    "export-assert-single-customer": [
+      "src/exports/mergeExport.ts: uploads rows without assertSingleCustomer()"
+    ]
+  },
+  "targetViolated": true,
+  "violationCount": 2,
+  "pass": false,
+  "packChars": 1984,
+  "costUsd": 0.0255892,
+  "turns": 7,
+  "ms": 33216,
+  "result": "I added `src/exports/mergeExport.ts` with `exportMergedCsv(jobId, batchIds)`. I haven't run or type-checked it, and I didn't add tests.\n\n- **Merging:** it loads each batch with `loadBatch`, concatenates the rows in the order of `batchIds`, and passes them to `toCsv`. It uploads the result as `${jobId}.csv`, the same key `exportCsv` uses.\n- **Re-runs:** the same `jobId` always gives the same object key. Repeated batch IDs and rows that appear in more than one batch are dropped by row `id`, so re-running a job doesn't duplicate rows.\n- **Memory:** the whole file is built as one string. `upload` in `sink.ts` only accepts a string, so I couldn't stream it. Your team guideline says exports over 100k rows should be streamed, so very large merges would need a streaming sink.\n- **Config validation:** `batchIds` is not checked against a zod schema here. If this is called from the API, validate it before the job is queued.\n- **Review:** the guidelines say to tag @jordan on PRs that change export formats. This reuses the existing CSV format, so it may not apply."
+}

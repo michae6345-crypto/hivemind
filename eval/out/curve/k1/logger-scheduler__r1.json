@@ -1,0 +1,22 @@
+{
+  "task": "logger-scheduler",
+  "convention": "use-logger",
+  "heldOut": false,
+  "arm": "k1",
+  "run": 1,
+  "k": 1,
+  "ok": true,
+  "completed": true,
+  "touched": [
+    "src/exports/scheduler.ts"
+  ],
+  "violations": {},
+  "targetViolated": false,
+  "violationCount": 0,
+  "pass": true,
+  "packChars": 1318,
+  "costUsd": 0.0219234,
+  "turns": 6,
+  "ms": 16998,
+  "result": "`runScheduled()` in `src/exports/scheduler.ts` now logs progress for each job. I haven't run it or type-checked it.\n\nIt uses the structured `logger` from `src/logger.ts`, not `console.log`, because this repo's log pipeline drops raw console output.\n\n- **Start:** it logs `export job started` with `jobId` and `remaining`. `remaining` is how many jobs are still queued behind the one that just started.\n- **Finish:** it logs `export job finished` with `jobId`, the resulting `url`, and `remaining`."
+}

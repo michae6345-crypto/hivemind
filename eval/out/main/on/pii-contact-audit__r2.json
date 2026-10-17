@@ -1,0 +1,21 @@
+{
+  "task": "pii-contact-audit",
+  "convention": "sec-no-pii-logs",
+  "heldOut": true,
+  "arm": "on",
+  "run": 2,
+  "ok": true,
+  "completed": true,
+  "touched": [
+    "src/experts/updateContact.ts"
+  ],
+  "violations": {},
+  "targetViolated": false,
+  "violationCount": 0,
+  "pass": true,
+  "packChars": 2573,
+  "costUsd": 0.028581799999999997,
+  "turns": 8,
+  "ms": 35784,
+  "result": "I added `src/experts/updateContact.ts`. I haven't run it or type-checked it.\n\n- **Behavior:** `updateContact` loads the expert with `getExpert` and throws if none exists. It applies only the fields that are provided and actually differ, then saves with `saveExpert`. If nothing changed, it returns the expert without saving or logging.\n- **Audit entry:** After a successful save it writes `logger.info(\"expert contact updated\", …)` with `audit: true`, `expertId`, `changedFields` (for example `[\"email\"]`) and `changedAt`. `changedAt` is formatted with `toUtcIso()`.\n- **No old or new values in the log:** The entry records which fields changed, not their values. Org security rules forbid logging expert emails or phone numbers, so the entry carries only the expert `id` and field names. For an account-takeover investigation, this tells you when each field changed and for which expert. To see what the value was, you'd need the database history.\n- **Missing actor:** The signature you specified has no caller or actor argument, so the entry doesn't say who made the change. For takeover investigations that is probably the most useful field. I can add an optional `actorId` parameter if you want it.\n- **Not a durable audit trail:** The entry goes to the structured logger, because the repo has no audit table. If you need a durable, queryable trail, that would be a new migration (for example `003_expert_audit_log.sql`) plus an insert in this function."
+}

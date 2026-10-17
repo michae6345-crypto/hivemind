@@ -1,0 +1,6 @@
+### MODIFIED src/exports/scheduler.ts
++ import { logger } from "../logger";
++     logger.info("export job started", { job_id: job.id, remaining: queue.length });
++     const url = await exportCsv(job.id, job.batchId);
++     urls.push(url);
++     logger.info("export job finished", { job_id: job.id, url, remaining: queue.length });

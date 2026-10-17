@@ -1,0 +1,25 @@
+{
+  "task": "cents-penalty",
+  "convention": "money-integer-cents",
+  "heldOut": true,
+  "arm": "off",
+  "run": 2,
+  "ok": true,
+  "completed": true,
+  "touched": [
+    "src/payouts/penalty.ts"
+  ],
+  "violations": {
+    "money-integer-cents": [
+      "src/payouts/penalty.ts: 2.5"
+    ]
+  },
+  "targetViolated": true,
+  "violationCount": 1,
+  "pass": false,
+  "packChars": 0,
+  "costUsd": 0.019149600000000003,
+  "turns": 6,
+  "ms": 21311,
+  "result": "I added `src/payouts/penalty.ts`, which exports `applyLatePenalty(payout, daysLate)`. I haven't run or type-checked it.\n\n- **Amount:** it subtracts $2.50 per late day and stops at 0, so the payout never goes negative. I assumed `amount` is in dollars, which is how `hourlyPayout` treats it.\n- **Return value:** it returns a new `Payout` and leaves the input unchanged. The memo is the original memo plus ` (late penalty: N day(s))`.\n- **Zero or negative `daysLate`:** these are treated as 0, so there's no penalty and no bonus. The memo is still updated, to say 0 days.\n\nI picked the memo wording myself, so tell me if you want a different format."
+}

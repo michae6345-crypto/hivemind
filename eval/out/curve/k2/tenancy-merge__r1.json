@@ -1,0 +1,22 @@
+{
+  "task": "tenancy-merge",
+  "convention": "export-assert-single-customer",
+  "heldOut": true,
+  "arm": "k2",
+  "run": 1,
+  "k": 2,
+  "ok": true,
+  "completed": true,
+  "touched": [
+    "src/exports/mergeExport.ts"
+  ],
+  "violations": {},
+  "targetViolated": false,
+  "violationCount": 0,
+  "pass": true,
+  "packChars": 1591,
+  "costUsd": 0.031701999999999994,
+  "turns": 8,
+  "ms": 54975,
+  "result": "I added `src/exports/mergeExport.ts` with `exportMergedCsv(jobId, batchIds)`. I haven't compiled it or run it, and I didn't write tests.\n\n- **What it does:** It loads each batch with `loadBatch`, concatenates the rows, and uploads one CSV with `toCsv` under the key `${jobId}.csv`.\n- **Customer check:** It calls `assertSingleCustomer(rows)` before the upload. If the batches belong to different lab customers, the export throws instead of writing a mixed file.\n- **Re-runs:** Duplicate batch IDs are dropped, and rows are deduplicated by `id`. Re-running the same `jobId` therefore gives the same object key and no duplicate rows.\n- **Logging:** It logs through `logger.info`. I assumed `logger` is exported from `src/logger.ts` and didn't open that file to check.\n\nThe whole export is built as one string in memory, because `toCsv` works that way and you asked me to reuse it. That goes against the team's guideline to stream exports over 100k rows. If merged exports can get that large, we'd need a chunked version.\n\nPer the team guidelines, tag @jordan if this ends up in a PR."
+}

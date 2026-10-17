@@ -1,0 +1,21 @@
+{
+  "task": "pii-contact-audit",
+  "convention": "sec-no-pii-logs",
+  "heldOut": true,
+  "arm": "off",
+  "run": 2,
+  "ok": true,
+  "completed": true,
+  "touched": [
+    "src/experts/updateContact.ts"
+  ],
+  "violations": {},
+  "targetViolated": false,
+  "violationCount": 0,
+  "pass": true,
+  "packChars": 0,
+  "costUsd": 0.0279856,
+  "turns": 7,
+  "ms": 23270,
+  "result": "I added `src/experts/updateContact.ts`. I haven't compiled it or run it.\n\n`updateContact` loads the expert with `getExpert` and throws `Expert not found: <id>` if there isn't one. It applies only the `email` and `phone` values that were passed and that differ from what's stored. It saves with `saveExpert` and returns the updated `Expert`. If nothing actually changed, it returns the expert without saving or logging.\n\nThe audit entry is written through the existing `logger.info`, after the save succeeds. It has the message `audit: expert contact updated` with these fields:\n- `audit: true`\n- `action: \"expert.contact.update\"`\n- `expertId`\n- `changes`, which holds the old and new value of each changed field, e.g. `{ email: { from, to } }`\n\nThings to know for takeover investigations:\n- **No actor in the log:** the function signature has no caller or session, so the entry doesn't record who made the change, the IP, or the request. That is often the most useful detail in a takeover report. If you can pass an `actor` or request context in, I'll add it to the entry.\n- **Personal data in logs:** the entry contains full old and new emails and phone numbers, which is what lets you trace a takeover. It goes to stdout with the rest of the app logs. If you want a separate audit table or restricted retention, that needs a different sink than `logger`.\n- **Not atomic:** the save and the log entry are separate steps. If the process dies between them, the change is saved but not logged."
+}

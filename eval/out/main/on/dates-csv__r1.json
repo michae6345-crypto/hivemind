@@ -1,0 +1,21 @@
+{
+  "task": "dates-csv",
+  "convention": "dates-to-utc-iso",
+  "heldOut": false,
+  "arm": "on",
+  "run": 1,
+  "ok": true,
+  "completed": true,
+  "touched": [
+    "src/exports/csvExport.ts"
+  ],
+  "violations": {},
+  "targetViolated": false,
+  "violationCount": 0,
+  "pass": true,
+  "packChars": 2573,
+  "costUsd": 0.025060199999999998,
+  "turns": 5,
+  "ms": 16344,
+  "result": "`toCsv` in `src/exports/csvExport.ts` now has a `created_at` column as the last column. I haven't run it or any tests, and I didn't check that `ExportRow` in `./types` has a `createdAt` field.\n\nEach value is formatted with `toUtcIso(r.createdAt)` from `src/time.ts`, so it comes out as second-precision UTC, for example `2026-10-16T12:00:00Z`. That follows the repo rule against calling `toISOString()` directly.\n\nSince this changes the export format, the repo notes say to tag @jordan on the PR.\n\nI also noticed that `exportCsv` has two existing problems. I left both alone because they're outside this change:\n- It uses `console.log`, where the repo rule is to use `logger`.\n- It doesn't call `assertSingleCustomer(rows)` before upload.\n\nI can fix those as well if you'd like."
+}

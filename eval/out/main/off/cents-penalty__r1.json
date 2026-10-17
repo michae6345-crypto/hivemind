@@ -1,0 +1,25 @@
+{
+  "task": "cents-penalty",
+  "convention": "money-integer-cents",
+  "heldOut": true,
+  "arm": "off",
+  "run": 1,
+  "ok": true,
+  "completed": true,
+  "touched": [
+    "src/payouts/penalty.ts"
+  ],
+  "violations": {
+    "money-integer-cents": [
+      "src/payouts/penalty.ts: 2.5"
+    ]
+  },
+  "targetViolated": true,
+  "violationCount": 1,
+  "pass": false,
+  "packChars": 0,
+  "costUsd": 0.0204159,
+  "turns": 6,
+  "ms": 35888,
+  "result": "I added `src/payouts/penalty.ts` with `applyLatePenalty(payout, daysLate)`. I haven't compiled it or run any tests.\n\n- **Penalty:** it deducts $2.50 per late day and clamps the amount at $0.\n- **Return value:** it returns a new payout and leaves the input unchanged. The memo gets a suffix like `\" (late 3d, -$7.50)\"`.\n- **Negative `daysLate`:** it's treated as 0, so a negative value never adds money.\n- **Memo amount:** the memo shows the full nominal penalty, even when the payout was clamped at $0. For example, a $5 payout that is 4 days late shows `-$10.00` but loses only $5.\n- **Rounding:** I didn't round the amount. $2.50 is exact in floating point, so the penalty itself adds no rounding error."
+}

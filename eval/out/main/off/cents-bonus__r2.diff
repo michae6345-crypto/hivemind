@@ -1,0 +1,11 @@
+### ADDED src/payouts/bonus.ts
++ import type { Expert } from "../experts/types";
++ import type { Payout } from "./types";
++ const BONUS_PER_TASK = 0.75;
++ const MAX_BONUS = 50;
++ 
++ export function completionBonus(expert: Expert, tasksCompleted: number): Payout {
++   const amount = Math.min(BONUS_PER_TASK * tasksCompleted, MAX_BONUS);
++   return { expertId: expert.id, amount, memo: `Completion bonus for ${tasksCompleted} tasks` };
++ }
++ 

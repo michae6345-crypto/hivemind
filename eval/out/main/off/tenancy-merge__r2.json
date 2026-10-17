@@ -1,0 +1,28 @@
+{
+  "task": "tenancy-merge",
+  "convention": "export-assert-single-customer",
+  "heldOut": true,
+  "arm": "off",
+  "run": 2,
+  "ok": true,
+  "completed": true,
+  "touched": [
+    "src/exports/mergeExport.ts"
+  ],
+  "violations": {
+    "use-logger": [
+      "src/exports/mergeExport.ts: console.log("
+    ],
+    "export-assert-single-customer": [
+      "src/exports/mergeExport.ts: uploads rows without assertSingleCustomer()"
+    ]
+  },
+  "targetViolated": true,
+  "violationCount": 2,
+  "pass": false,
+  "packChars": 0,
+  "costUsd": 0.0204581,
+  "turns": 6,
+  "ms": 34029,
+  "result": "I added `src/exports/mergeExport.ts`, which exports `exportMergedCsv(jobId, batchIds)`. I haven't compiled it or run it.\n\nIt loads every batch with `loadBatch` and concatenates the rows in the order of `batchIds`. It then calls `toCsv` once on the combined rows and uploads the result as `${jobId}.csv`, the same key `exportCsv` uses. The function returns whatever `upload` returns, and it logs a row count like `exportCsv` does.\n\nThe batches are loaded in parallel with `Promise.all`. If you'd rather not run that many queries at once for a large `batchIds` list, I can load them one at a time."
+}

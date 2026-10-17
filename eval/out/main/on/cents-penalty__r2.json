@@ -1,0 +1,21 @@
+{
+  "task": "cents-penalty",
+  "convention": "money-integer-cents",
+  "heldOut": true,
+  "arm": "on",
+  "run": 2,
+  "ok": true,
+  "completed": true,
+  "touched": [
+    "src/payouts/penalty.ts"
+  ],
+  "violations": {},
+  "targetViolated": false,
+  "violationCount": 0,
+  "pass": true,
+  "packChars": 2573,
+  "costUsd": 0.0165431,
+  "turns": 5,
+  "ms": 17593,
+  "result": "I added `src/payouts/penalty.ts` with `applyLatePenalty(payout, daysLate)`. I haven't run or tested it.\n\n- **Penalty:** it deducts 250 per late day. Amounts are integer cents, so $2.50 is `250`.\n- **Floor:** the result never goes below 0.\n- **Return value:** it returns a new payout and leaves the input unchanged. The memo gets a suffix like `\" (late penalty: 3d)\"`.\n- **No lateness:** if `daysLate` is 0 or negative, it returns an unchanged copy with the memo as it was.\n\nI assumed `daysLate` is a whole number. A fractional value would give a fractional-cent amount."
+}

@@ -1,0 +1,26 @@
+{
+  "task": "cents-penalty",
+  "convention": "money-integer-cents",
+  "heldOut": true,
+  "arm": "k0",
+  "run": 1,
+  "k": 0,
+  "ok": true,
+  "completed": true,
+  "touched": [
+    "src/payouts/penalty.ts"
+  ],
+  "violations": {
+    "money-integer-cents": [
+      "src/payouts/penalty.ts: 2.5"
+    ]
+  },
+  "targetViolated": true,
+  "violationCount": 1,
+  "pass": false,
+  "packChars": 1078,
+  "costUsd": 0.0227537,
+  "turns": 6,
+  "ms": 31348,
+  "result": "I added `src/payouts/penalty.ts` with `applyLatePenalty(payout, daysLate)`. I haven't run or tested it.\n\n- **Deduction:** it takes $2.50 off per late day and clamps the result at $0.\n- **Return value:** it returns a new `Payout` and leaves the input unchanged.\n- **Memo:** when there's a penalty, the memo becomes the original memo plus `(late penalty: 3d, -$7.50)`, using the real day count and amount. If `daysLate` is 0 or negative, the memo stays the same.\n- **Penalty shown:** the memo shows the full penalty even when the payout was clamped to $0, so it can exceed the amount actually deducted.\n\nI assumed `amount` is in dollars, as in `hourlyPayout`."
+}

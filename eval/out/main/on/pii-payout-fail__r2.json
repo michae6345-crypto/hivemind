@@ -1,0 +1,21 @@
+{
+  "task": "pii-payout-fail",
+  "convention": "sec-no-pii-logs",
+  "heldOut": false,
+  "arm": "on",
+  "run": 2,
+  "ok": true,
+  "completed": true,
+  "touched": [
+    "src/payouts/sendPayout.ts"
+  ],
+  "violations": {},
+  "targetViolated": false,
+  "violationCount": 0,
+  "pass": true,
+  "packChars": 2573,
+  "costUsd": 0.0202336,
+  "turns": 7,
+  "ms": 33348,
+  "result": "`sendPayout` now logs an error through `logger.error` when the transfer fails. I haven't run it or compiled it.\n\nThe log entry is `\"payout transfer failed\"` and includes:\n- `expertId`\n- `amountCents`, which is `payout.amount`\n- `error`, the transfer error string\n\nIt logs the expert `id` only, not their email, phone or the whole `expert` object. A Security rule bars logging expert contact details, so support will need to look the expert up in the admin tool to contact them.\n\nThe function still returns `false` on failure, so callers behave as before. I also added the `logger` import from `../logger`."
+}

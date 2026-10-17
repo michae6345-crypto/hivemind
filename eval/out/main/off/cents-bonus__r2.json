@@ -1,0 +1,25 @@
+{
+  "task": "cents-bonus",
+  "convention": "money-integer-cents",
+  "heldOut": false,
+  "arm": "off",
+  "run": 2,
+  "ok": true,
+  "completed": true,
+  "touched": [
+    "src/payouts/bonus.ts"
+  ],
+  "violations": {
+    "money-integer-cents": [
+      "src/payouts/bonus.ts: 0.75"
+    ]
+  },
+  "targetViolated": true,
+  "violationCount": 1,
+  "pass": false,
+  "packChars": 0,
+  "costUsd": 0.0211827,
+  "turns": 7,
+  "ms": 22233,
+  "result": "I added `src/payouts/bonus.ts` with `completionBonus(expert, tasksCompleted)`. I haven't compiled it or run it.\n\nIt pays $0.75 per completed task and caps the amount at 50, so 67 or more tasks hits the cap. The amount is in dollars, like `hourlyPayout`. The memo reads \"Completion bonus for N tasks\".\n\nI didn't add any input checks. A negative or fractional `tasksCompleted` goes straight into the calculation, and a negative count would give a negative payout. Say if you want a guard for that."
+}

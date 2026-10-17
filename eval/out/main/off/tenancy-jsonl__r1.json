@@ -1,0 +1,28 @@
+{
+  "task": "tenancy-jsonl",
+  "convention": "export-assert-single-customer",
+  "heldOut": false,
+  "arm": "off",
+  "run": 1,
+  "ok": true,
+  "completed": true,
+  "touched": [
+    "src/exports/jsonlExport.ts"
+  ],
+  "violations": {
+    "use-logger": [
+      "src/exports/jsonlExport.ts: console.log("
+    ],
+    "export-assert-single-customer": [
+      "src/exports/jsonlExport.ts: uploads rows without assertSingleCustomer()"
+    ]
+  },
+  "targetViolated": true,
+  "violationCount": 2,
+  "pass": false,
+  "packChars": 0,
+  "costUsd": 0.0220709,
+  "turns": 6,
+  "ms": 60278,
+  "result": "I created `src/exports/jsonlExport.ts`, following the structure of `csvExport.ts`. I haven't compiled it or run it.\n\n- **`toJsonl(rows)`:** Each row becomes one `JSON.stringify(r)` line, and the lines are joined with `\\n`. The CSV version has no trailing newline either.\n- **`exportJsonl(jobId, batchId)`:** It loads the batch with `loadBatch`, logs the row count like the CSV export does, and uploads the result through `upload` with the key `${jobId}.jsonl`. It returns the URL that `upload` gives back.\n\nUnlike the CSV export, which writes only five named columns, this one serialises every field on each row. If you want only `id`, `batchId`, `prompt`, `response` and `rating`, I can restrict it to those.\n\nI didn't register the new export anywhere. I haven't checked whether `scheduler.ts` or `links.ts` pick formats from a list, so they may need a JSONL entry."
+}

@@ -1,0 +1,22 @@
+{
+  "task": "dates-link-expiry",
+  "convention": "dates-to-utc-iso",
+  "heldOut": true,
+  "arm": "k6",
+  "run": 1,
+  "k": 6,
+  "ok": true,
+  "completed": true,
+  "touched": [
+    "src/exports/links.ts"
+  ],
+  "violations": {},
+  "targetViolated": false,
+  "violationCount": 0,
+  "pass": true,
+  "packChars": 2573,
+  "costUsd": 0.0193589,
+  "turns": 5,
+  "ms": 19365,
+  "result": "I updated `src/exports/links.ts` so `DownloadLink` has an `expiresAt: string` field. I haven't run or tested it.\n\n- **Expiry time:** `createDownloadLink` sets `expiresAt` to 7 days after creation. It formats the value with `toUtcIso()` from `src/time.ts`, which is the repo's rule for timestamps that leave the service.\n- **URL:** the link now looks like `…?token=<token>&expires=<expiresAt>`. I URL-encoded `expiresAt` because the `:` characters in it aren't safe to leave raw in a query string.\n- **Not enforced yet:** nothing checks the `expires` parameter when a link is used. If the download side doesn't already check expiry, the links won't actually stop working after 7 days.\n- **Export format:** this changes the link format, and your team's notes say to tag @jordan on PRs that change export formats."
+}

@@ -1,0 +1,22 @@
+{
+  "task": "pii-contact-audit",
+  "convention": "sec-no-pii-logs",
+  "heldOut": true,
+  "arm": "k2",
+  "run": 1,
+  "k": 2,
+  "ok": true,
+  "completed": true,
+  "touched": [
+    "src/experts/updateContact.ts"
+  ],
+  "violations": {},
+  "targetViolated": false,
+  "violationCount": 0,
+  "pass": true,
+  "packChars": 1591,
+  "costUsd": 0.0329051,
+  "turns": 8,
+  "ms": 22869,
+  "result": "I added `src/experts/updateContact.ts`. I haven't compiled it or run any tests.\n\n- **Load and save:** It loads the expert with `getExpert` and throws `Expert not found: <id>` if there's no match. It saves with `saveExpert` and returns the updated `Expert`.\n- **No-op changes:** It only counts fields that are provided and actually different. If nothing differs, it skips both the save and the audit entry.\n- **Audit entry:** After a successful save, it calls `logger.info(\"audit: expert contact updated\", …)`. The fields are `audit: true`, `action: \"expert.contact.update\"`, `expertId`, and `changes`. `changes` holds the old and new value for each changed field, for example `{ email: { from, to } }`.\n\n- **No audit table:** The repo has no audit table or audit helper, so the entry goes through the structured `logger` (not `console`). If you want it in a database table instead, I'll need the schema.\n- **Missing actor:** The signature you gave has no actor, so the entry doesn't record who made the change. For takeover investigations you'll probably want to add an `actor` or `requestId` parameter.\n- **Raw values logged:** The log holds full old and new emails and phone numbers, which is what makes it useful for investigations. Check that this fits your PII policy for logs.\n- **Not atomic:** The save and the log write aren't atomic. If the log write failed after the save, the change would go unrecorded."
+}

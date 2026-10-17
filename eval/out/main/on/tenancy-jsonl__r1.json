@@ -1,0 +1,21 @@
+{
+  "task": "tenancy-jsonl",
+  "convention": "export-assert-single-customer",
+  "heldOut": false,
+  "arm": "on",
+  "run": 1,
+  "ok": true,
+  "completed": true,
+  "touched": [
+    "src/exports/jsonlExport.ts"
+  ],
+  "violations": {},
+  "targetViolated": false,
+  "violationCount": 0,
+  "pass": true,
+  "packChars": 2573,
+  "costUsd": 0.0423343,
+  "turns": 10,
+  "ms": 60408,
+  "result": "I created `src/exports/jsonlExport.ts`. I haven't run or type-checked it.\n\n`exportJsonl(jobId, batchId)` follows `exportCsv`. It loads the batch with `loadBatch`, then uploads the rows through the sink under the key `${jobId}.jsonl`. Each row becomes one JSON line with the same fields as the CSV: `id`, `batch_id`, `prompt`, `response`, `rating`. A small `toJsonl` helper does the serialising, like `toCsv`.\n\nWhere it differs from the CSV export, this follows the repo's conventions:\n- **Logging:** it uses `logger.info` with `jobId`, `batchId` and the row count. The CSV file's `console.log` breaks the logger rule, and I left it alone.\n- **Single customer:** it calls `assertSingleCustomer(rows)` before the upload, so a file can't mix two lab customers.\n- **Idempotency:** the key depends only on `jobId`, so re-running a job overwrites the same object and doesn't duplicate rows.\n\n- **No streaming:** `upload` only accepts a whole string, so large exports (over 100k rows) are still built in memory, same as the CSV. Streaming would need a change to the sink.\n- **No timestamps:** I left `createdAt` out to match the CSV columns. If you add it, it should go through `toUtcIso()`.\n- **Review:** the repo guidance says to tag @jordan on PRs that change export formats, and this adds one."
+}

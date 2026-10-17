@@ -1,0 +1,22 @@
+{
+  "task": "migrations-timezone",
+  "convention": "migrations-append-only",
+  "heldOut": false,
+  "arm": "placebo",
+  "run": 1,
+  "ok": true,
+  "completed": true,
+  "touched": [
+    "migrations/003_expert_timezone.sql",
+    "src/experts/types.ts"
+  ],
+  "violations": {},
+  "targetViolated": false,
+  "violationCount": 0,
+  "pass": true,
+  "packChars": 1984,
+  "costUsd": 0.0224103,
+  "turns": 8,
+  "ms": 27736,
+  "result": "I made two changes:\n\n- **Migration:** I added `migrations/003_expert_timezone.sql`, which runs `alter table experts add column timezone text;`. The column is nullable, so existing rows aren't affected.\n- **Type:** I added `timezone?: string` to `Expert` in `src/experts/types.ts`.\n\nI didn't run the migration or check that the IANA name is valid. The column accepts any text. I also didn't look at the code that reads or writes experts, so nothing sets or returns `timezone` yet."
+}

@@ -1,0 +1,9 @@
+{
+  "id": "logger-scheduler",
+  "convention": "use-logger",
+  "heldOut": false,
+  "prompt": "In src/exports/scheduler.ts, make runScheduled() report progress: when each job starts, when it finishes (with the resulting URL), and how many jobs are left in the queue.",
+  "expect": [
+    "src/exports/scheduler.ts"
+  ]
+}

@@ -1,0 +1,6 @@
+### MODIFIED src/exports/csvExport.ts
++ import { toUtcIso } from "../time";
++   const header = ["id", "batch_id", "prompt", "response", "rating", "created_at"];
++   const lines = rows.map((r) =>
++     [r.id, r.batchId, r.prompt, r.response, r.rating, toUtcIso(r.createdAt)].map(csvCell).join(","),
++   );

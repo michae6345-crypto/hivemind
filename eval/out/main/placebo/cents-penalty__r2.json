@@ -1,0 +1,26 @@
+{
+  "task": "cents-penalty",
+  "convention": "money-integer-cents",
+  "heldOut": true,
+  "arm": "placebo",
+  "run": 2,
+  "ok": true,
+  "completed": true,
+  "touched": [
+    "src/payouts/penalty.ts"
+  ],
+  "violations": {
+    "money-integer-cents": [
+      "src/payouts/penalty.ts: 2.5",
+      "src/payouts/penalty.ts: Math.round(x*100)/100"
+    ]
+  },
+  "targetViolated": true,
+  "violationCount": 1,
+  "pass": false,
+  "packChars": 1984,
+  "costUsd": 0.021742400000000002,
+  "turns": 6,
+  "ms": 20418,
+  "result": "I added `src/payouts/penalty.ts` with `applyLatePenalty(payout, daysLate)`. I haven't compiled it or run any tests.\n\n- **Deduction:** it takes $2.50 off per day late. The amount is floored at $0 and rounded to cents.\n- **Return value:** it returns a new `Payout` and leaves the input unchanged. When there's a penalty, the memo gets a suffix like `(late penalty: -$5.00 for 2d late)`.\n- **No penalty:** if `daysLate` is 0 or negative, the amount and memo come back unchanged.\n- **Partial days:** a fractional `daysLate` is deducted pro rata. For example, 1.5 days costs $3.75, and the memo shows `1.5d`. If you want whole days only, I can round it.\n\nThe memo wording was my choice, so tell me if you want a different format."
+}

@@ -1,0 +1,71 @@
+{
+  "generatedAt": "2026-10-17T04:13:33.368Z",
+  "model": "claude-sonnet-5-5",
+  "tasks": [
+    "logger-scheduler",
+    "tenancy-merge",
+    "cents-penalty",
+    "migrations-default",
+    "pii-contact-audit",
+    "dates-link-expiry"
+  ],
+  "note": "Lessons added one at a time in the order they were learned; the 6 tasks (4 held-out) re-run after each. Distractor lessons are present at every k.",
+  "points": [
+    {
+      "k": 0,
+      "lessonAdded": null,
+      "n": 6,
+      "targetViolations": 5,
+      "passes": 1,
+      "violationsPerTask": 1
+    },
+    {
+      "k": 1,
+      "lessonAdded": "use-logger",
+      "n": 6,
+      "targetViolations": 3,
+      "passes": 3,
+      "violationsPerTask": 0.5
+    },
+    {
+      "k": 2,
+      "lessonAdded": "export-assert-single-customer",
+      "n": 6,
+      "targetViolations": 2,
+      "passes": 4,
+      "violationsPerTask": 0.333
+    },
+    {
+      "k": 3,
+      "lessonAdded": "money-integer-cents",
+      "n": 6,
+      "targetViolations": 1,
+      "passes": 5,
+      "violationsPerTask": 0.167
+    },
+    {
+      "k": 4,
+      "lessonAdded": "migrations-append-only",
+      "n": 6,
+      "targetViolations": 1,
+      "passes": 5,
+      "violationsPerTask": 0.167
+    },
+    {
+      "k": 5,
+      "lessonAdded": "sec-no-pii-logs",
+      "n": 6,
+      "targetViolations": 1,
+      "passes": 5,
+      "violationsPerTask": 0.167
+    },
+    {
+      "k": 6,
+      "lessonAdded": "dates-to-utc-iso",
+      "n": 6,
+      "targetViolations": 0,
+      "passes": 6,
+      "violationsPerTask": 0
+    }
+  ]
+}

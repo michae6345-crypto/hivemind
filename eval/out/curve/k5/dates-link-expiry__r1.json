@@ -1,0 +1,27 @@
+{
+  "task": "dates-link-expiry",
+  "convention": "dates-to-utc-iso",
+  "heldOut": true,
+  "arm": "k5",
+  "run": 1,
+  "k": 5,
+  "ok": true,
+  "completed": true,
+  "touched": [
+    "src/exports/links.ts"
+  ],
+  "violations": {
+    "dates-to-utc-iso": [
+      "src/exports/links.ts: .toISOString(",
+      "toUtcIso() not used"
+    ]
+  },
+  "targetViolated": true,
+  "violationCount": 1,
+  "pass": false,
+  "packChars": 2301,
+  "costUsd": 0.0175598,
+  "turns": 3,
+  "ms": 16331,
+  "result": "I updated `src/exports/links.ts` so `DownloadLink` now has `expiresAt: string`. `createDownloadLink` sets it to 7 days after creation, as an ISO timestamp. The URL now looks like `?token=…&expires=<URL-encoded ISO timestamp>`.\n\nI haven't run or type-checked anything. I also didn't add any server-side check that rejects expired links. This change only puts the expiry on the link."
+}

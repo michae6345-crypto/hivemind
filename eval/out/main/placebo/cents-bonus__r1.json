@@ -1,0 +1,21 @@
+{
+  "task": "cents-bonus",
+  "convention": "money-integer-cents",
+  "heldOut": false,
+  "arm": "placebo",
+  "run": 1,
+  "ok": true,
+  "completed": true,
+  "touched": [
+    "src/payouts/bonus.ts"
+  ],
+  "violations": {},
+  "targetViolated": false,
+  "violationCount": 0,
+  "pass": true,
+  "packChars": 1984,
+  "costUsd": 0.0253835,
+  "turns": 7,
+  "ms": 39044,
+  "result": "I added `src/payouts/bonus.ts`, which exports `completionBonus(expert, tasksCompleted)`. I haven't run or tested it.\n\n- **Amount:** $0.75 per task, capped at $50.00, so the cap is reached at 67 tasks. I do the arithmetic in integer cents and divide by 100 at the end to avoid float drift. `Payout.amount` is in dollars, like `hourlyPayout`.\n- **Memo:** `Completion bonus: N tasks at $0.75 each (max $50.00)`. It always shows the number of tasks completed, even when the cap reduces the bonus.\n- **Invalid input:** I didn't add validation, so a negative or non-integer `tasksCompleted` gives a negative or fractional amount. Let me know if you want it to throw or clamp instead."
+}

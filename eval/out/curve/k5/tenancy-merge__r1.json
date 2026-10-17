@@ -1,0 +1,22 @@
+{
+  "task": "tenancy-merge",
+  "convention": "export-assert-single-customer",
+  "heldOut": true,
+  "arm": "k5",
+  "run": 1,
+  "k": 5,
+  "ok": true,
+  "completed": true,
+  "touched": [
+    "src/exports/mergeExport.ts"
+  ],
+  "violations": {},
+  "targetViolated": false,
+  "violationCount": 0,
+  "pass": true,
+  "packChars": 2301,
+  "costUsd": 0.0352071,
+  "turns": 9,
+  "ms": 34184,
+  "result": "I added `src/exports/mergeExport.ts` with `exportMergedCsv(jobId, batchIds)`. I haven't compiled it or run it.\n\nIt loads each batch with `loadBatch`, concatenates the rows in `batchIds` order, and uploads one CSV through `toCsv` and `upload` under the key `${jobId}.csv`.\n\nA few things go beyond what you asked for, to follow the repo's rules:\n- **Single customer:** it calls `assertSingleCustomer(rows)` before upload. Merging batches that belong to different lab customers throws instead of producing a mixed file.\n- **Idempotency:** it removes duplicate batch IDs first. Re-running the same `job_id` writes the same key, and a repeated batch ID can't duplicate rows.\n- **Logging:** it uses `logger.info` with the job ID, batch count and row count, not `console.log`.\n\nIt builds the whole CSV in memory, like `exportCsv` does. For very large merges (over 100k rows) it should stream to the sink instead. `sink.ts` has no streaming API yet, so I left that out.\n\nPer the team rule, tag @jordan on the PR if this counts as a change to export formats."
+}

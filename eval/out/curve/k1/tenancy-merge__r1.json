@@ -1,0 +1,26 @@
+{
+  "task": "tenancy-merge",
+  "convention": "export-assert-single-customer",
+  "heldOut": true,
+  "arm": "k1",
+  "run": 1,
+  "k": 1,
+  "ok": true,
+  "completed": true,
+  "touched": [
+    "src/exports/mergeExport.ts"
+  ],
+  "violations": {
+    "export-assert-single-customer": [
+      "src/exports/mergeExport.ts: uploads rows without assertSingleCustomer()"
+    ]
+  },
+  "targetViolated": true,
+  "violationCount": 1,
+  "pass": false,
+  "packChars": 1318,
+  "costUsd": 0.031592999999999996,
+  "turns": 8,
+  "ms": 23155,
+  "result": "I added `src/exports/mergeExport.ts` with `exportMergedCsv(jobId, batchIds)`. I haven't compiled it or run it.\n\n- **Merging:** It loads each batch with `loadBatch`, concatenates the rows in `batchIds` order, and uploads one CSV built with `toCsv`.\n- **Idempotency:** The object key is `${jobId}.csv`, so re-running the same `job_id` writes to the same key. I also drop duplicate entries in `batchIds`, so a repeated batch id doesn't duplicate rows.\n- **Logging:** It uses `logger.info` from `src/logger.ts`, not `console.log`.\n\n**Not streamed:** The merged CSV is built as one string in memory. Your guidance says exports over 100k rows should be streamed. `upload` in `sink.ts` only accepts a string, and `toCsv` returns a string, so I couldn't stream without changing both. Merging several batches makes the 100k-row case more likely. If you want streaming, I can add a streaming `upload` and a chunked CSV writer as a separate PR.\n\n**Existing console.log:** The existing `exportCsv` in `csvExport.ts` still uses `console.log`. I left it alone.\n\n**Review:** The change is well under 300 lines. Your guidance says to tag @jordan on PRs that change export formats. The CSV format is the same, but you may want their review anyway because this is a new export path."
+}

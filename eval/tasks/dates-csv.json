@@ -1,0 +1,9 @@
+{
+  "id": "dates-csv",
+  "convention": "dates-to-utc-iso",
+  "heldOut": false,
+  "prompt": "Add a `created_at` column to the CSV export produced by toCsv in src/exports/csvExport.ts, using each row's createdAt.",
+  "expect": [
+    "src/exports/csvExport.ts"
+  ]
+}

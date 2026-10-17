@@ -1,0 +1,26 @@
+{
+  "task": "dates-csv",
+  "convention": "dates-to-utc-iso",
+  "heldOut": false,
+  "arm": "placebo",
+  "run": 2,
+  "ok": true,
+  "completed": true,
+  "touched": [
+    "src/exports/csvExport.ts"
+  ],
+  "violations": {
+    "dates-to-utc-iso": [
+      "src/exports/csvExport.ts: .toISOString(",
+      "toUtcIso() not used"
+    ]
+  },
+  "targetViolated": true,
+  "violationCount": 1,
+  "pass": false,
+  "packChars": 1984,
+  "costUsd": 0.018485500000000002,
+  "turns": 5,
+  "ms": 16460,
+  "result": "I added `created_at` as the last column in `toCsv` (`src/exports/csvExport.ts`). Each row's value is `createdAt.toISOString()`, so dates come out in a stable UTC format like `2026-10-16T12:00:00.000Z`. I haven't run it or any tests.\n\nThis changes the CSV format, and the team notes say to tag @jordan on PRs that change export formats. Since the new column goes at the end, existing consumers that read columns by position shouldn't break."
+}

@@ -1,0 +1,26 @@
+{
+  "task": "dates-csv",
+  "convention": "dates-to-utc-iso",
+  "heldOut": false,
+  "arm": "placebo",
+  "run": 1,
+  "ok": true,
+  "completed": true,
+  "touched": [
+    "src/exports/csvExport.ts"
+  ],
+  "violations": {
+    "dates-to-utc-iso": [
+      "src/exports/csvExport.ts: .toISOString(",
+      "toUtcIso() not used"
+    ]
+  },
+  "targetViolated": true,
+  "violationCount": 1,
+  "pass": false,
+  "packChars": 1984,
+  "costUsd": 0.021972,
+  "turns": 5,
+  "ms": 19126,
+  "result": "I added `created_at` as the last column of the CSV that `toCsv` produces in `src/exports/csvExport.ts`. Each row's value is `r.createdAt.toISOString()`, for example `2026-10-16T12:00:00.000Z`. I haven't run or tested it.\n\nI put the new column at the end so existing columns keep their positions for anyone parsing the file by index. I used ISO format because `createdAt` is a `Date`, and `String(date)` would give a locale-style string that's awkward to parse.\n\nThis changes the export format, so per the team notes you should tag @jordan on the PR."
+}

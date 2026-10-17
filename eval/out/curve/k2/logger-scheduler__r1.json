@@ -1,0 +1,22 @@
+{
+  "task": "logger-scheduler",
+  "convention": "use-logger",
+  "heldOut": false,
+  "arm": "k2",
+  "run": 1,
+  "k": 2,
+  "ok": true,
+  "completed": true,
+  "touched": [
+    "src/exports/scheduler.ts"
+  ],
+  "violations": {},
+  "targetViolated": false,
+  "violationCount": 0,
+  "pass": true,
+  "packChars": 1591,
+  "costUsd": 0.0235203,
+  "turns": 6,
+  "ms": 60048,
+  "result": "`runScheduled()` in `src/exports/scheduler.ts` now logs progress for each job. I haven't run it or any tests.\n\n- **Start:** it logs `export job started` with `jobId` and `remaining`. `remaining` is the number of jobs still queued after this one was taken off.\n- **Finish:** it logs `export job finished` with `jobId`, the resulting `url`, and `remaining`.\n\nI used the structured `logger` from `src/logger.ts` instead of `console.log`, since export-service requires that.\n\nI didn't touch `exportCsv`, so I didn't check whether it calls `assertSingleCustomer()` before upload. That's a separate check from this change."
+}

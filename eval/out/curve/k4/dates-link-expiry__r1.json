@@ -1,0 +1,27 @@
+{
+  "task": "dates-link-expiry",
+  "convention": "dates-to-utc-iso",
+  "heldOut": true,
+  "arm": "k4",
+  "run": 1,
+  "k": 4,
+  "ok": true,
+  "completed": true,
+  "touched": [
+    "src/exports/links.ts"
+  ],
+  "violations": {
+    "dates-to-utc-iso": [
+      "src/exports/links.ts: .toISOString(",
+      "toUtcIso() not used"
+    ]
+  },
+  "targetViolated": true,
+  "violationCount": 1,
+  "pass": false,
+  "packChars": 2061,
+  "costUsd": 0.017649200000000004,
+  "turns": 3,
+  "ms": 13364,
+  "result": "I updated `src/exports/links.ts` so download links now expire. I haven't run or type-checked it.\n\n- **Type:** `DownloadLink` has a new `expiresAt: string` field.\n- **Expiry:** `createDownloadLink` sets it to 7 days after creation, as an ISO timestamp.\n- **URL:** the URL now ends in `?token=…&expires=<expiresAt>`, with the timestamp URL-encoded.\n\nThis change only puts the expiry in the link. Nothing here rejects an expired link, so whatever serves the download has to check `expires`. I didn't look for that code."
+}

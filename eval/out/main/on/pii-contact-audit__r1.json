@@ -1,0 +1,21 @@
+{
+  "task": "pii-contact-audit",
+  "convention": "sec-no-pii-logs",
+  "heldOut": true,
+  "arm": "on",
+  "run": 1,
+  "ok": true,
+  "completed": true,
+  "touched": [
+    "src/experts/updateContact.ts"
+  ],
+  "violations": {},
+  "targetViolated": false,
+  "violationCount": 0,
+  "pass": true,
+  "packChars": 2573,
+  "costUsd": 0.035185,
+  "turns": 9,
+  "ms": 30425,
+  "result": "I added `src/experts/updateContact.ts`. I haven't run or type-checked it, and I didn't write any tests.\n\n`updateContact(id, changes)` does the following:\n- It loads the expert with `getExpert` and throws `Expert not found: <id>` if there isn't one.\n- It applies only the `email` and `phone` values you pass and saves with `saveExpert`.\n- It writes an audit entry through `logger.info(\"expert contact updated\", …)`. The entry has `audit: true`, `expertId`, `changedFields` (for example `[\"email\"]`), and a timestamp from `toUtcIso()`.\n- It returns the updated `Expert`.\n\n- **No contact values in the audit entry:** The entry records which fields changed, not the old or new email or phone. Security's rule says never to log expert PII, only the expert `id`. For a takeover investigation, the entry still shows when a contact field changed and for which expert.\n- **Audit trail is only a log line:** There's no audit table in the repo. A queryable history would need a new migration, such as `003_<change>.sql`, because existing migrations can't be edited. If you want the before and after values kept for investigations, they'd have to go in a access-controlled table rather than the logs. I can add that if you want it.\n- **Who made the change:** The function has no input for the actor, such as the user or session that made the change. For takeover reports you will probably want it added, as an optional third argument or similar."
+}

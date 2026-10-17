@@ -1,0 +1,9 @@
+{
+  "id": "cents-penalty",
+  "convention": "money-integer-cents",
+  "heldOut": true,
+  "prompt": "Add src/payouts/penalty.ts exporting `applyLatePenalty(payout: Payout, daysLate: number): Payout` — deduct $2.50 for each day a delivery is late, but never let the payout go below $0. Return a new payout with an updated memo.",
+  "expect": [
+    "src/payouts/penalty.ts"
+  ]
+}

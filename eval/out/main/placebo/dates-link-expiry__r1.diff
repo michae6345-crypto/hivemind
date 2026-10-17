@@ -1,0 +1,7 @@
+### MODIFIED src/exports/links.ts
++   expiresAt: string;
++ const LINK_TTL_MS = 7 * 24 * 60 * 60 * 1000;
++   const expiresAt = new Date(Date.now() + LINK_TTL_MS).toISOString();
++   const url = `${objectUrl}?token=${token}&expires=${encodeURIComponent(expiresAt)}`;
++   return { url, token, jobId, expiresAt };
++ 

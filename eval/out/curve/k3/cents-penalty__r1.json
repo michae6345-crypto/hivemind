@@ -1,0 +1,22 @@
+{
+  "task": "cents-penalty",
+  "convention": "money-integer-cents",
+  "heldOut": true,
+  "arm": "k3",
+  "run": 1,
+  "k": 3,
+  "ok": true,
+  "completed": true,
+  "touched": [
+    "src/payouts/penalty.ts"
+  ],
+  "violations": {},
+  "targetViolated": false,
+  "violationCount": 0,
+  "pass": true,
+  "packChars": 1822,
+  "costUsd": 0.0244792,
+  "turns": 6,
+  "ms": 18445,
+  "result": "I added `src/payouts/penalty.ts` with `applyLatePenalty(payout, daysLate)`. I haven't compiled it or run any tests.\n\n- **Units:** The penalty is `250` per day, because the team convention is integer cents and `Payout.amount` is in cents.\n- **Floor at zero:** The new amount is `Math.max(0, amount - penalty)`.\n- **New payout:** It returns a copy and leaves the input unchanged. When there's a penalty, the memo gets this appended: `(late penalty: Nd, -X cents)`.\n- **Bad `daysLate`:** The value is floored and clamped to at least 0. Negative or fractional days therefore can't raise the payout or produce fractional cents. If `daysLate` is 0, the payout and memo come back unchanged.\n\nThe memo records the full penalty, even when the floor means less than that was actually deducted."
+}

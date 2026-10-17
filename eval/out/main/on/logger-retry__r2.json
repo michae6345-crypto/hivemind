@@ -1,0 +1,21 @@
+{
+  "task": "logger-retry",
+  "convention": "use-logger",
+  "heldOut": false,
+  "arm": "on",
+  "run": 2,
+  "ok": true,
+  "completed": true,
+  "touched": [
+    "src/exports/retry.ts"
+  ],
+  "violations": {},
+  "targetViolated": false,
+  "violationCount": 0,
+  "pass": true,
+  "packChars": 2573,
+  "costUsd": 0.0199087,
+  "turns": 5,
+  "ms": 18402,
+  "result": "I added `src/exports/retry.ts` with `retryUpload(fn, attempts = 3)`. I haven't run it or type-checked it.\n\n- **Backoff:** It waits 100ms after the first failure, 200ms after the second, 400ms after the third, and so on. It doesn't wait after the last attempt.\n- **Reporting:** Each failed attempt is logged with `logger.warn` from `src/logger.ts`. The log has the attempt number, the total attempts and the error message. After the last attempt fails, it logs once with `logger.error` and rethrows the last error, so callers still see the failure.\n- **Logging:** Only the error message is logged, not the error object or any row data, so no expert PII gets into the logs.\n\nBecause the function takes a `fn` callback, it doesn't call `assertSingleCustomer()` itself. Callers need to run that before they build the upload."
+}

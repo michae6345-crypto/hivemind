@@ -1,0 +1,21 @@
+{
+  "task": "dates-csv",
+  "convention": "dates-to-utc-iso",
+  "heldOut": false,
+  "arm": "on",
+  "run": 2,
+  "ok": true,
+  "completed": true,
+  "touched": [
+    "src/exports/csvExport.ts"
+  ],
+  "violations": {},
+  "targetViolated": false,
+  "violationCount": 0,
+  "pass": true,
+  "packChars": 2573,
+  "costUsd": 0.0217326,
+  "turns": 6,
+  "ms": 18456,
+  "result": "`toCsv` in `src/exports/csvExport.ts` now writes a `created_at` column as the last column, filled from each row's `createdAt`. I didn't run or test it.\n\nTimestamps go through `toUtcIso()` from `src/time.ts`, as the repo's date-format rule requires.\n\nBecause this changes the export format, the repo notes say to tag @jordan on the PR.\n\nI left two other things alone because you didn't ask for them:\n- `exportCsv` still uses `console.log`, which the repo's rules say should be `logger`.\n- `exportCsv` doesn't call `assertSingleCustomer()` before upload."
+}

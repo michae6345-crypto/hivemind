@@ -1,0 +1,21 @@
+{
+  "task": "tenancy-merge",
+  "convention": "export-assert-single-customer",
+  "heldOut": true,
+  "arm": "on",
+  "run": 2,
+  "ok": true,
+  "completed": true,
+  "touched": [
+    "src/exports/mergeExport.ts"
+  ],
+  "violations": {},
+  "targetViolated": false,
+  "violationCount": 0,
+  "pass": true,
+  "packChars": 2573,
+  "costUsd": 0.0286219,
+  "turns": 8,
+  "ms": 33763,
+  "result": "I added `src/exports/mergeExport.ts` with `exportMergedCsv(jobId, batchIds)`. I haven't run it or type-checked it, and I didn't check that `logger.info(msg, fields)` matches `src/logger.ts`.\n\n- **Loading:** it loads every batch with `loadBatch` and concatenates the rows in `batchIds` order.\n- **Duplicates:** it drops rows with a repeated `id`, so a batch listed twice doesn't produce duplicate rows.\n- **Customer check:** it calls `assertSingleCustomer(rows)` before uploading, so a merge that mixes Lab A and Lab B data throws instead of uploading.\n- **Upload:** it builds the CSV with `toCsv` and uploads it under `${jobId}.csv`. Re-running the same `jobId` therefore writes the same key.\n- **Logging:** it uses `logger.info` with the job id and counts only, not `console.log` like the existing `exportCsv`.\n\nMerged exports over 100k rows still build the whole CSV in memory, because `toCsv` returns one string. If you expect merges that large, we'd need a chunked path.\n\nPer the team notes, tag @jordan if this is meant to change the export format."
+}

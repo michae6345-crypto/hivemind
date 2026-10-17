@@ -1,0 +1,22 @@
+{
+  "task": "migrations-timezone",
+  "convention": "migrations-append-only",
+  "heldOut": false,
+  "arm": "on",
+  "run": 1,
+  "ok": true,
+  "completed": true,
+  "touched": [
+    "migrations/003_expert_timezone.sql",
+    "src/experts/types.ts"
+  ],
+  "violations": {},
+  "targetViolated": false,
+  "violationCount": 0,
+  "pass": true,
+  "packChars": 2573,
+  "costUsd": 0.0242124,
+  "turns": 8,
+  "ms": 30694,
+  "result": "I added the timezone column and the optional field on the type. I haven't run the migration or a type check.\n\n- **Migration:** `migrations/003_expert_timezone.sql` runs `alter table experts add column timezone text;`. The column is nullable, so existing rows are unaffected. I made a new file instead of editing `001_init.sql`, because migrations are append-only.\n- **Type:** `src/experts/types.ts` now has `timezone?: string` on `Expert`.\n\nI didn't add any check that the value is a valid IANA name. If you want one, it would go where expert data is written or read."
+}

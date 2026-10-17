@@ -1,0 +1,39 @@
+### ADDED src/experts/updateContact.ts
++ import { logger } from "../logger";
++ import { toUtcIso } from "../time";
++ import { getExpert, saveExpert } from "./experts";
++ import type { Expert } from "./types";
++ type ContactChanges = { email?: string; phone?: string };
++ 
++ export async function updateContact(id: string, changes: ContactChanges): Promise<Expert> {
++   const expert = await getExpert(id);
++   if (!expert) {
++     throw new Error(`Expert not found: ${id}`);
++   }
++ 
++   const changedFields: string[] = [];
++   if (changes.email !== undefined && changes.email !== expert.email) {
++     changedFields.push("email");
++   }
++   if (changes.phone !== undefined && changes.phone !== expert.phone) {
++     changedFields.push("phone");
++   }
++ 
++   const updated: Expert = {
++     ...expert,
++     email: changes.email ?? expert.email,
++     phone: changes.phone ?? expert.phone,
++   };
++ 
++   await saveExpert(updated);
++ 
++   // Audit entry records the expert id and which fields changed, never the values (PII).
++   logger.info("expert.contact.updated", {
++     expertId: id,
++     changedFields,
++     at: toUtcIso(Date.now()),
++   });
++ 
++   return updated;
++ }
++ 

@@ -1,0 +1,26 @@
+{
+  "task": "dates-csv",
+  "convention": "dates-to-utc-iso",
+  "heldOut": false,
+  "arm": "off",
+  "run": 2,
+  "ok": true,
+  "completed": true,
+  "touched": [
+    "src/exports/csvExport.ts"
+  ],
+  "violations": {
+    "dates-to-utc-iso": [
+      "src/exports/csvExport.ts: .toISOString(",
+      "toUtcIso() not used"
+    ]
+  },
+  "targetViolated": true,
+  "violationCount": 1,
+  "pass": false,
+  "packChars": 0,
+  "costUsd": 0.0186444,
+  "turns": 5,
+  "ms": 22501,
+  "result": "`toCsv` in `src/exports/csvExport.ts` now writes a `created_at` column as the last column, after `rating`. Each value is the row's `createdAt` as an ISO 8601 string, for example `2026-10-16T12:00:00.000Z`. I haven't run the code or any tests.\n\n`createdAt` is typed as a `Date` on `ExportRow`, so `toISOString()` throws on an invalid date. It would also throw if a row came back from `loadBatch` with `createdAt` as a string, for example from JSON. I didn't check what `loadBatch` returns at runtime."
+}

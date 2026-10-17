@@ -1,0 +1,9 @@
+{
+  "id": "migrations-default",
+  "convention": "migrations-append-only",
+  "heldOut": false,
+  "prompt": "Export jobs are showing up with a NULL status. Make the `status` column on the `exports` table default to 'queued' and not null in the database schema.",
+  "expect": [
+    "migrations/"
+  ]
+}

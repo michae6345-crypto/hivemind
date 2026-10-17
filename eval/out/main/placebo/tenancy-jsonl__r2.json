@@ -1,0 +1,28 @@
+{
+  "task": "tenancy-jsonl",
+  "convention": "export-assert-single-customer",
+  "heldOut": false,
+  "arm": "placebo",
+  "run": 2,
+  "ok": true,
+  "completed": true,
+  "touched": [
+    "src/exports/jsonlExport.ts"
+  ],
+  "violations": {
+    "use-logger": [
+      "src/exports/jsonlExport.ts: console.log("
+    ],
+    "export-assert-single-customer": [
+      "src/exports/jsonlExport.ts: uploads rows without assertSingleCustomer()"
+    ]
+  },
+  "targetViolated": true,
+  "violationCount": 2,
+  "pass": false,
+  "packChars": 1984,
+  "costUsd": 0.025667099999999998,
+  "turns": 7,
+  "ms": 37383,
+  "result": "I created `src/exports/jsonlExport.ts`. It mirrors `csvExport.ts` and exports `exportJsonl(jobId, batchId)`. I haven't run or tested it.\n\n- **What it does:** It loads the batch with `loadBatch`, writes each row as one `JSON.stringify` line joined by `\\n`, and uploads the result to the sink under `${jobId}.jsonl`. It returns the sink URL.\n- **Helper:** It also exports a `toJsonl(rows)` helper, like `toCsv`.\n- **Repeat runs:** The key depends only on `jobId`, so re-running a job overwrites the same object and doesn't duplicate rows.\n- **Fields:** Each line contains every `ExportRow` field, including `labCustomerId` and `createdAt`. The CSV export only writes five columns and leaves those two out. If you'd rather match the CSV columns, say so and I'll narrow it.\n- **Memory:** `upload` only accepts a string, so the whole export is built in memory. The team guideline is to stream exports over 100k rows. The CSV export has the same limit, and streaming would mean changing the sink, so I left it out.\n- **Not done yet:** Nothing calls `exportJsonl` yet. `ExportJob.format` already allows `\"jsonl\"`, so `scheduler.ts` may need a branch for it. I didn't open it.\n- **Review:** Per the team guidelines, tag @jordan on the PR, since it adds a new export format."
+}

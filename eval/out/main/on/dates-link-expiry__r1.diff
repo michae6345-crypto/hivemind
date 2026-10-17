@@ -1,0 +1,8 @@
+### MODIFIED src/exports/links.ts
++ import { toUtcIso } from "../time";
++   expiresAt: string;
++ const LINK_TTL_MS = 7 * 24 * 60 * 60 * 1000;
++   const expiresAt = toUtcIso(Date.now() + LINK_TTL_MS);
++   const url = `${objectUrl}?token=${token}&expires=${encodeURIComponent(expiresAt)}`;
++   return { url, token, jobId, expiresAt };
++ 

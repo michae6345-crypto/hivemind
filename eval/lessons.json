@@ -1,0 +1,266 @@
+{
+  "note": "Lessons as Hivemind would hold them after the corrections below. Held-out tasks (tasks/*.json heldOut=true) never contributed evidence: their convention's lesson was written from the sibling task only.",
+  "lessons": [
+    {
+      "slug": "use-logger",
+      "title": "Use logger, not console.log",
+      "scope": "repo/export-service",
+      "locked": false,
+      "source": "correction",
+      "order": 1,
+      "body": "Never use `console.log`/`console.error` in export-service. Use the structured `logger` from `src/logger.ts` (`logger.info(msg, fields)`); our log pipeline drops raw console output.",
+      "learnedFrom": [
+        "logger-retry",
+        "logger-scheduler"
+      ],
+      "evidence": [
+        {
+          "actor": "alex",
+          "type": "correction",
+          "quote": "don't console.log the retry attempts — use logger.warn from src/logger.ts, console output never reaches Datadog"
+        },
+        {
+          "actor": "jordan",
+          "type": "review_comment",
+          "quote": "scheduler progress should go through logger.info with jobId as a field, not console.log"
+        }
+      ]
+    },
+    {
+      "slug": "export-assert-single-customer",
+      "title": "Every export calls assertSingleCustomer()",
+      "scope": "repo/export-service",
+      "locked": false,
+      "source": "correction",
+      "order": 2,
+      "body": "Any code path that writes or uploads export rows must call `assertSingleCustomer(rows)` from `src/tenancy.ts` before upload, so one file can never contain data from two lab customers (Lab A / Lab B).",
+      "learnedFrom": [
+        "tenancy-jsonl"
+      ],
+      "evidence": [
+        {
+          "actor": "alex",
+          "type": "correction",
+          "quote": "the new JSONL export uploads rows without checking tenancy — call assertSingleCustomer(rows) before upload like we agreed after the Lab A/Lab B incident"
+        }
+      ]
+    },
+    {
+      "slug": "money-integer-cents",
+      "title": "Money and payouts are integer cents",
+      "scope": "team/data-pipelines",
+      "locked": false,
+      "source": "review",
+      "order": 3,
+      "body": "All money amounts (payouts, bonuses, rates) are integers in cents. Never use fractional dollar literals, `toFixed`, or `parseFloat` for money; write $0.75 as `75`.",
+      "learnedFrom": [
+        "cents-bonus"
+      ],
+      "evidence": [
+        {
+          "actor": "jordan",
+          "type": "review_comment",
+          "quote": "bonus uses 0.75 and 50.00 — payouts are integer cents everywhere (75, 5000), floats caused the rounding bug in March"
+        }
+      ]
+    },
+    {
+      "slug": "migrations-append-only",
+      "title": "Migrations are append-only",
+      "scope": "team/data-pipelines",
+      "locked": false,
+      "source": "review",
+      "order": 4,
+      "body": "Never edit or delete an existing file in `migrations/` — they have already run in prod. Schema changes always go in a new, higher-numbered migration file (e.g. `003_<change>.sql`).",
+      "learnedFrom": [
+        "migrations-timezone",
+        "migrations-default"
+      ],
+      "evidence": [
+        {
+          "actor": "jordan",
+          "type": "review_comment",
+          "quote": "you edited 001_init.sql to add the timezone column — that already ran in prod, add 003_expert_timezone.sql instead"
+        },
+        {
+          "actor": "priya",
+          "type": "correction",
+          "quote": "don't change the default inside 001_init.sql, write a new migration with ALTER TABLE"
+        }
+      ]
+    },
+    {
+      "slug": "sec-no-pii-logs",
+      "title": "Never log expert personal info",
+      "scope": "org",
+      "locked": true,
+      "source": "human",
+      "order": 5,
+      "body": "🔒 Never log expert PII — email, phone, or whole `expert` objects. Log the expert `id` only; support looks up contact details in the admin tool.",
+      "learnedFrom": [
+        "pii-payout-fail"
+      ],
+      "evidence": [
+        {
+          "actor": "maya",
+          "type": "correction",
+          "quote": "the payout failure log includes expert.email — never log expert PII, the id is enough for support"
+        }
+      ]
+    },
+    {
+      "slug": "dates-to-utc-iso",
+      "title": "Format dates with toUtcIso()",
+      "scope": "repo/export-service",
+      "locked": false,
+      "source": "correction",
+      "order": 6,
+      "body": "Format every timestamp that leaves the service (export files, URLs, API payloads) with `toUtcIso()` from `src/time.ts`. Don't call `toISOString()`/`toLocaleString()` directly — labs require second-precision UTC.",
+      "learnedFrom": [
+        "dates-csv"
+      ],
+      "evidence": [
+        {
+          "actor": "noor",
+          "type": "correction",
+          "quote": "created_at in the CSV uses toISOString — labs reject the millisecond format, use toUtcIso(row.createdAt)"
+        }
+      ]
+    }
+  ],
+  "distractors": [
+    {
+      "slug": "export-idempotent",
+      "title": "Export jobs are idempotent, keyed by job_id",
+      "scope": "repo/export-service",
+      "locked": false,
+      "source": "review",
+      "body": "Re-running an export job with the same `job_id` must produce the same object key and must not duplicate rows."
+    },
+    {
+      "slug": "stream-uploads",
+      "title": "Stream uploads; never buffer a full export",
+      "scope": "repo/export-service",
+      "locked": false,
+      "source": "review",
+      "body": "Large exports (>100k rows) should be streamed to the sink in chunks rather than built as one string in memory."
+    },
+    {
+      "slug": "zod-export-config",
+      "title": "Validate export configs with zod",
+      "scope": "team/data-pipelines",
+      "locked": false,
+      "source": "review",
+      "body": "Export job configs coming from the API are validated with a zod schema before a job is queued."
+    },
+    {
+      "slug": "use-pnpm",
+      "title": "Use pnpm, not npm",
+      "scope": "org",
+      "locked": false,
+      "source": "review",
+      "body": "Install and run scripts with pnpm. Don't commit package-lock.json."
+    },
+    {
+      "slug": "owner-export-service",
+      "title": "Ask @jordan about export-service",
+      "scope": "repo/export-service",
+      "locked": false,
+      "source": "review",
+      "body": "@jordan owns export-service; tag them on PRs that change export formats."
+    },
+    {
+      "slug": "alex-small-prs",
+      "title": "Keep PRs under 300 lines",
+      "scope": "team/data-pipelines",
+      "locked": false,
+      "source": "review",
+      "body": "Split large changes into stacked PRs of under ~300 changed lines each."
+    },
+    {
+      "slug": "grader-timeout",
+      "title": "Graders time out at 30s per test case",
+      "scope": "team/evals",
+      "locked": false,
+      "source": "review",
+      "body": "Every grader enforces a 30s per-test-case timeout."
+    },
+    {
+      "slug": "grader-negative-test",
+      "title": "Every grader ships with a subtly-wrong solution test",
+      "scope": "team/evals",
+      "locked": false,
+      "source": "review",
+      "body": "Add a near-miss incorrect solution to each grader's tests to prove it rejects it."
+    },
+    {
+      "slug": "retire-saturated-tasks",
+      "title": "Retire tasks above ~70% frontier pass rate",
+      "scope": "team/evals",
+      "locked": false,
+      "source": "review",
+      "body": "Eval tasks that frontier models pass >70% of the time are moved to the retired set."
+    },
+    {
+      "slug": "snapshot-after-model-change",
+      "title": "Regenerate schema snapshots after model changes",
+      "scope": "repo/dataset-builder",
+      "locked": false,
+      "source": "review",
+      "body": "Run `pnpm snapshots` after editing any model in dataset-builder."
+    },
+    {
+      "slug": "no-auto-ban-detectors",
+      "title": "Don't auto-ban experts on AI-detector scores",
+      "scope": "team/expert-platform",
+      "locked": false,
+      "source": "review",
+      "body": "AI-detector scores only flag submissions for human review; never ban automatically."
+    },
+    {
+      "slug": "tag-lab-customer-id",
+      "title": "Tag every dataset row with lab_customer_id",
+      "scope": "repo/dataset-builder",
+      "locked": false,
+      "source": "review",
+      "body": "Every row written by dataset-builder carries `lab_customer_id` so downstream exports can enforce isolation."
+    }
+  ],
+  "arms": {
+    "on": {
+      "lessons": [
+        "use-logger",
+        "export-assert-single-customer",
+        "money-integer-cents",
+        "migrations-append-only",
+        "sec-no-pii-logs",
+        "dates-to-utc-iso"
+      ],
+      "distractors": [
+        "export-idempotent",
+        "stream-uploads",
+        "zod-export-config",
+        "use-pnpm",
+        "owner-export-service",
+        "alex-small-prs"
+      ]
+    },
+    "placebo": {
+      "lessons": [],
+      "distractors": [
+        "export-idempotent",
+        "stream-uploads",
+        "zod-export-config",
+        "use-pnpm",
+        "owner-export-service",
+        "alex-small-prs",
+        "grader-timeout",
+        "grader-negative-test",
+        "retire-saturated-tasks",
+        "snapshot-after-model-change",
+        "no-auto-ban-detectors",
+        "tag-lab-customer-id"
+      ]
+    }
+  }
+}

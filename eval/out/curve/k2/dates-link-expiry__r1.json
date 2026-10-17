@@ -1,0 +1,27 @@
+{
+  "task": "dates-link-expiry",
+  "convention": "dates-to-utc-iso",
+  "heldOut": true,
+  "arm": "k2",
+  "run": 1,
+  "k": 2,
+  "ok": true,
+  "completed": true,
+  "touched": [
+    "src/exports/links.ts"
+  ],
+  "violations": {
+    "dates-to-utc-iso": [
+      "src/exports/links.ts: .toISOString(",
+      "toUtcIso() not used"
+    ]
+  },
+  "targetViolated": true,
+  "violationCount": 1,
+  "pass": false,
+  "packChars": 1591,
+  "costUsd": 0.0169698,
+  "turns": 3,
+  "ms": 15273,
+  "result": "I updated `src/exports/links.ts`. `DownloadLink` now has `expiresAt: string`, set to 7 days after creation as an ISO timestamp. The URL also carries it as `&expires=<URL-encoded expiresAt>`. I didn't run or test it.\n\nThe `expires` parameter is only a value in the URL. Nothing checks it yet, so the link won't actually stop working after 7 days until the download or serving side validates it.\n\nI also haven't looked for other places that build a `DownloadLink` object directly. If any exist, they'll need the new `expiresAt` field."
+}

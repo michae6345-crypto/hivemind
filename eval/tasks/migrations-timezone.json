@@ -1,0 +1,10 @@
+{
+  "id": "migrations-timezone",
+  "convention": "migrations-append-only",
+  "heldOut": false,
+  "prompt": "We need to store each expert's timezone (IANA name like 'America/Chicago', optional). Add the database column for it and add `timezone?: string` to the Expert type.",
+  "expect": [
+    "migrations/",
+    "src/experts/types.ts"
+  ]
+}

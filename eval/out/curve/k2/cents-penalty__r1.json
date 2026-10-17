@@ -1,0 +1,27 @@
+{
+  "task": "cents-penalty",
+  "convention": "money-integer-cents",
+  "heldOut": true,
+  "arm": "k2",
+  "run": 1,
+  "k": 2,
+  "ok": true,
+  "completed": true,
+  "touched": [
+    "src/payouts/penalty.ts"
+  ],
+  "violations": {
+    "money-integer-cents": [
+      "src/payouts/penalty.ts: 2.5",
+      "src/payouts/penalty.ts: Math.round(x*100)/100"
+    ]
+  },
+  "targetViolated": true,
+  "violationCount": 1,
+  "pass": false,
+  "packChars": 1591,
+  "costUsd": 0.0244091,
+  "turns": 6,
+  "ms": 19868,
+  "result": "I added `src/payouts/penalty.ts` with `applyLatePenalty(payout, daysLate)`. I haven't run it or type-checked it, and I didn't write any tests.\n\n- **Deduction:** it takes $2.50 off for each day late. The result is rounded to cents and never goes below $0.\n- **Return value:** it returns a new payout and leaves the input unchanged. The memo gets a suffix like `(late penalty: -$7.50 for 3d late)`.\n- **Zero or negative days:** negative `daysLate` is treated as 0. In that case it returns an unchanged copy of the payout and doesn't touch the memo.\n- **Memo when clamped to $0:** the memo shows the full computed deduction, even if the payout was too small to lose that much. For example, a $5 payout that is 4 days late ends at $0, but the memo says -$10.00. I can change the memo to show the amount actually deducted if you'd rather."
+}

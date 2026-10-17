@@ -1,0 +1,22 @@
+{
+  "task": "pii-contact-audit",
+  "convention": "sec-no-pii-logs",
+  "heldOut": true,
+  "arm": "k1",
+  "run": 1,
+  "k": 1,
+  "ok": true,
+  "completed": true,
+  "touched": [
+    "src/experts/updateContact.ts"
+  ],
+  "violations": {},
+  "targetViolated": false,
+  "violationCount": 0,
+  "pass": true,
+  "packChars": 1318,
+  "costUsd": 0.0331384,
+  "turns": 9,
+  "ms": 88275,
+  "result": "I added `src/experts/updateContact.ts`. I haven't run or type-checked it.\n\n- **Load and save:** it loads the expert with `getExpert` and throws `Expert not found: <id>` if there isn't one. It applies only the `email` and `phone` values that differ from what's stored, saves with `saveExpert`, and returns the updated `Expert`.\n- **No-op changes:** if nothing actually changes, it returns the expert without saving or logging.\n- **Audit entry:** after a successful save it calls `logger.info` with `audit: true`, `action: \"expert.contact.update\"`, `expertId`, and `changes`. `changes` holds the old and new value for each changed field, so you can see what an email or phone was switched from and to. I used `logger` rather than `console.log`, as the repo requires.\n\n- **No actor in the log:** the signature you specified has no caller identity, and that's usually the key detail in a takeover investigation. You may want to add an optional `actor` or request-id parameter.\n- **No audit store:** the repo has no audit table or sink, so the entry goes through the structured logger. If you want it in a database table instead, point me at the schema.\n- **Raw PII in the log:** the log holds raw emails and phone numbers. Tell me if you'd rather mask them.\n- **Validation:** there's no format validation on the email or phone values."
+}

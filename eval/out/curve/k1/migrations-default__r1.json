@@ -1,0 +1,22 @@
+{
+  "task": "migrations-default",
+  "convention": "migrations-append-only",
+  "heldOut": false,
+  "arm": "k1",
+  "run": 1,
+  "k": 1,
+  "ok": true,
+  "completed": true,
+  "touched": [
+    "migrations/003_exports_status_default.sql"
+  ],
+  "violations": {},
+  "targetViolated": false,
+  "violationCount": 0,
+  "pass": true,
+  "packChars": 1318,
+  "costUsd": 0.0191802,
+  "turns": 6,
+  "ms": 69291,
+  "result": "I added `migrations/003_exports_status_default.sql` instead of editing `001_init.sql`, because databases that already ran 001 wouldn't pick up an edit. I haven't run it against a database.\n\nThe migration does three things:\n1. It sets any existing rows with a NULL `status` to `'queued'`. This has to come first, or the NOT NULL step would fail on those rows.\n2. It sets the column default to `'queued'`.\n3. It sets the column to NOT NULL.\n\nIf you'd rather the schema in `001_init.sql` also say `status text not null default 'queued'`, so fresh setups match, I can change that too.\n\nIf any code inserts exports with an explicit `NULL` status, it will now error. I didn't check for that."
+}

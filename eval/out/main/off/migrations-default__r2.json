@@ -1,0 +1,21 @@
+{
+  "task": "migrations-default",
+  "convention": "migrations-append-only",
+  "heldOut": false,
+  "arm": "off",
+  "run": 2,
+  "ok": true,
+  "completed": true,
+  "touched": [
+    "migrations/003_exports_status_default.sql"
+  ],
+  "violations": {},
+  "targetViolated": false,
+  "violationCount": 0,
+  "pass": true,
+  "packChars": 0,
+  "costUsd": 0.020342899999999997,
+  "turns": 7,
+  "ms": 26465,
+  "result": "I added `migrations/003_exports_status_default.sql`. I haven't run it or tested it against a database.\n\nIt does three things:\n1. Sets any existing NULL `status` values on `exports` to `'queued'`. `SET NOT NULL` would fail if any NULLs were left.\n2. Sets the column default to `'queued'`.\n3. Makes the column `NOT NULL`.\n\nI left `001_init.sql` alone, since databases that already ran it wouldn't pick up an edit.\n\nThe backfill marks every existing NULL row as `queued`, including old jobs that may have actually finished or failed. If you'd rather set those to something else, change the value in the `update` line.\n\nI didn't look at `src/exports/sink.ts`. If it explicitly inserts `NULL` for `status`, that insert will now fail instead of silently storing NULL."
+}

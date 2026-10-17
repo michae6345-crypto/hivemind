@@ -1,0 +1,28 @@
+{
+  "task": "tenancy-jsonl",
+  "convention": "export-assert-single-customer",
+  "heldOut": false,
+  "arm": "placebo",
+  "run": 1,
+  "ok": true,
+  "completed": true,
+  "touched": [
+    "src/exports/jsonlExport.ts"
+  ],
+  "violations": {
+    "use-logger": [
+      "src/exports/jsonlExport.ts: console.log("
+    ],
+    "export-assert-single-customer": [
+      "src/exports/jsonlExport.ts: uploads rows without assertSingleCustomer()"
+    ]
+  },
+  "targetViolated": true,
+  "violationCount": 2,
+  "pass": false,
+  "packChars": 1984,
+  "costUsd": 0.0259473,
+  "turns": 6,
+  "ms": 28685,
+  "result": "I created `src/exports/jsonlExport.ts`, modelled on `csvExport.ts`. I haven't run or type-checked it, and I didn't add any tests.\n\n- **`exportJsonl(jobId, batchId)`:** it loads the batch with `loadBatch`, logs the row count, and uploads to the sink under `${jobId}.jsonl`. The upload returns the sink URL.\n- **`toJsonl(rows)`:** this helper puts each row on its own line with `JSON.stringify`, joined by `\\n` and with no trailing newline.\n- **Row contents:** each line is the whole `ExportRow` as loaded, so it includes every field on the row. The CSV export writes only five columns.\n- **Idempotency:** re-running the same `job_id` writes the same key, so it overwrites rather than duplicating.\n\n**Streaming:** the team guideline says exports over 100k rows should be streamed in chunks. `upload` in `sink.ts` only accepts a full string, so this builds the whole file in memory, as the CSV export does. Streaming would mean changing the sink, which I left alone.\n\n**Reviewer:** the team notes say to tag @jordan on PRs that change export formats, and this adds one."
+}

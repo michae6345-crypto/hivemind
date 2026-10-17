@@ -1,0 +1,21 @@
+{
+  "task": "tenancy-jsonl",
+  "convention": "export-assert-single-customer",
+  "heldOut": false,
+  "arm": "on",
+  "run": 2,
+  "ok": true,
+  "completed": true,
+  "touched": [
+    "src/exports/jsonlExport.ts"
+  ],
+  "violations": {},
+  "targetViolated": false,
+  "violationCount": 0,
+  "pass": true,
+  "packChars": 2573,
+  "costUsd": 0.0331535,
+  "turns": 10,
+  "ms": 35629,
+  "result": "I created `src/exports/jsonlExport.ts`. It exports `exportJsonl(jobId, batchId)`, which loads the batch, writes one JSON line per row, and uploads it to the sink under `${jobId}.jsonl`. I haven't run or type-checked it.\n\nIt differs from the CSV export in a few ways, to follow the repo's rules:\n- **Single customer:** it calls `assertSingleCustomer(rows)` before upload. The CSV export doesn't.\n- **Logging:** it uses `logger.info` with `jobId`, `batchId` and the row count, not `console.log`.\n- **Timestamps:** it includes `created_at`, formatted with `toUtcIso()`. The CSV export has no date column, so you can drop the field if you don't want it.\n- **Idempotency:** the object key depends only on `jobId`, so re-running a job overwrites the same object and doesn't duplicate rows.\n\nThe other fields are `id`, `batch_id`, `prompt`, `response` and `rating`, matching the CSV columns. The sink's `upload` only accepts a whole string, so the export is built in memory rather than streamed. That matters for batches over 100k rows, and fixing it would mean changing the sink.\n\nPer the team notes, tag @jordan on the PR, since it adds a new export format."
+}

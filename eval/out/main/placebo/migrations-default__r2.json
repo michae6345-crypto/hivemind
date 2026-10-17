@@ -1,0 +1,21 @@
+{
+  "task": "migrations-default",
+  "convention": "migrations-append-only",
+  "heldOut": false,
+  "arm": "placebo",
+  "run": 2,
+  "ok": true,
+  "completed": true,
+  "touched": [
+    "migrations/003_exports_status_default.sql"
+  ],
+  "violations": {},
+  "targetViolated": false,
+  "violationCount": 0,
+  "pass": true,
+  "packChars": 1984,
+  "costUsd": 0.0197976,
+  "turns": 7,
+  "ms": 27263,
+  "result": "I added `migrations/003_exports_status_default.sql`. I haven't run it, and the project has no tests or migration runner I could use to check it.\n\nThe migration does three things:\n1. It backfills existing rows where `status` is NULL to `'queued'`.\n2. It sets the column default to `'queued'`.\n3. It sets the column to `NOT NULL`.\n\nI made it a new migration because `001_init.sql` has probably already been applied. Editing it wouldn't change existing databases. The backfill has to run before `SET NOT NULL`, or that step would fail on the NULL rows already in the table.\n\nBackfilling every NULL row to `'queued'` assumes those jobs haven't started. If some of them have actually run, you may want to set their status by hand before applying the migration."
+}

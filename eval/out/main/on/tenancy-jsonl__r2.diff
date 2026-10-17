@@ -1,0 +1,29 @@
+### ADDED src/exports/jsonlExport.ts
++ import type { ExportRow } from "./types";
++ import { loadBatch } from "./rows";
++ import { upload } from "./sink";
++ import { assertSingleCustomer } from "../tenancy";
++ import { toUtcIso } from "../time";
++ import { logger } from "../logger";
++ export function toJsonl(rows: ExportRow[]): string {
++   return rows
++     .map((r) =>
++       JSON.stringify({
++         id: r.id,
++         batch_id: r.batchId,
++         prompt: r.prompt,
++         response: r.response,
++         rating: r.rating,
++         created_at: toUtcIso(r.createdAt),
++       }),
++     )
++     .join("\n");
++ }
++ 
++ export async function exportJsonl(jobId: string, batchId: string): Promise<string> {
++   const rows = await loadBatch(batchId);
++   assertSingleCustomer(rows);
++   logger.info("exporting rows", { jobId, batchId, rows: rows.length });
++   return upload(`${jobId}.jsonl`, toJsonl(rows));
++ }
++ 

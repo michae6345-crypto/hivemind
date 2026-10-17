@@ -1,0 +1,27 @@
+{
+  "task": "dates-link-expiry",
+  "convention": "dates-to-utc-iso",
+  "heldOut": true,
+  "arm": "k0",
+  "run": 1,
+  "k": 0,
+  "ok": true,
+  "completed": true,
+  "touched": [
+    "src/exports/links.ts"
+  ],
+  "violations": {
+    "dates-to-utc-iso": [
+      "src/exports/links.ts: .toISOString(",
+      "toUtcIso() not used"
+    ]
+  },
+  "targetViolated": true,
+  "violationCount": 1,
+  "pass": false,
+  "packChars": 1078,
+  "costUsd": 0.0164815,
+  "turns": 3,
+  "ms": 27672,
+  "result": "I updated `src/exports/links.ts` so download links now expire after 7 days. I haven't run or tested it.\n\n- **Type:** `DownloadLink` now has `expiresAt: string`, an ISO timestamp set to 7 days after creation.\n- **URL:** the link now includes `expires` as a query parameter, URL-encoded, after `token`.\n\nThis only puts the expiry in the link and the returned object. Nothing here rejects an expired link. Whatever serves the download has to check `expires` and enforce it. Also, the `expires` value is a plain query parameter, not signed, so anyone could edit it. If you want the expiry to be tamper-proof, it should be covered by a signature or stored server-side against the token."
+}

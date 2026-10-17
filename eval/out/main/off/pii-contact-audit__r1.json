@@ -1,0 +1,21 @@
+{
+  "task": "pii-contact-audit",
+  "convention": "sec-no-pii-logs",
+  "heldOut": true,
+  "arm": "off",
+  "run": 1,
+  "ok": true,
+  "completed": true,
+  "touched": [
+    "src/experts/updateContact.ts"
+  ],
+  "violations": {},
+  "targetViolated": false,
+  "violationCount": 0,
+  "pass": true,
+  "packChars": 0,
+  "costUsd": 0.0314246,
+  "turns": 8,
+  "ms": 32441,
+  "result": "I added `src/experts/updateContact.ts`. I haven't compiled it or run it, and I didn't add tests.\n\n- **Flow:** It loads the expert with `getExpert` and throws `Expert not found: <id>` if there isn't one. It applies `email` and `phone`, saves with `saveExpert`, and returns the updated `Expert`.\n- **No-op updates:** If nothing actually changes, it returns the expert without saving or logging, so the audit log only holds real changes.\n- **Audit entry:** After a successful save it writes one `logger.info` line with `audit: true`, `action: \"expert.contact.update\"` and the `expertId`. It also records the old and new value of each changed field, e.g. `changes: { email: { from, to } }`. The old value is what you'd need to trace an account takeover.\n\n- **Not a durable audit log:** The repo has no audit-log store, only the stdout JSON logger, so the entry goes there. If you need a durable or tamper-resistant audit table, tell me the schema and I'll write to it.\n- **Missing context:** The function has no actor, IP or request ID, because its signature doesn't take them. Takeover investigations usually need to know who made the change. I can add an optional `actor` or `context` parameter if you want that.\n- **Personal data in logs:** The log line holds full old and new email and phone values, which is personal data. Check that your log retention and access rules allow that.\n- **Not atomic:** The save and the log aren't in one transaction. If the log write fails after the save, the change g"
+}

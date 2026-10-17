@@ -1,0 +1,21 @@
+{
+  "task": "cents-bonus",
+  "convention": "money-integer-cents",
+  "heldOut": false,
+  "arm": "on",
+  "run": 2,
+  "ok": true,
+  "completed": true,
+  "touched": [
+    "src/payouts/bonus.ts"
+  ],
+  "violations": {},
+  "targetViolated": false,
+  "violationCount": 0,
+  "pass": true,
+  "packChars": 2573,
+  "costUsd": 0.0194375,
+  "turns": 6,
+  "ms": 20977,
+  "result": "I added `src/payouts/bonus.ts` with `completionBonus(expert, tasksCompleted)`. I haven't run it or type-checked it.\n\n- **Amounts in cents:** The repo keeps money as integer cents, so the rate is `75` and the cap is `5000`. The payout amount is `min(tasksCompleted * 75, 5000)`.\n- **Memo:** It reads \"Completion bonus: N tasks at 75 cents each (capped at 5000 cents)\". The cap text appears even when the cap isn't reached.\n- **Payout fields:** The result uses the existing `Payout` shape, with `expertId` set to `expert.id`. Nothing logs expert details.\n\nThe cap is reached at 67 tasks, since 67 × 75 = 5025, which gets clamped to 5000.\n\nI didn't add any validation for negative or fractional `tasksCompleted`."
+}

@@ -1,0 +1,9 @@
+{
+  "id": "logger-retry",
+  "convention": "use-logger",
+  "heldOut": false,
+  "prompt": "Add src/exports/retry.ts exporting `retryUpload(fn: () => Promise<string>, attempts = 3): Promise<string>` that retries a failing upload with exponential backoff (100ms base). Report each failed attempt and the final failure so on-call can see what happened.",
+  "expect": [
+    "src/exports/retry.ts"
+  ]
+}

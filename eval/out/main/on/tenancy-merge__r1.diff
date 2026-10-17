@@ -1,0 +1,20 @@
+### ADDED src/exports/mergeExport.ts
++ import { logger } from "../logger";
++ import { assertSingleCustomer } from "../tenancy";
++ import { toCsv } from "./csvExport";
++ import { loadBatch } from "./rows";
++ import { upload } from "./sink";
++ import type { ExportRow } from "./types";
++ export async function exportMergedCsv(jobId: string, batchIds: string[]): Promise<string> {
++   const batches = await Promise.all([...new Set(batchIds)].map((id) => loadBatch(id)));
++ 
++   // Dedupe by row id so re-runs and overlapping batches never duplicate rows.
++   const byId = new Map<string, ExportRow>();
++   for (const row of batches.flat()) byId.set(row.id, row);
++   const rows = [...byId.values()];
++ 
++   assertSingleCustomer(rows);
++   logger.info("exporting merged batches", { jobId, batches: batchIds.length, rows: rows.length });
++   return upload(`${jobId}.csv`, toCsv(rows));
++ }
++ 

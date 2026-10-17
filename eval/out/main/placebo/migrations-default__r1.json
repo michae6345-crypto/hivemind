@@ -1,0 +1,21 @@
+{
+  "task": "migrations-default",
+  "convention": "migrations-append-only",
+  "heldOut": false,
+  "arm": "placebo",
+  "run": 1,
+  "ok": true,
+  "completed": true,
+  "touched": [
+    "migrations/003_exports_status_default.sql"
+  ],
+  "violations": {},
+  "targetViolated": false,
+  "violationCount": 0,
+  "pass": true,
+  "packChars": 1984,
+  "costUsd": 0.0228594,
+  "turns": 6,
+  "ms": 34173,
+  "result": "I added `migrations/003_exports_status_default.sql`. I haven't run it, so it's untested.\n\nIt does three things:\n1. Sets existing `NULL` statuses to `'queued'`. Without this, step 3 would fail on those rows.\n2. Sets the column default to `'queued'`.\n3. Sets the column to `NOT NULL`.\n\nI made a new migration instead of editing `001_init.sql`, because databases that already applied 001 wouldn't pick up an edit. A fresh database runs all the migrations in order and ends up with the same schema.\n\nThe backfill marks every existing NULL-status export as `queued`, including any that already ran. If you'd rather map those rows to a different status, change the `update` line.\n\nI didn't check `src/exports/sink.ts` to see whether it writes `status` explicitly. If it inserts an explicit `NULL`, that insert will now fail instead of silently storing a NULL."
+}

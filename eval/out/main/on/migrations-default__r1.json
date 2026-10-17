@@ -1,0 +1,21 @@
+{
+  "task": "migrations-default",
+  "convention": "migrations-append-only",
+  "heldOut": false,
+  "arm": "on",
+  "run": 1,
+  "ok": true,
+  "completed": true,
+  "touched": [
+    "migrations/003_exports_status_default.sql"
+  ],
+  "violations": {},
+  "targetViolated": false,
+  "violationCount": 0,
+  "pass": true,
+  "packChars": 2573,
+  "costUsd": 0.021533800000000002,
+  "turns": 6,
+  "ms": 26325,
+  "result": "I added `migrations/003_exports_status_default.sql`. I haven't run it. It does three things:\n\n1. It sets `status` to `'queued'` on existing rows where it is NULL.\n2. It sets the column default to `'queued'`.\n3. It makes the column `NOT NULL`.\n\nI didn't edit `001_init.sql`, because migrations are append-only and that file has already run in prod. The backfill comes first so that `SET NOT NULL` doesn't fail on the NULL rows you're already seeing.\n\nIf any code inserts into `exports` with an explicit `status: null`, it will now fail instead of silently getting NULL. I didn't search the application code for that."
+}

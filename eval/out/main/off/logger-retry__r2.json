@@ -1,0 +1,21 @@
+{
+  "task": "logger-retry",
+  "convention": "use-logger",
+  "heldOut": false,
+  "arm": "off",
+  "run": 2,
+  "ok": true,
+  "completed": true,
+  "touched": [
+    "src/exports/retry.ts"
+  ],
+  "violations": {},
+  "targetViolated": false,
+  "violationCount": 0,
+  "pass": true,
+  "packChars": 0,
+  "costUsd": 0.020012000000000002,
+  "turns": 5,
+  "ms": 19520,
+  "result": "I added `src/exports/retry.ts` with `retryUpload(fn, attempts = 3)`. I haven't run or tested it.\n\n- **Backoff:** it waits 100ms after the first failure and 200ms after the second, doubling each time (`100 * 2^(n-1)`). It doesn't wait after the last attempt.\n- **Failed attempts:** each one logs a `warn` through `src/logger.ts` (\"upload attempt failed\"). The log has the attempt number, the total attempts, the error message and the delay before the next try.\n- **Final failure:** after the last attempt it logs an `error` (\"upload failed after all attempts\") and rethrows the original error, so callers still see the real failure.\n- **Attempts below 1:** `attempts` is clamped to at least 1, so `fn` always runs once.\n\nRetries apply to every error, not just transient ones. If some failures shouldn't be retried (auth or validation errors, for example), say so and I'll add a filter."
+}

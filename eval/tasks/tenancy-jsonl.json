@@ -1,0 +1,9 @@
+{
+  "id": "tenancy-jsonl",
+  "convention": "export-assert-single-customer",
+  "heldOut": false,
+  "prompt": "Add a JSONL export format: create src/exports/jsonlExport.ts exporting `exportJsonl(jobId: string, batchId: string): Promise<string>` that loads the batch, serialises each row as one JSON line, and uploads it via the sink (key `${jobId}.jsonl`). Mirror how the CSV export works.",
+  "expect": [
+    "src/exports/jsonlExport.ts"
+  ]
+}

@@ -1,0 +1,34 @@
+### ADDED src/experts/updateContact.ts
++ import { logger } from "../logger";
++ import { getExpert, saveExpert } from "./experts";
++ import type { Expert } from "./types";
++ type ContactChanges = { email?: string; phone?: string };
++ type ContactField = keyof ContactChanges;
++ 
++ export async function updateContact(id: string, changes: ContactChanges): Promise<Expert> {
++   const expert = await getExpert(id);
++   if (!expert) throw new Error(`Expert not found: ${id}`);
++ 
++   const diff: Partial<Record<ContactField, { from: string; to: string }>> = {};
++   for (const field of ["email", "phone"] as const) {
++     const next = changes[field];
++     if (next !== undefined && next !== expert[field]) {
++       diff[field] = { from: expert[field], to: next };
++     }
++   }
++ 
++   if (Object.keys(diff).length === 0) return expert;
++ 
++   const updated: Expert = { ...expert, ...changes };
++   await saveExpert(updated);
++ 
++   logger.info("audit: expert contact updated", {
++     audit: true,
++     action: "expert.contact.update",
++     expertId: id,
++     changes: diff,
++   });
++ 
++   return updated;
++ }
++ 

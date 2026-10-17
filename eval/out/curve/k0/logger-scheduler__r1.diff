@@ -1,0 +1,5 @@
+### MODIFIED src/exports/scheduler.ts
++     console.log(`[export] starting job ${job.id}`);
++     const url = await exportCsv(job.id, job.batchId);
++     urls.push(url);
++     console.log(`[export] finished job ${job.id}: ${url} (${queue.length} jobs left)`);

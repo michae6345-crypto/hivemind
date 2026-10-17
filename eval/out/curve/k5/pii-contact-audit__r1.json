@@ -1,0 +1,22 @@
+{
+  "task": "pii-contact-audit",
+  "convention": "sec-no-pii-logs",
+  "heldOut": true,
+  "arm": "k5",
+  "run": 1,
+  "k": 5,
+  "ok": true,
+  "completed": true,
+  "touched": [
+    "src/experts/updateContact.ts"
+  ],
+  "violations": {},
+  "targetViolated": false,
+  "violationCount": 0,
+  "pass": true,
+  "packChars": 2301,
+  "costUsd": 0.0296448,
+  "turns": 7,
+  "ms": 30346,
+  "result": "I added `src/experts/updateContact.ts`. I haven't run or type-checked it, and I didn't write any tests.\n\nIt loads the expert with `getExpert` and throws if none exists. It applies only the fields that actually differ, saves with `saveExpert`, and returns the updated expert. If nothing changed, it skips the save and the audit entry and returns the expert as it was.\n\n**What the audit entry contains:** each update writes `logger.info(\"expert contact updated\", { expertId, changedFields })`, for example `[\"email\"]`. It doesn't include the old or new email or phone values. Our security rule bars logging expert PII, so the log can't show what an email or phone was changed to.\n\n**Limits for takeover investigations:**\n- **No actor:** the entry doesn't say who made the change. The signature has no caller or actor, so I couldn't record one. Adding an optional `actorId` or request-source parameter would fix that. Say if you want it.\n- **No values:** the log tells you a field changed and when, not what it changed from or to. If you need the values, they would have to go in a protected audit table rather than the log. That needs sign-off from Security."
+}

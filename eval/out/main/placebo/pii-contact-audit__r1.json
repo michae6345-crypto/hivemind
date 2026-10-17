@@ -1,0 +1,21 @@
+{
+  "task": "pii-contact-audit",
+  "convention": "sec-no-pii-logs",
+  "heldOut": true,
+  "arm": "placebo",
+  "run": 1,
+  "ok": true,
+  "completed": true,
+  "touched": [
+    "src/experts/updateContact.ts"
+  ],
+  "violations": {},
+  "targetViolated": false,
+  "violationCount": 0,
+  "pass": true,
+  "packChars": 1984,
+  "costUsd": 0.035105,
+  "turns": 8,
+  "ms": 22176,
+  "result": "I added `src/experts/updateContact.ts`. I haven't run or type-checked it, and I didn't write any tests.\n\n- **What it does:** it loads the expert with `getExpert` and throws `Expert not found: <id>` if there isn't one. It then applies `email` and `phone`, saves with `saveExpert`, and returns the updated expert.\n- **No-op changes:** if nothing actually changes, it returns the expert without saving or logging, so repeat calls don't add noise to the audit trail.\n- **Audit entry:** it uses `logger.info` with `audit: true`, `action: \"expert.contact.update\"`, the `expertId`, and the old and new value for each changed field.\n- **Audit storage:** there's no audit table or audit module in the repo, so the entry goes to the structured JSON logger on stdout. If you want it stored durably, I can add an `audit_log` write through `query`. That would need a table and schema.\n- **Who made the change:** the entry doesn't record the actor, IP or session, because the signature you gave has no place for them. Takeover investigations usually need that, so I'd suggest adding an optional `actor` or `context` argument.\n- **PII in logs:** the entry contains raw old and new emails and phone numbers. That's useful for investigating takeovers, but check it fits your log retention and PII policy. Masking the values is a small change.\n- **Concurrency:** the load, save and log steps aren't wrapped in a transaction, and `saveExpert` writes every field. Two concurrent updates could overwrite each other."
+}

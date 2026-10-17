@@ -1,0 +1,21 @@
+{
+  "task": "pii-contact-audit",
+  "convention": "sec-no-pii-logs",
+  "heldOut": true,
+  "arm": "placebo",
+  "run": 2,
+  "ok": true,
+  "completed": true,
+  "touched": [
+    "src/experts/updateContact.ts"
+  ],
+  "violations": {},
+  "targetViolated": false,
+  "violationCount": 0,
+  "pass": true,
+  "packChars": 1984,
+  "costUsd": 0.030414800000000002,
+  "turns": 9,
+  "ms": 38884,
+  "result": "I added `src/experts/updateContact.ts`. I haven't run it or type-checked it, and I didn't add tests.\n\n- **Update:** `updateContact(id, changes)` loads the expert with `getExpert` and throws `Expert not found: <id>` if there isn't one. It applies only the `email` and `phone` values that are provided and actually differ, then saves with `saveExpert` and returns the updated expert.\n- **No-op:** if nothing changes, it returns the expert without saving or logging.\n- **Audit entry:** after a successful save, it calls `logger.info(\"expert.contact_updated\", { audit: true, expertId, changes: { email?: {from, to}, phone?: {from, to} } })`. The old and new values are what you'd need to trace a takeover.\n\n- **Logger as audit log:** the repo has no audit table or audit-log module, so the entry goes through the existing `logger`. That output is stdout JSON, so it isn't tamper-resistant or queryable. If you want a durable audit store, I can add an `audit_log` table and write to it in the same flow.\n- **Missing actor:** the entry doesn't record who made the change, because the requested signature has no actor parameter. For takeover investigations you'll probably want an `actor` or `requestId` argument, and I can add one.\n- **PII in logs:** the entries contain raw emails and phone numbers, so check that your log retention and access rules allow that."
+}

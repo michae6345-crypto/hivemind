@@ -1,0 +1,9 @@
+{
+  "id": "dates-link-expiry",
+  "convention": "dates-to-utc-iso",
+  "heldOut": true,
+  "prompt": "Download links should expire. In src/exports/links.ts add `expiresAt: string` to DownloadLink, set to 7 days after creation, and include it in the URL as an `expires` query parameter.",
+  "expect": [
+    "src/exports/links.ts"
+  ]
+}

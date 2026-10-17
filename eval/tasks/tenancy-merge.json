@@ -1,0 +1,9 @@
+{
+  "id": "tenancy-merge",
+  "convention": "export-assert-single-customer",
+  "heldOut": true,
+  "prompt": "Customers sometimes want several batches in one file. Add src/exports/mergeExport.ts exporting `exportMergedCsv(jobId: string, batchIds: string[]): Promise<string>` that loads all the given batches, concatenates their rows, and uploads a single CSV (reuse toCsv).",
+  "expect": [
+    "src/exports/mergeExport.ts"
+  ]
+}

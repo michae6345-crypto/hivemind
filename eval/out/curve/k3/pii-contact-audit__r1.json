@@ -1,0 +1,22 @@
+{
+  "task": "pii-contact-audit",
+  "convention": "sec-no-pii-logs",
+  "heldOut": true,
+  "arm": "k3",
+  "run": 1,
+  "k": 3,
+  "ok": true,
+  "completed": true,
+  "touched": [
+    "src/experts/updateContact.ts"
+  ],
+  "violations": {},
+  "targetViolated": false,
+  "violationCount": 0,
+  "pass": true,
+  "packChars": 1822,
+  "costUsd": 0.030618799999999995,
+  "turns": 7,
+  "ms": 20067,
+  "result": "I added `src/experts/updateContact.ts`. I haven't run or type-checked it.\n\n- **Update:** it loads the expert with `getExpert`. If there's no such expert, it throws `Expert not found: <id>`. It applies only the fields that were passed and actually differ, then saves with `saveExpert`.\n- **No change:** if nothing differs, it returns the expert without saving or logging.\n- **Audit entry:** after a successful save, it logs through `logger.info(\"expert contact updated\", …)`. The entry has `audit: true`, the `expertId`, and a `changes` object with the old and new value for each changed field. For example: `{ email: { from, to } }`. Logger lines already include a timestamp.\n\n- **No audit store:** the repo has no audit table or audit helper, so the entry goes to the structured logger. That's the only sink I could use without inventing a schema. If you want a database table, say so and I'll add one.\n- **No actor:** the function signature has no actor parameter, so the entry doesn't record who made the change. For account-takeover investigations you'll probably want that, along with IP or session. I can add an optional `actor` argument.\n- **Raw contact details in logs:** the entry contains full old and new emails and phone numbers, which investigations need. Check that this fits your log retention and PII policy."
+}

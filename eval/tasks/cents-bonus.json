@@ -1,0 +1,9 @@
+{
+  "id": "cents-bonus",
+  "convention": "money-integer-cents",
+  "heldOut": false,
+  "prompt": "Add src/payouts/bonus.ts exporting `completionBonus(expert: Expert, tasksCompleted: number): Payout` — experts earn a bonus of $0.75 per completed task, capped at $50.00 per payout. Set a memo describing the bonus.",
+  "expect": [
+    "src/payouts/bonus.ts"
+  ]
+}

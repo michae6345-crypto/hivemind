@@ -1,0 +1,13 @@
+### ADDED src/payouts/penalty.ts
++ import type { Payout } from "./types";
++ // Amounts are integer cents: $2.50 per day late.
++ const LATE_PENALTY_CENTS_PER_DAY = 250;
++ 
++ export function applyLatePenalty(payout: Payout, daysLate: number): Payout {
++   const days = Math.max(0, Math.floor(daysLate));
++   const penalty = days * LATE_PENALTY_CENTS_PER_DAY;
++   const amount = Math.max(0, payout.amount - penalty);
++   if (days === 0) return { ...payout, amount };
++   return { ...payout, amount, memo: `${payout.memo} (late penalty: ${days}d, -${penalty} cents)` };
++ }
++ 

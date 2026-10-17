@@ -1,0 +1,22 @@
+{
+  "task": "migrations-default",
+  "convention": "migrations-append-only",
+  "heldOut": false,
+  "arm": "k6",
+  "run": 1,
+  "k": 6,
+  "ok": true,
+  "completed": true,
+  "touched": [
+    "migrations/003_exports_status_default.sql"
+  ],
+  "violations": {},
+  "targetViolated": false,
+  "violationCount": 0,
+  "pass": true,
+  "packChars": 2573,
+  "costUsd": 0.016783600000000003,
+  "turns": 6,
+  "ms": 23253,
+  "result": "I added `migrations/003_exports_status_default.sql` and left `001_init.sql` alone, because migrations are append-only and 001 has already run in prod. I haven't run the migration.\n\nThe migration does three things, in this order:\n1. It sets `status` to `'queued'` on existing rows where it's NULL. This has to come first, or the `not null` step would fail on those rows.\n2. It sets the column default to `'queued'`.\n3. It sets the column to `not null`.\n\nExisting NULL rows will become `'queued'`. If any of them are old exports that actually finished or failed, you may want a different backfill value.\n\nSeparately, you may want to check which code path inserts exports with a NULL status. After this change, an insert that explicitly passes NULL will fail instead of silently storing it. Inserts that leave `status` out will get `'queued'`."
+}

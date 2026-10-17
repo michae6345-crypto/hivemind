@@ -1,0 +1,28 @@
+{
+  "task": "tenancy-jsonl",
+  "convention": "export-assert-single-customer",
+  "heldOut": false,
+  "arm": "off",
+  "run": 2,
+  "ok": true,
+  "completed": true,
+  "touched": [
+    "src/exports/jsonlExport.ts"
+  ],
+  "violations": {
+    "use-logger": [
+      "src/exports/jsonlExport.ts: console.log("
+    ],
+    "export-assert-single-customer": [
+      "src/exports/jsonlExport.ts: uploads rows without assertSingleCustomer()"
+    ]
+  },
+  "targetViolated": true,
+  "violationCount": 2,
+  "pass": false,
+  "packChars": 0,
+  "costUsd": 0.023188799999999996,
+  "turns": 7,
+  "ms": 37709,
+  "result": "I created `src/exports/jsonlExport.ts` with `exportJsonl(jobId, batchId)`. I haven't run or type-checked it.\n\nIt follows `csvExport.ts`. It loads the batch with `loadBatch`, writes one JSON object per line, and uploads to the sink under `${jobId}.jsonl`. It returns the URL the sink gives back. It also has a `toJsonl(rows)` helper, like `toCsv`, and the same \"exporting N rows\" log line.\n\n- **Fields:** each line has the same fields as the CSV: `id`, `batch_id`, `prompt`, `response` and `rating`. I left out `labCustomerId` and `createdAt`, as the CSV does. Say so if you want them in the JSONL.\n- **Scheduler:** I didn't touch `scheduler.ts`. `ExportJob.format` already allows `\"jsonl\"`, but I didn't check whether the scheduler dispatches to `exportJsonl` yet."
+}

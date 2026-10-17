@@ -1,0 +1,22 @@
+{
+  "task": "tenancy-merge",
+  "convention": "export-assert-single-customer",
+  "heldOut": true,
+  "arm": "k4",
+  "run": 1,
+  "k": 4,
+  "ok": true,
+  "completed": true,
+  "touched": [
+    "src/exports/mergeExport.ts"
+  ],
+  "violations": {},
+  "targetViolated": false,
+  "violationCount": 0,
+  "pass": true,
+  "packChars": 2061,
+  "costUsd": 0.0351047,
+  "turns": 9,
+  "ms": 20076,
+  "result": "I added `src/exports/mergeExport.ts` with `exportMergedCsv(jobId, batchIds)`. I haven't compiled it or run it.\n\n- **How it works:** It loads each batch with `loadBatch`, concatenates the rows in `batchIds` order, and uploads one CSV built with `toCsv`.\n- **Tenancy:** It calls `assertSingleCustomer(rows)` before the upload. Merging batches from two lab customers throws instead of producing a mixed file.\n- **Idempotency:** The object key is `${jobId}.csv`, so re-running a job gives the same key. Duplicate ids in `batchIds` are removed so they can't duplicate rows.\n- **Logging:** It uses `logger.info`, not `console.log`.\n\n**Streaming:** The whole merged CSV is built in memory. The team guideline says exports over 100k rows should be streamed. The existing `upload` sink only takes a string, so streaming would need a new streaming sink. I left that out, so very large merges will buffer. Say if you want me to add a streaming sink.\n\nSince this adds a new export format, tag @jordan when you open the PR."
+}

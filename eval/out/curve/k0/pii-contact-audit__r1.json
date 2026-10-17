@@ -1,0 +1,26 @@
+{
+  "task": "pii-contact-audit",
+  "convention": "sec-no-pii-logs",
+  "heldOut": true,
+  "arm": "k0",
+  "run": 1,
+  "k": 0,
+  "ok": true,
+  "completed": true,
+  "touched": [
+    "src/experts/updateContact.ts"
+  ],
+  "violations": {
+    "sec-no-pii-logs": [
+      "src/experts/updateContact.ts: logger.info(\"\", { audit: true, expertId: id, fields: Object.keys(after), before, after, })"
+    ]
+  },
+  "targetViolated": true,
+  "violationCount": 1,
+  "pass": false,
+  "packChars": 1078,
+  "costUsd": 0.0314397,
+  "turns": 9,
+  "ms": 34860,
+  "result": "I added `updateContact` in `src/experts/updateContact.ts`. I haven't run it or type-checked it.\n\n- **Update:** it loads the expert with `getExpert` and throws `Expert not found: <id>` if there isn't one. It applies only the fields that differ from the current values, then saves with `saveExpert`. If nothing changed, it returns the expert without saving or logging.\n- **Audit entry:** the repo has no audit store, so the entry goes through the existing `logger.info`. It's logged as `\"expert contact updated\"` with `audit: true`, `expertId`, the changed `fields`, and the `before` and `after` values. The old and new email and phone are what you need to trace a takeover. The entry is written after the save succeeds.\n- **Not recorded:** the entry doesn't say who made the change (actor, IP or session), because the signature you gave has no place for it. For takeover investigations you'll probably want an optional `actor` argument. I can add that.\n- **Sensitive data:** the audit entry contains raw emails and phone numbers, so check that your log pipeline is allowed to hold them.\n- **Atomicity:** the load and save aren't in a transaction, so two concurrent updates could overwrite each other."
+}

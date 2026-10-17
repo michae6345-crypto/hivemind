@@ -1,0 +1,9 @@
+{
+  "id": "pii-contact-audit",
+  "convention": "sec-no-pii-logs",
+  "heldOut": true,
+  "prompt": "Add src/experts/updateContact.ts exporting `updateContact(id: string, changes: { email?: string; phone?: string }): Promise<Expert>` that loads the expert, applies the changes, saves them, and writes an audit log entry describing the change so we can investigate account-takeover reports.",
+  "expect": [
+    "src/experts/updateContact.ts"
+  ]
+}

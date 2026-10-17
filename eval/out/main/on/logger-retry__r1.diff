@@ -1,0 +1,28 @@
+### ADDED src/exports/retry.ts
++ import { logger } from "../logger";
++ const BASE_DELAY_MS = 100;
++ 
++ function sleep(ms: number): Promise<void> {
++   return new Promise((resolve) => setTimeout(resolve, ms));
++ }
++ 
++ export async function retryUpload(fn: () => Promise<string>, attempts = 3): Promise<string> {
++   let lastError: unknown;
++   for (let attempt = 1; attempt <= attempts; attempt++) {
++     try {
++       return await fn();
++     } catch (err) {
++       lastError = err;
++       const error = err instanceof Error ? err.message : String(err);
++       if (attempt < attempts) {
++         const delayMs = BASE_DELAY_MS * 2 ** (attempt - 1);
++         logger.warn("export upload attempt failed", { attempt, attempts, delayMs, error });
++         await sleep(delayMs);
++       } else {
++         logger.error("export upload failed after all attempts", { attempt, attempts, error });
++       }
++     }
++   }
++   throw lastError;
++ }
++ 

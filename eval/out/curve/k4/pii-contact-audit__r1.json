@@ -1,0 +1,22 @@
+{
+  "task": "pii-contact-audit",
+  "convention": "sec-no-pii-logs",
+  "heldOut": true,
+  "arm": "k4",
+  "run": 1,
+  "k": 4,
+  "ok": true,
+  "completed": true,
+  "touched": [
+    "src/experts/updateContact.ts"
+  ],
+  "violations": {},
+  "targetViolated": false,
+  "violationCount": 0,
+  "pass": true,
+  "packChars": 2061,
+  "costUsd": 0.0321022,
+  "turns": 7,
+  "ms": 20897,
+  "result": "I created `src/experts/updateContact.ts`. I haven't run it or type-checked it, and I didn't add tests.\n\n- **Behavior:** It loads the expert with `getExpert` and throws `Expert not found: <id>` if there isn't one. It applies only the `email` and `phone` values that were passed and differ from the current ones. It saves with `saveExpert` and returns the updated `Expert`. If nothing actually changed, it returns the expert without saving or logging.\n- **Audit entry:** After a successful save it calls `logger.info(\"expert.contact_updated\", …)` with `audit: true`, the `expertId`, the `changedFields`, and the old and new value of each changed field. I used `logger` rather than `console.log`, following the repo's convention.\n- **Audit storage:** The repo has no audit table or audit helper, so the entry goes only to the structured log. If you want it in a database table, that needs a new migration, which is a bigger change.\n- **Privacy:** The log holds full old and new emails and phone numbers, because that is what you'd need to trace a takeover. Those are personal data. If your log pipeline shouldn't hold them, I can mask them.\n- **Missing context:** The code doesn't record who made the change, because `updateContact` has no caller or actor parameter. For takeover investigations you'd probably want an `actor` or `requestId`. I can add it as an optional third argument.\n- **Race condition:** The load and save aren't in a transaction, so two concurrent updates to the same expert could o"
+}

@@ -1,0 +1,22 @@
+{
+  "task": "tenancy-merge",
+  "convention": "export-assert-single-customer",
+  "heldOut": true,
+  "arm": "k3",
+  "run": 1,
+  "k": 3,
+  "ok": true,
+  "completed": true,
+  "touched": [
+    "src/exports/mergeExport.ts"
+  ],
+  "violations": {},
+  "targetViolated": false,
+  "violationCount": 0,
+  "pass": true,
+  "packChars": 1822,
+  "costUsd": 0.035716700000000004,
+  "turns": 9,
+  "ms": 21264,
+  "result": "I added `src/exports/mergeExport.ts` with `exportMergedCsv(jobId, batchIds)`. I haven't compiled it or run it.\n\nIt loads each batch with `loadBatch` and concatenates the rows. It then uploads a single CSV built with `toCsv`.\n\n- **One customer per file:** it calls `assertSingleCustomer(rows)` before upload. If the batches belong to different lab customers, the call throws and nothing is uploaded.\n- **Same job, same file:** the object key is `${jobId}.csv`, so re-running a job overwrites the same file. Repeated batch IDs and repeated row IDs are dropped, so rows aren't duplicated.\n- **Logging:** it logs through `logger.info`, not `console.log`.\n\nThe existing `exportCsv` still uses `console.log`. I left it alone because it's outside this request.\n\nThe whole merged CSV is built as one string in memory, because `toCsv` and `upload` both work on a single string. The team guideline is to stream exports over 100k rows. If merged files may get that large, we'd need a chunked upload in `sink.ts`. I can add that.\n\nPer the team guideline, tag @jordan on the PR if it changes export formats. This adds a new export path but doesn't change the CSV format."
+}

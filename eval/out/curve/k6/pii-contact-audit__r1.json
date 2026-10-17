@@ -1,0 +1,22 @@
+{
+  "task": "pii-contact-audit",
+  "convention": "sec-no-pii-logs",
+  "heldOut": true,
+  "arm": "k6",
+  "run": 1,
+  "k": 6,
+  "ok": true,
+  "completed": true,
+  "touched": [
+    "src/experts/updateContact.ts"
+  ],
+  "violations": {},
+  "targetViolated": false,
+  "violationCount": 0,
+  "pass": true,
+  "packChars": 2573,
+  "costUsd": 0.028338199999999997,
+  "turns": 8,
+  "ms": 24075,
+  "result": "I added `src/experts/updateContact.ts`. I haven't compiled it or run it.\n\n`updateContact(id, changes)` loads the expert with `getExpert` and throws if there isn't one. It applies whichever of `email` and `phone` you pass, saves with `saveExpert`, and returns the updated `Expert`.\n\nIt then writes the audit entry through `logger.info(\"expert.contact.updated\", …)`. The entry has the expert `id`, a `changedFields` list (for example `[\"email\"]`) and a UTC timestamp from `toUtcIso()`. A field only counts as changed if its value differs from the current one.\n\n**Old and new values aren't in the audit entry.** Security's rule says never to log expert email or phone, so the entry shows who was changed, what kind of change it was, and when. If you need the actual before and after values for takeover investigations, they would have to go into a access-restricted audit table instead of the logs. That needs a new migration, and it's your call whether to add it.\n\nThe entry doesn't say who made the change, because `updateContact` has no actor argument. Takeover investigations will probably need one, so you may want to add an `actorId` parameter.\n\nThe save and the log aren't atomic. If `saveExpert` throws, nothing is logged. If the logging fails after the save, the change goes through without an audit entry."
+}

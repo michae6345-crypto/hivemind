@@ -1,0 +1,455 @@
+{
+  "generatedAt": "2026-10-17T04:13:33.346Z",
+  "model": "claude-sonnet-5-5",
+  "harness": "claude -p --safe-mode (no CLAUDE.md/plugins/hooks/MCP), tools Read/Edit/Write/Glob/Grep, acceptEdits, fresh fixture copy per run",
+  "packSource": "local eval/lessons.json",
+  "packChars": {
+    "off": 0,
+    "on": 2573,
+    "placebo": 1984
+  },
+  "tasks": 12,
+  "runs": 2,
+  "heldOutTasks": [
+    "tenancy-merge",
+    "cents-penalty",
+    "pii-contact-audit",
+    "dates-link-expiry"
+  ],
+  "definitions": {
+    "pass": "expected files touched AND zero violations across all 6 convention graders",
+    "targetViolationRate": "share of runs violating the convention the task was designed to trip",
+    "violationsPerTask": "mean number of conventions violated per run (all 6 graders)"
+  },
+  "off": {
+    "n": 24,
+    "errored": 0,
+    "passes": 9,
+    "passRate": 0.375,
+    "passRateCI95": [
+      0.212,
+      0.573
+    ],
+    "targetViolations": 15,
+    "targetViolationRate": 0.625,
+    "targetViolationRateCI95": [
+      0.427,
+      0.788
+    ],
+    "violationsPerTask": 0.792,
+    "completed": 24,
+    "costUsd": 0.51,
+    "medianSeconds": 31
+  },
+  "on": {
+    "n": 24,
+    "errored": 0,
+    "passes": 24,
+    "passRate": 1,
+    "passRateCI95": [
+      0.862,
+      1
+    ],
+    "targetViolations": 0,
+    "targetViolationRate": 0,
+    "targetViolationRateCI95": [
+      0,
+      0.138
+    ],
+    "violationsPerTask": 0,
+    "completed": 24,
+    "costUsd": 0.59,
+    "medianSeconds": 30
+  },
+  "placebo": {
+    "n": 24,
+    "errored": 0,
+    "passes": 10,
+    "passRate": 0.417,
+    "passRateCI95": [
+      0.245,
+      0.612
+    ],
+    "targetViolations": 14,
+    "targetViolationRate": 0.583,
+    "targetViolationRateCI95": [
+      0.388,
+      0.755
+    ],
+    "violationsPerTask": 0.75,
+    "completed": 24,
+    "costUsd": 0.55,
+    "medianSeconds": 28
+  },
+  "perTask": [
+    {
+      "id": "logger-retry",
+      "convention": "use-logger",
+      "heldOut": false,
+      "off": {
+        "n": 2,
+        "passes": 2,
+        "targetViolations": 0
+      },
+      "on": {
+        "n": 2,
+        "passes": 2,
+        "targetViolations": 0
+      },
+      "placebo": {
+        "n": 2,
+        "passes": 2,
+        "targetViolations": 0
+      }
+    },
+    {
+      "id": "logger-scheduler",
+      "convention": "use-logger",
+      "heldOut": false,
+      "off": {
+        "n": 2,
+        "passes": 0,
+        "targetViolations": 2
+      },
+      "on": {
+        "n": 2,
+        "passes": 2,
+        "targetViolations": 0
+      },
+      "placebo": {
+        "n": 2,
+        "passes": 0,
+        "targetViolations": 2
+      }
+    },
+    {
+      "id": "tenancy-jsonl",
+      "convention": "export-assert-single-customer",
+      "heldOut": false,
+      "off": {
+        "n": 2,
+        "passes": 0,
+        "targetViolations": 2
+      },
+      "on": {
+        "n": 2,
+        "passes": 2,
+        "targetViolations": 0
+      },
+      "placebo": {
+        "n": 2,
+        "passes": 0,
+        "targetViolations": 2
+      }
+    },
+    {
+      "id": "tenancy-merge",
+      "convention": "export-assert-single-customer",
+      "heldOut": true,
+      "off": {
+        "n": 2,
+        "passes": 0,
+        "targetViolations": 2
+      },
+      "on": {
+        "n": 2,
+        "passes": 2,
+        "targetViolations": 0
+      },
+      "placebo": {
+        "n": 2,
+        "passes": 0,
+        "targetViolations": 2
+      }
+    },
+    {
+      "id": "cents-bonus",
+      "convention": "money-integer-cents",
+      "heldOut": false,
+      "off": {
+        "n": 2,
+        "passes": 1,
+        "targetViolations": 1
+      },
+      "on": {
+        "n": 2,
+        "passes": 2,
+        "targetViolations": 0
+      },
+      "placebo": {
+        "n": 2,
+        "passes": 2,
+        "targetViolations": 0
+      }
+    },
+    {
+      "id": "cents-penalty",
+      "convention": "money-integer-cents",
+      "heldOut": true,
+      "off": {
+        "n": 2,
+        "passes": 0,
+        "targetViolations": 2
+      },
+      "on": {
+        "n": 2,
+        "passes": 2,
+        "targetViolations": 0
+      },
+      "placebo": {
+        "n": 2,
+        "passes": 0,
+        "targetViolations": 2
+      }
+    },
+    {
+      "id": "migrations-default",
+      "convention": "migrations-append-only",
+      "heldOut": false,
+      "off": {
+        "n": 2,
+        "passes": 2,
+        "targetViolations": 0
+      },
+      "on": {
+        "n": 2,
+        "passes": 2,
+        "targetViolations": 0
+      },
+      "placebo": {
+        "n": 2,
+        "passes": 2,
+        "targetViolations": 0
+      }
+    },
+    {
+      "id": "migrations-timezone",
+      "convention": "migrations-append-only",
+      "heldOut": false,
+      "off": {
+        "n": 2,
+        "passes": 2,
+        "targetViolations": 0
+      },
+      "on": {
+        "n": 2,
+        "passes": 2,
+        "targetViolations": 0
+      },
+      "placebo": {
+        "n": 2,
+        "passes": 2,
+        "targetViolations": 0
+      }
+    },
+    {
+      "id": "pii-contact-audit",
+      "convention": "sec-no-pii-logs",
+      "heldOut": true,
+      "off": {
+        "n": 2,
+        "passes": 2,
+        "targetViolations": 0
+      },
+      "on": {
+        "n": 2,
+        "passes": 2,
+        "targetViolations": 0
+      },
+      "placebo": {
+        "n": 2,
+        "passes": 2,
+        "targetViolations": 0
+      }
+    },
+    {
+      "id": "pii-payout-fail",
+      "convention": "sec-no-pii-logs",
+      "heldOut": false,
+      "off": {
+        "n": 2,
+        "passes": 0,
+        "targetViolations": 2
+      },
+      "on": {
+        "n": 2,
+        "passes": 2,
+        "targetViolations": 0
+      },
+      "placebo": {
+        "n": 2,
+        "passes": 0,
+        "targetViolations": 2
+      }
+    },
+    {
+      "id": "dates-csv",
+      "convention": "dates-to-utc-iso",
+      "heldOut": false,
+      "off": {
+        "n": 2,
+        "passes": 0,
+        "targetViolations": 2
+      },
+      "on": {
+        "n": 2,
+        "passes": 2,
+        "targetViolations": 0
+      },
+      "placebo": {
+        "n": 2,
+        "passes": 0,
+        "targetViolations": 2
+      }
+    },
+    {
+      "id": "dates-link-expiry",
+      "convention": "dates-to-utc-iso",
+      "heldOut": true,
+      "off": {
+        "n": 2,
+        "passes": 0,
+        "targetViolations": 2
+      },
+      "on": {
+        "n": 2,
+        "passes": 2,
+        "targetViolations": 0
+      },
+      "placebo": {
+        "n": 2,
+        "passes": 0,
+        "targetViolations": 2
+      }
+    }
+  ],
+  "heldOut": {
+    "off": {
+      "n": 8,
+      "errored": 0,
+      "passes": 2,
+      "passRate": 0.25,
+      "passRateCI95": [
+        0.071,
+        0.591
+      ],
+      "targetViolations": 6,
+      "targetViolationRate": 0.75,
+      "targetViolationRateCI95": [
+        0.409,
+        0.929
+      ],
+      "violationsPerTask": 1,
+      "completed": 8,
+      "costUsd": 0.17,
+      "medianSeconds": 30
+    },
+    "on": {
+      "n": 8,
+      "errored": 0,
+      "passes": 8,
+      "passRate": 1,
+      "passRateCI95": [
+        0.676,
+        1
+      ],
+      "targetViolations": 0,
+      "targetViolationRate": 0,
+      "targetViolationRateCI95": [
+        0,
+        0.324
+      ],
+      "violationsPerTask": 0,
+      "completed": 8,
+      "costUsd": 0.21,
+      "medianSeconds": 30
+    },
+    "placebo": {
+      "n": 8,
+      "errored": 0,
+      "passes": 2,
+      "passRate": 0.25,
+      "passRateCI95": [
+        0.071,
+        0.591
+      ],
+      "targetViolations": 6,
+      "targetViolationRate": 0.75,
+      "targetViolationRateCI95": [
+        0.409,
+        0.929
+      ],
+      "violationsPerTask": 1,
+      "completed": 8,
+      "costUsd": 0.2,
+      "medianSeconds": 29
+    }
+  },
+  "seen": {
+    "off": {
+      "n": 16,
+      "errored": 0,
+      "passes": 7,
+      "passRate": 0.438,
+      "passRateCI95": [
+        0.231,
+        0.668
+      ],
+      "targetViolations": 9,
+      "targetViolationRate": 0.563,
+      "targetViolationRateCI95": [
+        0.332,
+        0.769
+      ],
+      "violationsPerTask": 0.688,
+      "completed": 16,
+      "costUsd": 0.34,
+      "medianSeconds": 32
+    },
+    "on": {
+      "n": 16,
+      "errored": 0,
+      "passes": 16,
+      "passRate": 1,
+      "passRateCI95": [
+        0.806,
+        1
+      ],
+      "targetViolations": 0,
+      "targetViolationRate": 0,
+      "targetViolationRateCI95": [
+        0,
+        0.194
+      ],
+      "violationsPerTask": 0,
+      "completed": 16,
+      "costUsd": 0.38,
+      "medianSeconds": 31
+    },
+    "placebo": {
+      "n": 16,
+      "errored": 0,
+      "passes": 8,
+      "passRate": 0.5,
+      "passRateCI95": [
+        0.28,
+        0.72
+      ],
+      "targetViolations": 8,
+      "targetViolationRate": 0.5,
+      "targetViolationRateCI95": [
+        0.28,
+        0.72
+      ],
+      "violationsPerTask": 0.625,
+      "completed": 16,
+      "costUsd": 0.35,
+      "medianSeconds": 28
+    }
+  },
+  "stats": {
+    "note": "Fisher exact, two-sided, on target-violation counts; runs are clustered by task so treat p as indicative.",
+    "onVsOff": 0.00000239,
+    "onVsPlacebo": 0.00000813
+  }
+}

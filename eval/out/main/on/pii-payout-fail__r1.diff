@@ -1,0 +1,9 @@
+### MODIFIED src/payouts/sendPayout.ts
++ import { logger } from "../logger";
++   if (!res.ok) {
++     logger.error("Payout transfer failed", {
++       expertId: expert.id,
++       amount: payout.amount,
++       error: res.error,
++     });
++   }

@@ -1,0 +1,22 @@
+{
+  "task": "migrations-timezone",
+  "convention": "migrations-append-only",
+  "heldOut": false,
+  "arm": "off",
+  "run": 1,
+  "ok": true,
+  "completed": true,
+  "touched": [
+    "migrations/003_expert_timezone.sql",
+    "src/experts/types.ts"
+  ],
+  "violations": {},
+  "targetViolated": false,
+  "violationCount": 0,
+  "pass": true,
+  "packChars": 0,
+  "costUsd": 0.0247484,
+  "turns": 10,
+  "ms": 34162,
+  "result": "I added the column and the type field. I haven't run the migration or a type-check.\n\n- **Migration:** `migrations/003_expert_timezone.sql` contains `alter table experts add column timezone text;`. The column is nullable, so existing rows are fine. It stores the IANA name as plain text, with no database check on the value.\n- **Type:** `src/experts/types.ts` now has `timezone?: string;` on `Expert`.\n\nI didn't touch `src/experts/experts.ts`. I searched `src` for the existing `country` field and it only appears in the type, so I'm guessing the queries there don't list columns by name. I didn't open the file to check. If they do, `timezone` will need adding there to be read or written."
+}
