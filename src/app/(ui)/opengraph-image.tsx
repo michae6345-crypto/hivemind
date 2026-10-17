@@ -43,7 +43,7 @@ export default async function Image() {
           <div style={{ color: "#686d78" }}>Every agent learns.</div>
         </div>
         <div style={{ display: "flex", fontSize: 26, color: "#686d78" }}>
-          Shared memory for every AI coding agent on your team
+          Persistent memory across your team's AI agents
         </div>
       </div>
     ),

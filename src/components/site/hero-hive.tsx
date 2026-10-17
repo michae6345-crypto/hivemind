@@ -99,7 +99,7 @@ export function HeroHive({ evalOff, evalOn, runs }: { evalOff: number; evalOn: n
           className="hm-glass inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 font-mono text-[12px] tracking-tight text-fg/80"
         >
           <span className="size-1.5 rounded-full bg-honey" aria-hidden />
-          Shared memory for your team&apos;s AI coding agents
+          Persistent memory across your team&apos;s AI agents
         </motion.p>
         <h1 className="hm-display mt-6 text-[46px] sm:text-[64px] lg:text-[50px] lg:whitespace-nowrap xl:text-[62px]">
           <motion.span variants={rise} className="block">

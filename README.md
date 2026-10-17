@@ -1,6 +1,6 @@
 # Hivemind
 
-**Shared memory for your team's AI coding agents.** Correct one agent, and every agent on the team learns it.
+**Persistent memory across your team's AI agents.** Correct one agent, and every agent on the team learns it.
 
 **[Website](https://hivemind-beta-virid.vercel.app)** · **[Open the app](https://hivemind-beta-virid.vercel.app/app)** ·
 [Eval](docs/eval.md) · [Devpost write-up](docs/pitch/devpost.md)
