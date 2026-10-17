@@ -267,3 +267,6 @@ body {
   .hm-flow, .hm-travel { animation: none; }
   .hm-travel { display: none; }
 }
+/* A block caret that blinks like a terminal's. */
+.hm-caret { animation: hm-caret 1.05s steps(1) infinite; }
+@media (prefers-reduced-motion: reduce) { .hm-caret { animation: none; } }
