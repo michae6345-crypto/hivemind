@@ -77,8 +77,9 @@ async function compute(th, api, cfg, session, root) {
   const head = `${fg(P.lesson)(HEX)} ${t.text("Hivemind")}`;
   const watch = readJson(watchStatePath(cfg));
   const watchFresh = watch && Date.now() - watch.at < WATCH_FRESH_MS;
-  const [rules, live] = await Promise.all([api.rules(""), api.live().catch(() => ({ items: [], feed: [] }))]);
-  const n = rules.rules?.length ?? 0;
+  const [rules, live, pack] = await Promise.all([api.rules(""), api.live().catch(() => ({ items: [], feed: [] })), api.pack().catch(() => null)]);
+  // "N rules" = the context pack's count, the same number the SessionStart banner prints ("Loaded 11 team rules").
+  const n = pack ? (pack.rules ?? pack.memoryIds?.length ?? 0) : (rules.rules?.length ?? 0);
   const waiting = rules.pending?.count ?? 0;
 
   // "The file": what watch last flagged, else this session's newest edit (checked now).
@@ -132,7 +133,7 @@ export async function run(argv, cfg) {
     const a = makeApi({ ...cfg }, () => ({ role: "engineer" }));
     // data.mjs times out at 10s; the inline attempt must give up much sooner.
     const race = (p) => Promise.race([p, new Promise((_, no) => setTimeout(() => no(new Error("timeout")), timeout).unref())]);
-    return { rules: (f) => race(a.rules(f)), live: () => race(a.live()), check: (f, text) => race(a.check(f, text)) };
+    return { rules: (f) => race(a.rules(f)), live: () => race(a.live()), pack: () => race(a.pack()), check: (f, text) => race(a.check(f, text)) };
   };
 
   if (refreshing) {
