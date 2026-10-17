@@ -1,10 +1,11 @@
 # Hivemind: handoff for Claude Code (Adrian's side)
 
-Written Fri Oct 16, ~9:45 PM PT. **Deadline: Sat Oct 17, 2:00 PM PT. Feature freeze: 11:00 AM.**
+Written Fri Oct 16, ~10:15 PM PT. **Deadline: Sat Oct 17, 2:00 PM PT. Feature freeze: 11:00 AM.**
 
 > **Adrian, paste this into Claude Code to start:**
-> "Read `docs/adrian-handoff.md` top to bottom. Then do section 6, step 1. Ask me about anything in section 7 before
-> you decide it. Keep every change small, run `pnpm typecheck` before you say it's done, and commit after each step."
+> "Read `docs/adrian-handoff.md` top to bottom. Then do section 8 in order, one step at a time. Ask me about
+> anything in section 9 before you decide it. Keep every change small, run `pnpm typecheck` before you say a step is
+> done, and commit after each step."
 
 ---
 
@@ -12,23 +13,21 @@ Written Fri Oct 16, ~9:45 PM PT. **Deadline: Sat Oct 17, 2:00 PM PT. Feature fre
 
 When an engineer corrects their AI coding agent ("exports must call `assertSingleCustomer()`"), Hivemind turns that
 correction into a **lesson**. After a team lead **approves** it, every other engineer's agent gets the lesson at the
-start of its next session, so nobody has to give the same correction twice. Security can **lock** rules, and any lesson
-that contradicts a locked rule is **blocked** automatically.
+start of its next session, so nobody gives the same correction twice. Security can **lock** rules, and any lesson that
+contradicts a locked rule is **blocked** automatically.
 
-That's the whole product: **correct → approve → every agent knows → bad lessons get blocked.**
+The whole product: **correct → approve → every agent knows → bad lessons get blocked.**
 
-## 2. The demo we're building toward (the 2-minute video)
+## 2. Build from the demo backwards
 
-Everything we build must show up in one of these beats. If it isn't in a beat, it's clutter.
+**The live demo is the spec.** Every screen, animation and API route exists because a demo beat needs it. If something
+isn't in a beat, don't build it. Section 6 has the beat-by-beat run sheet. Work on whichever beat is broken first.
 
-| Time | What the judge sees | Where it happens |
-|---|---|---|
-| 0:00 | The problem: your agent repeats a mistake a reviewer already flagged, for a different teammate | Slide |
-| 0:15 | Engineer A corrects Claude. A lesson appears as "waiting for approval". The lead approves it | Claude Code, then the web app (Approvals) |
-| 0:40 | Engineer B opens a fresh Claude Code session and gets it right the first time, because the lesson was injected | Claude Code |
-| 1:00 | A bad lesson ("mixing labs is fine for tests") gets **blocked** by Maya's locked rule. Two agents edit the same file, so a collision warning appears | Web app + Claude Code |
-| 1:20 | Proof: the eval. Without Hivemind vs with Hivemind | Web app (Results) |
-| 1:40 | "Mem0 remembers a user. Glean searches docs. Hivemind learns how your company works." | Slide |
+One rule makes this practical: **write the demo script once and reuse it.** Put every line the audience will see
+(typed prompts, Claude Code output, Hivemind's hook messages, notifications) in one file,
+`src/components/site/demo-script.ts`. The website's animated Terminal plays that file, the rehearsal follows it, and
+the video follows it. Copy Hivemind's real hook messages from Michael's code (`src/app/api/hooks/tool/route.ts`, the
+context-pack header in `src/lib/`) so the website and the real thing say exactly the same words.
 
 ## 3. What exists right now
 
@@ -39,158 +38,206 @@ Everything we build must show up in one of these beats. If it isn't in a beat, i
 | Lessons, scopes and people in Supabase, seeded with the fictional company "Meridian Data" | ✅ done |
 | `GET /api/scopes`, `GET /api/memories`, `GET /api/entities` | ✅ done |
 | `GET /api/context-pack` + `hooks/session-start.mjs` (injects lessons when Claude Code starts) | ✅ done |
-| `POST /api/hooks/tool` (collision warnings when two agents edit the same file) + `GET /api/activity/live` | ✅ done |
-| MCP server at `/api/mcp` with `search_memory` and `propose_memory` | ✅ done |
+| `POST /api/hooks/tool` (collision warning when two agents edit the same file) + `GET /api/activity/live` | ✅ done |
+| MCP server at `/api/mcp`: `search_memory`, `propose_memory` | ✅ done |
 | `GET /api/metrics` + the **real eval** (`eval/results.json`, written up in `docs/eval.md`) | ✅ done |
-| `POST /api/hooks/prompt`: a correction typed to the agent becomes a pending lesson | ❌ **not built yet**. Demo beat 0:15 needs it |
-| `POST /api/memories/:id/approve` and `/reject` | ❌ **not built yet**. The UI shows an error toast in live mode until it exists |
-| `POST /api/memories` (write a rule by hand) | ❌ not built |
-| Vercel deploy (the real live link) | ❌ not done. Michael's Saturday-morning task |
+| `POST /api/hooks/prompt`: a correction typed to the agent becomes a pending lesson | ❌ **not built**. Demo beat 1 needs it |
+| Block a proposed lesson that contradicts a locked rule | ❌ **check with Michael**. Demo beat 4 needs it |
+| `POST /api/memories/:id/approve` and `/reject` | ❌ **not built**. Demo beat 2 needs it |
+| A demo reset script (put the database back to "before the demo") | 🚧 Michael's agent D is building `scripts/reset-demo.mjs` |
+| A **visible** "Hivemind loaded 12 team rules" line when Claude Code starts | ❌ The hook only feeds the agent today. Ask Michael to add `systemMessage` to `hooks/session-start.mjs` (Claude Code prints `systemMessage` to the user) |
+| VS Code extension | 🚧 Michael's agent H is building it in `vscode-extension/` + `src/app/api/vscode/`. **Send him boards 1–2 of the design canvas as its spec** |
+| Vercel deploy (the real live link) | ❌ not done. Michael's agent D writes `docs/deploy.md` |
 
-**The real eval result** (use this in the demo, it's strong): with no memory, the agent broke the team's conventions
-in **22 of 36** runs. With Hivemind: **0 of 36**. A placebo pack of the same size with unrelated lessons: **21 of 36**,
-so it's the lessons that help, not just extra text. Lessons learned on one task carried over to *different* tasks:
-9/12 → 0/12.
+**The real eval result** (the proof in the demo): with no memory, the agent broke the team's conventions in
+**22 of 36** runs. With Hivemind: **0 of 36**. A same-size pack of unrelated lessons: **21 of 36**, so it's the
+lessons that help, not extra text. Lessons learned on one task carried over to different tasks: 9/12 → 0/12.
 
 ### Frontend (Adrian's): `src/components/hm/`, `src/app/(ui)/`
 
-Three screens, all working on seed data and switching to live data automatically when the API answers:
-
-- **Vault** (`/`, `vault.tsx`): three panes. A scope tree, a CodeMirror editor with tabs, and a "Details" inspector with a live activity feed underneath.
-- **Approvals** (`/approvals`, `approvals.tsx`): a review queue on the left and a big detail view on the right. The blocked-lesson "guardrail" card lives here.
-- **Learning** (`/learning`, `learning.tsx`): headline, the "hive" honeycomb, a before/after number, 3 stat tiles, a chart, the eval bars and a transfer list.
-- Header (`app-shell.tsx`): logo, org name, 3 tabs, "3 agents working" avatars, Search ⌘K, Write a rule, Live/Seed status, a 3-way role switcher and an avatar.
-- Also: a ⌘K palette (`palette.tsx`), a "Write a rule" drawer (`composer.tsx`), Motion animations everywhere (`motion` package).
-
-### Brand (decided, don't re-litigate)
-
-- **Logo:** the "tonal chain". A rose locked-rule cell on top, an amber approved lesson overlapping it, and a dashed empty cell for the next lesson (`Logo` in `bits.tsx`, files in `public/brand/`).
-- **Fonts:** **Syne ExtraBold** for the wordmark and headlines (Adrian's pick). Anybody *condensed* only for big numbers. **Shantell Sans** for hand-written annotations. Code chips in mono.
-- **Adrian liked:** Syne, the ripple animation, the share card, the hand-drawn arrows and #hashtag chips, the "three states" (at rest → learning → everyone knows).
-- **Adrian did NOT like:** Anybody *expanded*. And the overall app (see section 4).
-- Colors (PLAN.md §6): background `#0B0B0E`, accent amber `#F5A524`, lock rose `#FB7185`, team `#8B93FF`, repo `#2DD4BF`.
+Three app screens on seed data that switch to live data when the API answers: **Vault** (`/`), **Approvals**
+(`/approvals`), **Learning** (`/learning`). Plus a header, a ⌘K palette, a "Write a rule" drawer and Motion animations
+(`motion` package, already installed). It's all dark and amber today. Section 4 replaces that.
 
 ### Links (for humans; Claude Code can't open these)
 
-- Logo/brand canvas: https://claude.ai/artifact/CMz5VTrEwRf8TL8v5ekQz6
-- Hosted UI preview (seed data, private): https://claude.ai/artifact/Jrake9kQpq63vyLt5UH4iE
-- VS Code mockups (section 5): https://claude.ai/artifact/5S7sm3hn55miXaqResYsYM. Four screens: ghost text that
-  follows a lesson, a locked-rule squiggle with a one-click fix, the agent checking the hive in chat (MCP), and
-  "correct once" with Approve/Reject in chat plus a collision banner
+- **The target design (Adrian loves this one):** https://claude.ai/artifact/5S7sm3hn55miXaqResYsYM
+  - Boards 1–4: Hivemind inside VS Code (ghost text, locked-rule squiggle, the agent checking the hive in chat, approve in chat).
+  - **Board 5: the website hero. A light page and a macOS screen with Terminal running Claude Code + Hivemind.**
+  - **Board 6: the new colors and type.**
+- Logo canvas (earlier rounds): https://claude.ai/artifact/CMz5VTrEwRf8TL8v5ekQz6
+- Old hosted preview (dark, too busy, being replaced): https://claude.ai/artifact/Jrake9kQpq63vyLt5UH4iE
 
-## 4. Adrian's problems, in his words, and what they mean
+## 4. The new look: light, calm, Space-style
 
-1. **"There is way too much going on. I don't understand anything."** The UI shows every feature at once. Every
-   screen has three to six things competing for attention: confidence bars, provenance sentences, backlinks, chips,
-   avatars, live feeds, stat tiles, badges. A judge gets about 10 seconds per screen. **Each screen should answer
-   exactly one question** (section 6, step 1).
-2. **"The preview is horrible."** Same root cause. Fix by cutting, not by adding polish.
-3. **"How will this look integrated into VS Code as an MCP?"** Engineers live in their editor, not in our web app.
-   We need to show Hivemind where they work (section 5).
-4. **"It should be like GitHub Copilot, filling stuff in, but for our product."** Ghost-text suggestions that
-   already follow the team's lessons, and inline warnings when code breaks a locked rule (section 5, layer C).
-5. **No live link yet.** Vercel is Michael's step (section 6, step 4).
+Adrian: "too honey related." The new direction follows **spacefs.com**: a light off-white page, near-black and grey
+text, frosted pill controls, and dark realistic macOS windows sitting on that light page. Take the *language*, not
+their assets: no copying their logo, photos or copy.
 
-## 5. How Hivemind shows up in VS Code (the honest version)
+### Colors (swap these into the existing CSS variables in `src/app/globals.css`)
 
-There are three layers. Each one needs more work than the last.
+| Variable | New value | Used for |
+|---|---|---|
+| `--bg` | `#F7F8FA` | Page background ("paper") |
+| `--panel` | `#FFFFFF` | Cards, panels |
+| `--elevated` | `#F1F3F5` | Hover rows, inputs |
+| `--border` | `#E5E7EB` | Hairlines |
+| `--text` | `#0E0F12` | Text, **primary buttons (black pills)** |
+| `--muted` | `#686D78` | Secondary text, the second line of two-tone headlines |
+| `--accent` | `#2F6FEB` | Links, focus rings, selection, the active-tab underline. **No longer honey** |
+| `--chip-lock` / `--danger` | `#E5484D` | Locked rules and blocks only |
+| `--ok` | `#2E9E5B` | Approved |
+| new `--honey` | `#E09A2B` | **Lessons only:** hive cells, the logo, a "lesson" dot. Never buttons, never backgrounds |
+| `--chip-team` / `--chip-repo` / `--chip-person` / `--chip-link` | `#5B5BD6` / `#0E9384` / `#B7791F` / `#7C5CD6` | Only as the small **dot** inside a chip |
+| new `--window` | `#1C1C1E` | Terminal and editor windows (stay dark on the light page) |
 
-**A. Claude Code running inside VS Code. Works today, zero new code.**
-Claude Code's VS Code extension runs the same hooks and MCP server we already have. The lesson gets injected at
-session start, and the collision warning shows up in the Claude panel. **Record the demo here instead of a bare
-terminal** and it immediately reads as "integrated into VS Code."
+Things that will break with a light theme, so fix them: `text-black` on accent buttons, `bg-black/55` overlays (use
+ink at ~30%), the Sonner `Toaster theme="dark"` (make it light), the hive colors in `hex.tsx` (honey cells on white),
+the chip styles `.hm-chip` in `globals.css` (neutral white pill + colored dot, mono text), and the CodeMirror theme in
+`cm-tokens.ts`.
 
-**B. MCP inside VS Code chat (Copilot agent mode or Claude Code). Mostly works today.**
-Add Hivemind as an MCP server in `.vscode/mcp.json`, and the chat agent can call `search_memory` and
-`propose_memory`. Tool calls show up as collapsible steps in chat. There's a newer spec, **MCP Apps**, that lets a
-tool return a small HTML card rendered *inside the chat* (a sandboxed iframe, chat panel only). Ideas for that card:
-- "3 team rules apply to `export.ts`", listing the rules as chips: 🔒 *Never mix lab data*, *Use logger*, *Cents as integers*.
-- After a correction: "Lesson proposed: *Exports call assertSingleCustomer()*. Waiting on @jordan", plus an
-  **Approve** button that only shows for the lead.
+### Type
 
-**C. Copilot-style "fills it in" inside the editor. Needs a VS Code extension; MCP can't draw in the editor.**
-MCP only talks to the chat agent. Ghost text, squiggles and inline labels come from the VS Code extension API
-(`InlineCompletionItemProvider`, `Diagnostics`, `CodeLens`, decorations). The extension would call the same
-`/api/context-pack` and `/api/activity` endpoints. Design ideas, one per demo beat:
-- **Ghost text that follows the lesson:** you type `export async function writeExport(rows) {` and the grey
-  suggestion already starts with `assertSingleCustomer(rows)`, with a faint label at the end of the line:
-  `Hivemind · Alex's lesson`.
-- **CodeLens above the function:** `🔒 1 locked rule · 2 lessons apply`. Click it to see them in a hover.
-- **Red squiggle on a locked-rule violation:** code that mixes two labs' rows gets
-  `Breaks 🔒 Never mix data from different lab customers (Maya, Security)`, with a Quick Fix "Add assertSingleCustomer()".
-- **Collision banner:** "Noor's agent edited this file 2 min ago" at the top of the editor.
-- **"Teach Hivemind?" lightbulb:** when you fix something the agent wrote, offer "Turn this into a lesson for #repo/export-service".
+- **Syne Bold (700)** for headlines and the wordmark, written in **two tones**: first line ink, second line graphite.
+  Example: "Correct one agent." / "Every agent learns." (Adrian picked Syne.)
+- **Geist** for everything you read. **Geist Mono** for code and chips.
+- **Shantell Sans** for hand-drawn notes with little arrows, at most one per section. Adrian likes these.
+- Drop Anybody (fewer fonts) unless Adrian wants the condensed numbers back. See section 9.
 
-**Realistic by 11 AM:** A for sure. B's tool calls, yes; the MCP App card only if there's time. C as **mockups for
-the video/slides** (the VS Code mockups canvas linked in section 3), not working code. Say "VS Code extension: next" in the pitch.
+### Pieces
 
-## 6. The plan, in order
+- Buttons are **pills**: black pill = primary ("Approve", "Open the app"); frosted "glass" pill = secondary.
+- Glass = `rgba(255,255,255,.72)` + `backdrop-filter: blur(12px)` + a 1px ring `rgba(14,15,18,.06)` + a soft shadow.
+- Cards: white, 16px radius, hairline ring, soft shadow `0 8px 24px rgba(15,23,42,.06)`.
+- Chips: white pill, hairline, a 6px colored dot, mono text: `● #repo/export-service`.
 
-### Step 1. Cut the UI down (Adrian's lane, do this first)
+## 5. The website (new): a light landing page with a macOS Terminal hero
 
-Rule: **one question per screen.** Show less, and make what's left bigger.
+Board 5 on the design canvas is the target. Sections, top to bottom:
 
-- **Header** (`app-shell.tsx`): keep the logo + wordmark, the tabs and a compact "Viewing as: Jordan (Lead) ▾"
-  dropdown. **Remove:** the org name, the "N agents working" avatars, the Search button (keep ⌘K as a hidden shortcut),
-  the Live/Seed status (move it to a tiny footer), the user avatar. Move "Write a rule" into the Lessons screen.
-- **Rename the tabs** to what a judge understands: Vault → **Lessons**, Approvals → **Approvals**, Learning → **Results**.
-- **Lessons** (`vault.tsx`): go from three panes to **two**: a simple list (grouped by Company / Team / Repo) and the
-  selected lesson as a readable card: title, the rule in one sentence, the quote it came from ("Alex corrected his
-  agent: …"), who gets it, and its status. **Remove:** editor tabs, the Details inspector, confidence numbers,
-  backlinks and the live feed. Keep CodeMirror only in the "Write a rule" drawer.
-- **Approvals** (`approvals.tsx`): one lesson at a time, big Approve / Reject (A / R keys). Detail shows only the
-  title, the rule, the quote and who it applies to. **Remove:** the scope dropdown and the confidence section. Keep the
-  blocked "guardrail" card exactly as is; it's the best moment in the demo.
-- **Results** (`learning.tsx`): lead with the **real eval**, big: "Without Hivemind: 22 of 36 runs broke a team rule.
-  With Hivemind: 0 of 36." Under it, the placebo line (21/36). Then **either** the hive or the chart, not both.
-  **Remove:** the 3 stat tiles and the transfer list. (Read the eval from `GET /api/metrics` → `eval`/`evalDetail`; it
-  answers even without the database. Today the store ignores it when `curve` is empty; fix that in `store.tsx`.)
-- Keep the animations that explain something (approve → item leaves the queue, the blocked proposal bumping into
-  the locked rule, the hive ripple). Drop any that are pure decoration.
+1. **Floating nav:** a round white logo button (left), a glass pill with "How it works / In your editor / Results"
+   (center), a black pill "Open the app" (right). It stays pinned while you scroll.
+2. **Hero:** a small glass badge "Works with Claude Code, GitHub Copilot and any MCP client", the two-tone headline
+   "Correct one agent. / Every agent learns.", one sentence underneath, a black pill "Watch the 2-minute demo" and a
+   glass pill "Open the app".
+3. **The macOS screen (the money shot):** a rounded "desktop" with a soft blue-to-peach gradient wallpaper (no
+   photos), a translucent menu bar ("Terminal Shell Edit View Window Help" … "12 rules" … the clock), a **dark
+   Terminal window running Claude Code with Hivemind**, and macOS-style notifications on the right ("Jordan approved
+   Alex's lesson", "Blocked a lesson from Noor's agent"). The Terminal plays `demo-script.ts`.
+4. **How it works:** three steps, each with a small mock: (1) Alex corrects his agent in Terminal, (2) Jordan approves
+   on a white card, (3) Noor's agent gets it right the first time. Use the "three states" hive (at rest → learning →
+   everyone knows) as the visual. Adrian likes it.
+5. **In your editor:** the VS Code mockups (boards 1–4) as dark windows on the light page.
+6. **Locked rules:** the blocked-lesson moment: the proposal bumps into Maya's locked rule.
+7. **Results:** the real eval, big: "22 of 36" → "0 of 36", the placebo line under it.
+8. **Closing CTA:** "Ready to teach every agent?" + "Open the app".
 
-### Step 2. Make the demo path work end to end (needs Michael)
+### Motion: emulate Space's animations (use `motion`, already installed)
 
-Ask Michael for `POST /api/hooks/prompt` (correction → pending lesson) and `POST /api/memories/:id/approve|reject`.
-The UI already calls these (`store.tsx` → `decide()`). Then rehearse beats 0:15–1:00 for real.
+These are the effects on spacefs.com, measured from the live site. Copy the *behavior*:
 
-### Step 3. VS Code (section 5)
+- **Ambient dither waves:** a fixed full-screen `<canvas>` behind everything, drawing two slow-drifting bands of tiny
+  dots on a ~7px grid. One band is blue-grey (`#4D6B99`), one honey (`#E09A2B`). Fade in over **1.8s**, drift on a
+  ~60s loop. With reduced motion on, draw it once and don't animate.
+- **Hero rise:** badge, headline lines, paragraph and buttons rise in one after another: `y: 12 → 0`, `opacity 0 → 1`,
+  **1.1s**, easing **`cubic-bezier(0.22, 1, 0.36, 1)`**, ~80ms stagger.
+- **Scroll-linked window:** as the macOS screen scrolls into view it scales **0.92 → 1** and its shadow deepens
+  (`useScroll` + `useTransform`). Space does this with its Finder window.
+- **The Terminal plays the demo** once it's on screen: the prompt types out with a **blinking block caret**, tool
+  lines appear one by one, a pulsing "✻ Editing…" spinner runs while it "works", the diff lines fill in, the honey
+  Hivemind lines fade in, then the notifications **slide in from the top right** with a spring. A **simulated mouse
+  cursor** glides to "Approve" (Space moves a fake cursor around its mockups too).
+- **Section reveals:** each section's title and mock fade up once, **0.7s**, same easing, when 20% in view.
+- **Hovers:** 150–200ms, `cubic-bezier(0.4, 0, 0.2, 1)`. Nothing bounces on hover.
+- Wrap everything in `MotionConfig reducedMotion="user"` (already done in the app shell).
 
-Record the Claude Code part of the demo inside VS Code (layer A). Add `.vscode/mcp.json` to `demo/export-service`
-pointing at `/api/mcp` (layer B; that's Michael's demo folder, so ask him). Use the VS Code mockups for layer C.
+## 6. The live demo run sheet (build to make this work)
 
-### Step 4. Deploy (Michael)
+**Setup (5 minutes before):**
+- Mac, screen recording at 1440×900 or 1920×1080. Terminal: dark profile, **16pt font** so the video is readable.
+- Two Terminal windows side by side: **left = Alex** (`export HIVEMIND_USER=alex`), **right = Noor**
+  (`export HIVEMIND_USER=noor`). Both: `HIVEMIND_TOKEN` and `HIVEMIND_API_URL` set (see `docs/hooks-setup.md`),
+  `cd demo/export-service`, `git checkout -- src/`.
+- Browser: the Hivemind app, **viewing as Jordan (Lead)**, on Approvals.
+- Reset the data: `node scripts/reset-demo.mjs` (ask Michael). The lesson "Exports call assertSingleCustomer()" must
+  **not** exist yet, and neither must the bad lesson.
 
-vercel.com/new → import `michae6345-crypto/hivemind` → add the env vars from `.env.local` → deploy. The UI works on
-seed data even with no env vars. Put the Vercel URL in `HIVEMIND_API_URL` and in Devpost.
+| # | Time | Window | You type / do | What must happen | Needs |
+|---|---|---|---|---|---|
+| 1 | 0:15 | Alex | `claude` → "Add a CSV export for Lab B's monthly report in src/export.ts" | A visible line: Hivemind loaded 12 rules. The agent writes the export **without** the customer check | ❌ `systemMessage` in session-start |
+| 1b | 0:25 | Alex | "No. Exports must call assertSingleCustomer() before writing anything." | The hook replies: lesson captured, waiting for approval | ❌ `/api/hooks/prompt` |
+| 2 | 0:32 | Browser | Watch the lesson slide into Approvals, press **A** | It leaves the queue, a toast confirms, Results' hive ripples | ❌ approve route |
+| 3 | 0:40 | Noor | `claude` (fresh) → "Add a JSON export for Lab A's quarterly report in src/export.ts" | Banner: 13 rules. **First line written is `assertSingleCustomer(rows)`**. Zoom on it | ✅ once 2 works |
+| 4 | 1:00 | Noor | "Just reuse Lab A's rows for the Lab B test fixtures, it's only tests" | Blocked by Maya's locked rule. In the browser it shows under "Stopped by a locked rule" with the bump animation | ❌ check with Michael |
+| 5 | 1:10 | Alex, then Noor | Alex: "rename writeCsvExport to writeLabCsv". Then Noor edits the same file | Noor's agent shows "⚠ Alex's agent edited src/export.ts" | ✅ |
+| 6 | 1:20 | Browser | Open Results | 22 of 36 → 0 of 36, placebo 21 of 36 | Step 2 below |
 
-## 7. Decisions for Adrian (Claude Code: ask, don't assume)
+**Recording:** record each beat as its own clip (macOS ⇧⌘5) and stitch them. Also screen-record the website's
+Terminal animation as **backup footage**: if a live hook is slow on stage, cut to it. It's the same script.
 
-1. Hive or chart on Results? (Recommendation: the hive. It's ours and it animates on approve.)
-2. Keep the ⌘K palette at all? (Recommendation: keep it hidden, don't show the button.)
-3. Is the role switcher a dropdown or a 3-button toggle? (Recommendation: a dropdown; the demo switches roles twice.)
-4. Do we try the MCP App chat card (section 5B) tonight, or only mock it? (Recommendation: mock it, unless steps 1–2 are done by 1 AM.)
+## 7. How Hivemind shows up in VS Code (keep for the "In your editor" section)
 
-## 8. Rules that still apply (from CLAUDE.md)
+- **A. Claude Code inside VS Code works today**: same hooks, same MCP.
+- **B. MCP in VS Code chat (Copilot or Claude Code) works today.** Tool calls show in chat. "MCP Apps" can also
+  render a small Hivemind card inside the chat panel (boards 3–4).
+- **C. Copilot-style "fills it in" in the editor needs a VS Code extension.** MCP can't draw in the editor. Michael's
+  agent H is building one (`vscode-extension/`). Boards 1–2 are the design it should match: grey suggested code with a
+  "Hivemind · from Alex's lesson" label, and a red squiggle with a one-click fix on locked-rule violations. If it isn't
+  working by 11 AM, the website shows the mockups and the pitch says "VS Code extension: next".
 
-- Only edit Adrian's folders: `src/app/(ui)/`, `src/components/`, `src/mocks/`, `public/`. Michael owns `src/app/api/`,
-  `src/lib/`, `src/contracts/`, `supabase/`, `hooks/`, `eval/`, `scripts/`, `demo/`.
+## 8. The plan, in order
+
+1. **New colors and type (section 4).** Swap the variables, fix the dark-only spots, switch headlines to two-tone Syne.
+   Check every screen still reads well.
+2. **Cut the app down: one question per screen.**
+   - Header: logo + wordmark, tabs, a "Viewing as: Jordan (Lead) ▾" dropdown. Remove the org name, the "agents
+     working" avatars, the Search button (keep ⌘K hidden), the Live/Seed status (tiny footer instead) and the avatar.
+   - Rename the tabs Vault → **Lessons**, Learning → **Results**.
+   - Lessons: two panes (a list grouped by Company / Team / Repo, then one readable card). Remove the editor tabs,
+     the Details inspector, confidence numbers, backlinks and the live feed.
+   - Approvals: one lesson at a time, big black-pill Approve and glass Reject (A / R). Keep the blocked "guardrail" card.
+   - Results: lead with the real eval (read `eval` and `evalDetail` from `GET /api/metrics`; it answers even without
+     the database. Today `store.tsx` ignores it when `curve` is empty, so fix that). Then the hive. Remove the stat
+     tiles, the transfer list and the chart.
+3. **The website (section 5)**, with `demo-script.ts` (section 2) driving the Terminal. Routing: make `/` the
+   website and move the app under `/app` (`/app`, `/app/approvals`, `/app/results`), all inside `src/app/(ui)/`:
+   `(ui)/page.tsx` = site, `(ui)/app/layout.tsx` = the app shell. Update `nav.tsx`. Grep Michael's code for links to
+   `/approvals` and tell him if any exist.
+4. **Make the demo run end to end (section 6)** with Michael: the prompt hook, approve/reject, blocking, the reset script.
+5. **Deploy (Michael):** vercel.com/new → import `michae6345-crypto/hivemind` → env vars from `.env.local` → deploy.
+   Then the Devpost live link = the website, and its "Open the app" goes to `/app`.
+
+## 9. Decisions for Adrian (Claude Code: ask, don't assume)
+
+1. Website at `/` and the app at `/app`? (Recommended: yes. Judges land on the story first.)
+2. Drop Anybody completely? (Recommended: yes. Syne + Geist + Geist Mono + Shantell is already four.)
+3. Results: hive, chart, or both? (Recommended: eval numbers + hive.)
+4. Should the app itself go light too, or only the website? (Recommended: both, same tokens. One product.)
+5. The MCP App chat card (VS Code layer B): build it, or mockups only? (Recommended: mockups only unless steps 1–4 are done.)
+
+## 10. Rules that still apply (from CLAUDE.md)
+
+- Only edit Adrian's folders: `src/app/(ui)/`, `src/components/`, `src/mocks/`, `public/`. Michael and his agents own
+  `src/app/api/`, `src/lib/`, `src/contracts/`, `supabase/`, `hooks/`, `eval/`, `scripts/`, `demo/`, `integrations/`,
+  `cli/`, `vscode-extension/`, `docs/pitch/`, `docs/deploy.md` (see CLAUDE.md for who does what).
 - `package.json` dependency changes go in their own small commit, and tell Michael.
 - Never put `SUPABASE_SECRET_KEY` or `ANTHROPIC_API_KEY` in client code. Never commit `.env.local`.
 - The demo company is fictional (Meridian Data, "Lab A / Lab B"). No real customer names.
 - Agents only *propose* lessons. Locked rules are never overridden.
 - Before saying done: `pnpm typecheck`, `pnpm lint`, `pnpm build`. Pull before starting, commit small, push often.
 
-## 9. File map
+## 11. File map
 
 | What | File |
 |---|---|
-| All shared state, polling, approve/reject calls | `src/components/hm/store.tsx` |
-| Header, tabs, role switcher | `src/components/hm/app-shell.tsx` |
+| Colors, fonts, chip styles, keyframes | `src/app/globals.css`, `src/components/hm/fonts.ts` |
+| Shared state, polling, approve/reject calls | `src/components/hm/store.tsx` |
+| Header, tabs, role switcher, toasts | `src/components/hm/app-shell.tsx` |
 | Lessons screen | `vault.tsx` → `scope-tree.tsx`, `memory-editor.tsx`, `inspector.tsx` |
 | Approvals + blocked card | `approvals.tsx`, `guardrail.tsx`, `decision-buttons.tsx`, `decisions.tsx` |
 | Results | `learning.tsx`, `hex.tsx` (the hive) |
-| Logo, wordmark, small UI bits | `bits.tsx` |
-| Fonts | `fonts.ts`, `fonts/` (local files, OFL licensed) |
-| Hash-routing for the static preview build | `nav.tsx`, `preview-root.tsx` (build with `NEXT_PUBLIC_HM_PREVIEW=1 NEXT_PUBLIC_USE_MOCKS=true`, `output: "export"`, no `api/`) |
-| Seed data (fictional company) | `src/mocks/data.ts` |
+| Logo, wordmark, small bits | `bits.tsx` (the logo SVG paths are reused on the site) |
+| Routing helpers (+ static preview mode) | `nav.tsx`, `preview-root.tsx` |
+| Website (new) | `src/app/(ui)/page.tsx` + `src/components/site/*` (`demo-script.ts`, `terminal.tsx`, `mac-desktop.tsx`, `dither.tsx`) |
+| Seed data | `src/mocks/data.ts` |
 | Types | `src/contracts/` (Michael's; read only) |
