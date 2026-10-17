@@ -22,8 +22,8 @@ export function activate(ctx: vscode.ExtensionContext) {
   registerLens(ctx);
   registerHover(ctx);
   registerDiagnostics(ctx);
-  registerInline(ctx);
-  registerCollisions(ctx);
+  const inline = registerInline(ctx);
+  const collisions = registerCollisions(ctx);
   registerTeach(ctx);
 
   const activeDoc = () => {
@@ -74,6 +74,8 @@ export function activate(ctx: vscode.ExtensionContext) {
       recheckVisible();
     }),
   );
+  // Exposed for the integration test (test/suite.js), not a public API.
+  return { testing: { inline, collisions } };
 }
 
 export function deactivate() {}

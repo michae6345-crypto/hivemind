@@ -147,4 +147,6 @@ export function registerCollisions(ctx: vscode.ExtensionContext) {
     { dispose: () => ((stopped = true), clearTimeout(timer)) },
   );
   void loop();
+  /** For tests: the foreign edit currently flagged per open file. */
+  return () => new Map([...latest].map(([uri, a]) => [uri, `${who(a)} edited ${baseName(a.file)} ${ago(a.createdAt)}`]));
 }

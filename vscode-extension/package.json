@@ -13,26 +13,83 @@
   "engines": {
     "vscode": "^1.85.0"
   },
-  "categories": ["Programming Languages", "Linters", "Other"],
-  "keywords": ["ai", "agents", "memory", "claude", "copilot", "team", "lessons"],
-  "galleryBanner": { "color": "#0E0F12", "theme": "dark" },
-  "activationEvents": ["onStartupFinished"],
+  "categories": [
+    "Programming Languages",
+    "Linters",
+    "Other"
+  ],
+  "keywords": [
+    "ai",
+    "agents",
+    "memory",
+    "claude",
+    "copilot",
+    "team",
+    "lessons"
+  ],
+  "galleryBanner": {
+    "color": "#0E0F12",
+    "theme": "dark"
+  },
+  "activationEvents": [
+    "onStartupFinished"
+  ],
   "main": "./out/extension.js",
   "contributes": {
+    "icons": {
+      "hivemind": {
+        "description": "Hivemind logo",
+        "default": {
+          "fontPath": "media/hivemind.woff",
+          "fontCharacter": "\\E000"
+        }
+      }
+    },
     "commands": [
-      { "command": "hivemind.showRules", "title": "Show team rules", "category": "Hivemind" },
-      { "command": "hivemind.openDashboard", "title": "Open dashboard", "category": "Hivemind" },
-      { "command": "hivemind.checkFile", "title": "Check this file against team rules", "category": "Hivemind" },
-      { "command": "hivemind.teach", "title": "Teach Hivemind a lesson from the selection", "category": "Hivemind" },
-      { "command": "hivemind.refresh", "title": "Refresh", "category": "Hivemind" },
-      { "command": "hivemind.showLog", "title": "Show log", "category": "Hivemind" }
+      {
+        "command": "hivemind.showRules",
+        "title": "Show team rules",
+        "category": "Hivemind"
+      },
+      {
+        "command": "hivemind.openDashboard",
+        "title": "Open dashboard",
+        "category": "Hivemind"
+      },
+      {
+        "command": "hivemind.checkFile",
+        "title": "Check this file against team rules",
+        "category": "Hivemind"
+      },
+      {
+        "command": "hivemind.teach",
+        "title": "Teach Hivemind a lesson from the selection",
+        "category": "Hivemind"
+      },
+      {
+        "command": "hivemind.refresh",
+        "title": "Refresh",
+        "category": "Hivemind"
+      },
+      {
+        "command": "hivemind.showLog",
+        "title": "Show log",
+        "category": "Hivemind"
+      }
     ],
     "menus": {
       "commandPalette": [
-        { "command": "hivemind.teach", "when": "editorHasSelection" }
+        {
+          "command": "hivemind.teach",
+          "when": "editorHasSelection"
+        }
       ],
       "editor/context": [
-        { "command": "hivemind.teach", "when": "editorHasSelection", "group": "9_hivemind" }
+        {
+          "command": "hivemind.teach",
+          "when": "editorHasSelection",
+          "group": "9_hivemind"
+        }
       ]
     },
     "configuration": {
@@ -90,13 +147,17 @@
     "build": "node esbuild.mjs",
     "watch": "node esbuild.mjs --watch",
     "typecheck": "tsc --noEmit",
-    "package": "node esbuild.mjs --production && vsce package --no-dependencies --out dist/hivemind-vscode.vsix"
+    "package": "node esbuild.mjs --production && vsce package --no-dependencies --out dist/hivemind-vscode.vsix",
+    "icon-font": "node scripts/icon-font.mjs"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",
     "@types/vscode": "~1.85.0",
+    "@vscode/test-electron": "^3.1.0",
     "@vscode/vsce": "^3.2.0",
     "esbuild": "^0.25.0",
+    "svg2ttf": "^6.1.0",
+    "ttf2woff": "^3.0.0",
     "typescript": "^5.6.0"
   }
 }

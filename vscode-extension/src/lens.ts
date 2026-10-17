@@ -23,7 +23,7 @@ class RulesLens implements vscode.CodeLensProvider {
     if (top.length) {
       lenses.push(
         new vscode.CodeLens(new vscode.Range(0, 0, 0, 0), {
-          title: `⬡ Hivemind · ${lensTitle(top)} to this file`,
+          title: `$(hivemind) Hivemind · ${lensTitle(top)} to this file`,
           tooltip: "Team rules for this file. Click to see who taught them.",
           command: "hivemind.showRuleList",
           arguments: [top.map((r) => r.id), "Team rules for this file"],

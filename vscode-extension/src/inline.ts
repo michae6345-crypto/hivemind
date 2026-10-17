@@ -109,10 +109,11 @@ class LessonCompletions implements vscode.InlineCompletionItemProvider {
 }
 
 export function registerInline(ctx: vscode.ExtensionContext) {
+  const provider = new LessonCompletions();
   let fade: NodeJS.Timeout | undefined;
   ctx.subscriptions.push(
     label,
-    vscode.languages.registerInlineCompletionItemProvider({ scheme: "file" }, new LessonCompletions()),
+    vscode.languages.registerInlineCompletionItemProvider({ scheme: "file" }, provider),
     vscode.window.onDidChangeTextEditorSelection((e) => {
       if (!shown) return;
       const p = e.selections[0]?.active;
@@ -129,4 +130,5 @@ export function registerInline(ctx: vscode.ExtensionContext) {
     }),
     { dispose: () => clearTimeout(fade) },
   );
+  return provider;
 }

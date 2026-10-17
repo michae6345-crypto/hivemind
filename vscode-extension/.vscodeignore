@@ -6,3 +6,5 @@ esbuild.mjs
 dist/**
 .gitignore
 media/icon.svg
+scripts/**
+test/**
