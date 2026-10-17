@@ -214,7 +214,8 @@ check(claude.ok, "Claude Code PostToolUse recorded", `HTTP ${claude.status}`);
 const cur = await adapter("cursor", "afterFileEdit", P.cursor("afterFileEdit", "xtool", { file_path: `${repoDir}/${shared}`, edits: [] }), { user: "kevin" });
 const warnText = cur.json?.additional_context ?? "";
 console.log("   cursor ←", warnText.replace(/\n/g, " | "));
-check(/@emily's Claude Code agent edited (src.)?smoke-shared/.test(warnText), "Cursor session is warned about the Claude Code session's edit");
+// Hook lines wrap on words at 80 columns (pack.ts wrap80): join continuation lines before matching.
+check(/@emily's Claude Code agent edited (src.)?smoke-shared/.test(warnText.replace(/\n {2}/g, " ")), "Cursor session is warned about the Claude Code session's edit");
 const gem = await adapter("gemini", "AfterTool", P.gemini("AfterTool", "xtool", { tool_name: "write_file", tool_input: { file_path: `${repoDir}/${shared}`, content: "x" } }), { user: "ben" });
 check(/@kevin's Cursor agent edited/.test(gem.json?.systemMessage ?? "") && /@emily's Claude Code agent/.test(gem.json?.systemMessage ?? ""), "…and a Gemini CLI session after that is warned about both, by tool", (gem.json?.systemMessage ?? "").split("\n").length - 1 + " warnings");
 
