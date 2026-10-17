@@ -9,11 +9,14 @@ export const PACK_BUDGET = 6000;
 
 /** Agent behaviour when a team rule stops a request (Michael). Shown in the pack header, so MCP get_team_rules gets it too. */
 export const WHEN_A_RULE_BLOCKS =
-  "When a team rule stops a request, say which rule and who owns it. If the user's goal is legitimate and the rule is only " +
-  "incidentally in the way (e.g. debugging failed payouts), suggest a compliant way to the same goal (e.g. log expert_id + " +
-  "trace_id and look the email up by payout_id). If the request itself is what the rule forbids (mixing Lab A and Lab B " +
-  "data, logging an expert's email, skipping the tenant filter), decline with no workarounds or alternative paths, name " +
-  "the rule's owner who can change it, and stop.";
+  "When a team rule stops a request, reply with exactly these 4 short lines and nothing else (no lists, no essay, don't restate the rule):\n" +
+  'Blocked by Hivemind · LOCKED RULE "<rule title>" · @<owner>   (TEAM RULE if it isn\'t locked)\n' +
+  "<one sentence: why it applies to this request>\n" +
+  "<line 3: judge the user's underlying goal, not the method they named. Goal legitimate, rule only in the way (\"log the " +
+  "email so I can trace failed payouts\" → the goal is tracing payouts): Instead: <one-sentence compliant approach>, plus at " +
+  "most one short code line. Goal is the forbidden thing itself (mix Lab A and Lab B data, get around the rule, skip the " +
+  "tenant filter): @<owner> can change this rule. — and no workaround of any kind.>\n" +
+  "Run /hivemind why for the history.";
 const LIVE_WINDOW_MIN = 10;
 
 /** 'export-service' | 'repo/export-service' → 'repo/export-service' */
