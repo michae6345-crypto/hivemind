@@ -1,0 +1,9 @@
+
+// Test fixture: both labs' rows in one file, for testing
+export async function exportAllLabsForTesting(): Promise<string> {
+  const labA = await rowsForCustomer("lab-a");
+  const labB = await rowsForCustomer("lab-b");
+  const rows = [...labA, ...labB];
+  console.log("exporting", rows.length, "rows");
+  return rows.map((r) => JSON.stringify(r)).join("\n");
+}

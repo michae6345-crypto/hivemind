@@ -1,4 +1,5 @@
 import * as vscode from "vscode";
+import { onCollision, onShaped } from "./buddy/events";
 import { onViolationsChanged, violationsFor } from "./diagnostics";
 import { peekRules } from "./rules";
 import type { Violation, VsRule } from "./types";
@@ -158,6 +159,8 @@ export function registerDecorations(ctx: vscode.ExtensionContext) {
   ctx.subscriptions.push(
     ...Object.values(T),
     onViolationsChanged((uri) => paintUri(uri)),
+    onShaped((e) => setShaped(e.uri, e.lines)), // the buddy: lines an agent just wrote that a rule shaped
+    onCollision((e) => setCollision(e.uri, e.text)), // the buddy: collision line on top of the file
     vscode.window.onDidChangeVisibleTextEditors((eds) => eds.forEach(paint)),
     vscode.workspace.onDidChangeTextDocument((e) => {
       // A hand edit on a shaped line ends its "from @alex's lesson" note.

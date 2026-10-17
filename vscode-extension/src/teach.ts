@@ -1,13 +1,14 @@
 import * as vscode from "vscode";
 import { api } from "./api";
+import { hmToast } from "./buddy/toast";
 import { config, relPath, repoFor } from "./config";
 import { peekRules } from "./rules";
 import { plain } from "./wording";
 
 // "Teach Hivemind?" lightbulb on a selection → one-line rule → POST /api/events (type correction, x-hm-agent: vscode).
 
-/** Toast #3 (the buddy's hmToast gate replaces this once src/buddy/toast.ts lands). */
-const captured = (text: string) => void vscode.window.showInformationMessage(text);
+/** Toast #3, through the buddy's 2-minute gate. */
+const captured = (text: string) => void hmToast("captured", text);
 
 const sessionId = () => `vscode-${vscode.env.sessionId.slice(0, 8)}`;
 

@@ -1,4 +1,5 @@
 import * as vscode from "vscode";
+import { registerBuddy } from "./buddy";
 import { registerCollisions } from "./collisions";
 import { painted, registerDecorations } from "./decorations";
 import { config, isCodeDoc } from "./config";
@@ -23,6 +24,7 @@ export function activate(ctx: vscode.ExtensionContext) {
   registerHover(ctx);
   registerDiagnostics(ctx);
   registerDecorations(ctx);
+  const buddy = registerBuddy(ctx);
   const inline = registerInline(ctx);
   const collisions = registerCollisions(ctx);
   registerTeach(ctx);
@@ -68,7 +70,7 @@ export function activate(ctx: vscode.ExtensionContext) {
     }),
   );
   // Exposed for the integration test (test/suite.js), not a public API.
-  return { testing: { inline, collisions, rules: rulesFor, statusText: status.text, painted: (uri: vscode.Uri) => painted.get(uri.toString()) } };
+  return { testing: { inline, collisions, buddy, rules: rulesFor, statusText: status.text, painted: (uri: vscode.Uri) => painted.get(uri.toString()) } };
 }
 
 export function deactivate() {}

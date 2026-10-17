@@ -1,40 +1,21 @@
 import * as vscode from "vscode";
 import { api, type ActivityItem } from "./api";
+import { fire } from "./buddy/events";
+import { hmToast } from "./buddy/toast";
+import { agentOf, ago } from "./buddy/words";
 import { baseName, config, isCodeDoc, relPath, repoFor } from "./config";
 import { log } from "./log";
-import { openDashboard } from "./picker";
 
 // Polls GET /api/activity/live every 3s. When another person's agent edited a file you have open in the last 10 min:
-// one notification per (person, tool, file) + a subtle amber banner on the editor's top line.
+// one toast per (person, tool, file) through the buddy's 2-minute gate, and the collision line on top of the file
+// (fired as onCollision; agent H's decorations paint it in honey).
 
 const POLL_MS = 3000;
 const IDLE_POLL_MS = 15000;
 const WINDOW_MIN = 10;
 
-const TOOL: Record<string, string> = {
-  "claude-code": "Claude Code",
-  cursor: "Cursor",
-  "gemini-cli": "Gemini CLI",
-  copilot: "Copilot",
-  codex: "Codex",
-  "claude-ai": "Claude",
-  windsurf: "Windsurf",
-  vscode: "VS Code",
-};
-const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
-const who = (a: ActivityItem) => `${cap(a.actor)}'s ${a.agent && TOOL[a.agent] ? `${TOOL[a.agent]} ` : ""}agent`;
-function ago(iso: string): string {
-  const m = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
-  return m === 0 ? "just now" : `${m} min ago`;
-}
+const who = (a: ActivityItem) => agentOf(a); // "@adrian's Cursor agent"
 
-const banner = vscode.window.createTextEditorDecorationType({
-  isWholeLine: true,
-  backgroundColor: "rgba(245, 165, 36, 0.07)",
-  overviewRulerColor: "rgba(245, 165, 36, 0.8)",
-  overviewRulerLane: vscode.OverviewRulerLane.Full,
-  after: { color: "#F5A524", fontStyle: "italic", margin: "0 0 0 2.5em" },
-});
 
 const sameFile = (rel: string, file: string) => {
   const a = rel.toLowerCase();
@@ -57,21 +38,16 @@ export function registerCollisions(ctx: vscode.ExtensionContext) {
   let timer: NodeJS.Timeout | undefined;
   let stopped = false;
 
+  const shown = new Map<string, string>(); // uri → collision line currently fired
+  const dismissed = new Set<string>(); // "uri|activity id" the user already opened via "Show change"
   const paint = () => {
-    for (const ed of vscode.window.visibleTextEditors) {
-      const a = latest.get(ed.document.uri.toString());
-      if (!a || !config().collisionWarnings) {
-        ed.setDecorations(banner, []);
-        continue;
-      }
-      ed.setDecorations(banner, [
-        {
-          range: new vscode.Range(0, 0, 0, 0),
-          renderOptions: { after: { contentText: `⚠ ${who(a)} edited this file ${ago(a.createdAt)}` } },
-          hoverMessage: new vscode.MarkdownString(`**Hivemind** · ${who(a)} edited \`${a.file}\` ${ago(a.createdAt)}. Check before you both change the same lines.`),
-        },
-      ]);
-    }
+    const next = new Map<string, string>();
+    if (config().collisionWarnings)
+      for (const [uri, a] of latest) if (!dismissed.has(`${uri}|${a.id}`)) next.set(uri, `${who(a)} edited this file ${ago(a.createdAt)}`);
+    for (const [uri, text] of next) if (shown.get(uri) !== text) fire.collision({ uri: vscode.Uri.parse(uri), text });
+    for (const uri of shown.keys()) if (!next.has(uri)) fire.collision({ uri: vscode.Uri.parse(uri), text: null });
+    shown.clear();
+    next.forEach((t, u) => shown.set(u, t));
   };
 
   const poll = async () => {
@@ -103,15 +79,16 @@ export function registerCollisions(ctx: vscode.ExtensionContext) {
   };
 
   const notify = async (a: ActivityItem, uri: vscode.Uri) => {
-    const open = "Open file";
-    const show = "Show activity";
-    const isActive = vscode.window.activeTextEditor?.document.uri.toString() === uri.toString();
-    const pick = await vscode.window.showWarningMessage(
+    const pick = await hmToast(
+      "collision",
       `${who(a)} edited ${baseName(a.file)} ${ago(a.createdAt)}. Check before you both change the same lines.`,
-      ...(isActive ? [show] : [open, show]),
+      "Show change",
     );
-    if (pick === open) void vscode.window.showTextDocument(uri);
-    if (pick === show) openDashboard();
+    if (pick !== "Show change") return;
+    dismissed.add(`${uri.toString()}|${a.id}`);
+    paint();
+    await vscode.window.showTextDocument(uri, { preview: false });
+    void vscode.commands.executeCommand("hivemind.focusSidebar");
   };
 
   let busy = false;
@@ -135,8 +112,6 @@ export function registerCollisions(ctx: vscode.ExtensionContext) {
   };
 
   ctx.subscriptions.push(
-    banner,
-    vscode.window.onDidChangeVisibleTextEditors(paint),
     vscode.workspace.onDidSaveTextDocument(onSave),
     vscode.window.onDidChangeWindowState((s) => {
       if (s.focused) {

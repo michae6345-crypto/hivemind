@@ -86,6 +86,16 @@
         "title": "Refresh",
         "category": "Hivemind",
         "icon": "$(refresh)"
+      },
+      {
+        "command": "hivemind.runDemoFlag",
+        "title": "Run demo flag",
+        "category": "Hivemind"
+      },
+      {
+        "command": "hivemind.runDemoAgentWrite",
+        "title": "Run demo agent write",
+        "category": "Hivemind"
       }
     ],
     "menus": {
@@ -166,6 +176,11 @@
           "type": "string",
           "default": "",
           "markdownDescription": "Workspace name in the Hivemind panel header, e.g. `Meridian Data`. Default: the org name from the server."
+        },
+        "hivemind.toasts": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Hivemind's four notifications (an agent's edit breaks a locked rule, a collision, your correction became a lesson, your lesson was approved). At most one every 2 minutes."
         }
       }
     },
