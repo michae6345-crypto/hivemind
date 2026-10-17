@@ -234,20 +234,22 @@ Never toast on: file open, rules loaded, lesson-level violations (the highlight 
 
 ---
 
-## 3. Terminal / hook lines: drop the emojis?
+## 3. Terminal / hook lines
 
-Yes, if it can land in one go before 10 AM; otherwise leave them as they are, because a site that
-doesn't match the live hooks is worse than an emoji. The target strings:
+No emojis. Live on main since cee7840 (17 Oct): plain text, no ANSI, shown to the engineer as the
+hook's `systemMessage`. These are the shipped strings; `demo-script.ts` matches them word for word.
 
-| Now | Target |
+| Hook | Line |
 |---|---|
-| `⬢ Hivemind loaded 10 team rules for #repo/export-service (2 🔒 locked)` | `⬢ Hivemind loaded 10 team rules for #repo/export-service (2 locked)` |
-| `📝 Hivemind captured a lesson: "…" — pending approval by @jordan` | `⬢ Hivemind captured a lesson: "…" — pending approval by @jordan` |
-| `🚫 Hivemind blocked "…": conflicts with 🔒 Never mix … (@maya)` | `⬢ Hivemind blocked "…": conflicts with locked rule: Never mix … (@maya)` |
-| `⚠️ @alex's Cursor agent edited export.ts just now — coordinate before changing it.` | `⬢ @alex's Cursor agent edited export.ts just now — coordinate before changing it.` |
+| Session start | `Hivemind · Loaded 10 team rules for #repo/export-service.` |
+| Lesson captured | `Hivemind · Lesson captured: "<title>". Waiting on @jordan.` |
+| Lesson blocked | `Hivemind · Blocked: contradicts @maya's locked rule "Never mix data from different lab customers".` |
+| Collision | `Hivemind · Heads up: @alex's Cursor agent edited src/export.ts 2 min ago.` ("just now" under a minute; full relative path) |
+| Reinforced | `Hivemind · Lesson reinforced: "<title>" is already a team rule.` (someone corrects again after approval) |
 
-Only the emojis change; the words stay exactly as Michael's @handles email set them. The colour carries the meaning (honey for captured, rose for blocked); `demo-script.ts` follows
-whatever lands, word for word.
+The stored blocked reason in the app reads `Contradicts @maya's locked rule "Never mix data from
+different lab customers".` Colour still carries the meaning where the surface allows it (honey for
+captured, rose for blocked).
 
 ---
 

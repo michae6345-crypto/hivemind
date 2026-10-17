@@ -4,9 +4,7 @@
 // Hivemind's own lines are copied from the real hooks so the website and the product say the same words:
 //   - lesson captured / blocked: hookMessage() in src/lib/engine/pipeline.ts (POST /api/hooks/prompt)
 //   - collision warning: src/app/api/activity/record.ts (`Hivemind · Heads up: ${who} edited ${file} ${minutesAgo}.`)
-// One line is not on main yet, so it is the proposed wording; hooks/session-start.mjs should print exactly it as
-// its `systemMessage`:
-//   - sessionLoaded
+//   - session banner: hooks/session-start.mjs (its `systemMessage`)
 // The blocked lesson's title is written by the extractor (an LLM), so the live take may word it differently.
 // Owners are always @handles (@ben, @greg), never full names (Michael, 17 Oct); they render as chips (hm/handles.tsx).
 // If any of these change in Michael's code, change them here too.
@@ -22,7 +20,7 @@ export const PROMPTS = {
   alexRename: "rename writeCsvExport to writeLabCsv",
 } as const;
 
-/** Hivemind's own messages (proposed for the three not on main; see the header). */
+/** Hivemind's own messages, as the live hooks print them (see the header). */
 // Since cee7840 (17 Oct) the live hooks print plain "Hivemind · …" lines, no emojis: hooks/session-start.mjs,
 // src/lib/engine/pipeline.ts hookMessage() and src/app/api/activity/record.ts. These match them word for word.
 export const HIVE = {
@@ -30,6 +28,8 @@ export const HIVE = {
   lessonCaptured: (title: string, owner: string) => `Hivemind · Lesson captured: "${title}". Waiting on ${owner}.`,
   // `title` (the blocked lesson) is no longer in the line; the server names the rule it contradicts.
   lessonBlocked: (_title: string, rule: string, owner: string) => `Hivemind · Blocked: contradicts ${owner}'s locked rule "${rule}".`,
+  // Only when someone repeats a correction after it was approved (pipeline.ts hookMessage()).
+  lessonReinforced: (title: string) => `Hivemind · Lesson reinforced: "${title}" is already a team rule.`,
   collision: (who: string, tool: string, file: string, mins: number) =>
     `Hivemind · Heads up: @${who}'s ${tool} agent edited ${file} ${mins === 0 ? "just now" : `${mins} min ago`}.`,
 } as const;
