@@ -13,7 +13,7 @@ import { MacDesktop } from "./mac-desktop";
 import { HeroHive } from "./hero-hive";
 import { ScrollStory } from "./scroll-story";
 import { ChatMock, EditorMock } from "./editor-mocks";
-import { LESSON, LOCKED_RULE, PROMPTS } from "./demo-script";
+import { HIVE, LESSON, LOCKED_RULE, PROMPTS } from "./demo-script";
 import { Note } from "./notes";
 import { Structure } from "./structure";
 import { CheckMock, InitMock, WhileWorking } from "./live-work";
@@ -216,7 +216,7 @@ function StepCards() {
           <Step n={1} title="Kevin corrects their agent" />
           <div className="mt-4 rounded-[10px] bg-window p-3.5 text-[12px] leading-[1.6] text-[var(--win-text)]" style={{ fontFamily: "var(--font-geist-mono), monospace" }}>
             <div className="text-[var(--win-muted)]">&gt; {PROMPTS.alexCorrect}</div>
-            <div className="mt-1.5 text-[var(--win-honey)]">📝 Hivemind captured a lesson — pending approval by @ben</div>
+            <div className="mt-1.5 text-[var(--win-honey)]">{HIVE.lessonCaptured(LESSON, "@ben")}</div>
           </div>
         </Reveal>
         <Reveal className="hm-card p-6" delay={0.08}>

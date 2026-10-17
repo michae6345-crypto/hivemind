@@ -32,7 +32,7 @@ const RULES_AFTER = SCENES[1].rules;
 const ALEX_DIFF = SCENES[0].steps.find((s) => s.kind === "diff")!.lines;
 const NOOR_DIFF = SCENES[1].steps.find((s) => s.kind === "diff")!.lines;
 /** Kevin's "lesson captured" line, exactly as the Terminal demo prints it. */
-const CAPTURED = SCENES[0].steps.find((s) => s.kind === "hook" && s.text.startsWith("📝"));
+const CAPTURED = SCENES[0].steps.find((s) => s.kind === "hook" && s.text.startsWith("Hivemind · Lesson captured"));
 
 const STEPS = [
   { title: "Kevin corrects their agent", body: "One correction in plain English. Hivemind turns it into a lesson.", from: 0.18, to: 0.42 },
@@ -363,7 +363,7 @@ function ClaudeCode({ rules, ask, history, input, typing }: { rules: number; ask
         </div>
       </div>
       <div className="mt-2 min-h-0 flex-1 space-y-1.5 overflow-hidden">
-        <HiveLine>{HIVE.sessionLoaded(rules, 2)}</HiveLine>
+        <HiveLine>{HIVE.sessionLoaded(rules)}</HiveLine>
         {ask ? <UserLine>{ask}</UserLine> : null}
         {history}
       </div>

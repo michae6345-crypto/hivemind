@@ -114,7 +114,7 @@ export function WhileWorking() {
             transition={{ duration: 0.4, delay: 0.25 }}
             className="rounded-[8px] bg-[#f5a5241a] px-3 py-1.5 text-[var(--win-honey)] shadow-[inset_2px_0_0_var(--win-honey)]"
           >
-            {HIVE.collision("kevin", "Cursor", "export.ts", 0)}
+            {HIVE.collision("kevin", "Cursor", "src/export.ts", 0)}
           </motion.div>
         </Line>
         <Line show={n >= 4} className="mt-1.5 rounded-[8px] bg-[#fb71851a] px-3 py-1.5 text-[var(--win-rose)] shadow-[inset_2px_0_0_var(--win-rose)]">
@@ -223,40 +223,43 @@ export function CheckMock() {
         <div>
           <span className="text-[var(--win-teal)]">~/{REPO}</span> $ hivemind check demo/violations.ts
         </div>
-        <Line show={n >= 1} className="text-[var(--win-rose)]">🔒 locked rule: {LOCKED_RULE}</Line>
+        {/* cli/README.md's example output (1be0200 + 446b7ea: no emojis, exact columns); handles follow the site's demo names. */}
+        <Line show={n >= 1} className="text-[var(--win-rose)]">
+          locked rule: Never log expert personal info
+        </Line>
         <Line show={n >= 2}>
-          <div className={g}>{"   ╭─[demo/violations.ts:8:23]"}</div>
+          <div className={g}>{"   ╭─[demo/violations.ts:15:41]"}</div>
           <div className={g}>{"   │"}</div>
           <div>
-            <span className={g}>{" 7 │ "}</span>
-            {"/** Quarterly payout report across our two biggest lab customers. */"}
+            <span className={g}>{"13 │ "}</span>
+            {"  const rows: Row[] = [...labA, ...labB];"}
           </div>
           <div>
-            <span className={g}>{" 8 │ "}</span>export async function exportQuarterlyReport(quarter: string): Promise&lt;string&gt; {"{"}
+            <span className={g}>{"14 │ "}</span>
+            {'  console.log("exporting quarterly report", { quarter, rows: rows.length });'}
+          </div>
+          <div>
+            <span className={g}>{"15 │ "}</span>
+            {'  logger.info("report requested", { by: requestedBy.email });'}
           </div>
           <div>
             <span className={g}>{"   │ "}</span>
-            <span className="text-[var(--win-rose)]">{"                      ~~~~~~~~~~~~~~~~~~~~~ breaks a 🔒 locked rule"}</span>
-          </div>
-          <div>
-            <span className={g}>{" 9 │ "}</span>
-            {'  const labA = await rowsForCustomer("lab-a");'}
+            <span className="text-[var(--win-rose)]">{"                                        ~~~~~~~~~~~~~~~~~ Logs an expert's email."}</span>
           </div>
           <div className={g}>{"   │"}</div>
           <div>
-            <span className={g}>{"   ├─ owner  "}</span>@greg · Head of Security
+            <span className={g}>{"   ├─ owner  "}</span>@greg · Security
           </div>
           <div>
-            <span className={g}>{"   ╰─ fix    "}</span>add assertSingleCustomer(rows)
+            <span className={g}>{"   ╰─ fix    "}</span>log the expert id instead
           </div>
-          <div className="text-[#4ade80]">{"12 │ +   assertSingleCustomer(rows);"}</div>
+          <div className="text-[var(--win-rose)]/80">{'15 │ -   logger.info("report requested", { by: requestedBy.email });'}</div>
+          <div className="text-[#4ade80]">{'15 │ +   logger.info("report requested", { by: requestedBy.id });'}</div>
         </Line>
         <Line show={n >= 3} className={g}>
           …
         </Line>
-        <Line show={n >= 4}>
-          <span className="text-[var(--win-honey)]">⬢</span> Hivemind: 1 🔒 locked rule broken · 2 lessons · run with --fix to apply 2 quick fixes
-        </Line>
+        <Line show={n >= 4}>Hivemind · 2 locked rules broken · 1 lesson · run with --fix to apply 2 quick fixes</Line>
       </div>
     </div>
   );

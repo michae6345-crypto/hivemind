@@ -3,7 +3,7 @@
 //
 // Hivemind's own lines are copied from the real hooks so the website and the product say the same words:
 //   - lesson captured / blocked: hookMessage() in src/lib/engine/pipeline.ts (POST /api/hooks/prompt)
-//   - collision warning: src/app/api/activity/record.ts (`⚠️ ${who} edited ${file} ${n} min ago — coordinate before changing it.`)
+//   - collision warning: src/app/api/activity/record.ts (`Hivemind · Heads up: ${who} edited ${file} ${minutesAgo}.`)
 // One line is not on main yet, so it is the proposed wording; hooks/session-start.mjs should print exactly it as
 // its `systemMessage`:
 //   - sessionLoaded
@@ -23,14 +23,15 @@ export const PROMPTS = {
 } as const;
 
 /** Hivemind's own messages (proposed for the three not on main; see the header). */
+// Since cee7840 (17 Oct) the live hooks print plain "Hivemind · …" lines, no emojis: hooks/session-start.mjs,
+// src/lib/engine/pipeline.ts hookMessage() and src/app/api/activity/record.ts. These match them word for word.
 export const HIVE = {
-  sessionLoaded: (rules: number, locked: number) =>
-    `⬢ Hivemind loaded ${rules} team rules for #repo/${REPO} (${locked} 🔒 locked)`,
-  lessonCaptured: (title: string, owner: string) => `📝 Hivemind captured a lesson: "${title}" — pending approval by ${owner}`,
-  lessonBlocked: (title: string, rule: string, owner: string) =>
-    `🚫 Hivemind blocked "${title}": conflicts with 🔒 ${rule} (${owner})`,
+  sessionLoaded: (rules: number) => `Hivemind · Loaded ${rules} team rules for #repo/${REPO}.`,
+  lessonCaptured: (title: string, owner: string) => `Hivemind · Lesson captured: "${title}". Waiting on ${owner}.`,
+  // `title` (the blocked lesson) is no longer in the line; the server names the rule it contradicts.
+  lessonBlocked: (_title: string, rule: string, owner: string) => `Hivemind · Blocked: contradicts ${owner}'s locked rule "${rule}".`,
   collision: (who: string, tool: string, file: string, mins: number) =>
-    `⚠️ @${who}'s ${tool} agent edited ${file} ${mins === 0 ? "just now" : `${mins} min ago`} — coordinate before changing it.`,
+    `Hivemind · Heads up: @${who}'s ${tool} agent edited ${file} ${mins === 0 ? "just now" : `${mins} min ago`}.`,
 } as const;
 
 export const LESSON = "Exports call assertSingleCustomer()";
@@ -63,7 +64,7 @@ export const SCENES: Scene[] = [
     who: "kevin",
     rules: 10,
     steps: [
-      { kind: "hook", text: HIVE.sessionLoaded(10, 2), tone: "honey" },
+      { kind: "hook", text: HIVE.sessionLoaded(10), tone: "honey" },
       { kind: "prompt", text: PROMPTS.alexAsk },
       { kind: "tool", name: "Read", arg: "src/export.ts", result: "Read 48 lines" },
       { kind: "spinner", text: "Editing…", ms: 1500 },
@@ -106,7 +107,7 @@ export const SCENES: Scene[] = [
     who: "emily",
     rules: 11,
     steps: [
-      { kind: "hook", text: HIVE.sessionLoaded(11, 2), tone: "honey" },
+      { kind: "hook", text: HIVE.sessionLoaded(11), tone: "honey" },
       { kind: "prompt", text: PROMPTS.noorAsk },
       { kind: "spinner", text: "Editing…", ms: 1300 },
       { kind: "tool", name: "Update", arg: "src/export.ts", result: "Updated src/export.ts with 5 additions" },
@@ -133,7 +134,7 @@ export const SCENES: Scene[] = [
       },
       { kind: "pause", ms: 1200 },
       { kind: "tool", name: "Update", arg: "src/export.ts", result: "Updated src/export.ts with 2 additions" },
-      { kind: "hook", text: HIVE.collision("kevin", "Cursor", "export.ts", 0), tone: "warn" },
+      { kind: "hook", text: HIVE.collision("kevin", "Cursor", "src/export.ts", 0), tone: "warn" },
       { kind: "pause", ms: 2600 },
     ],
   },
