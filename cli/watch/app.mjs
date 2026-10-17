@@ -588,9 +588,9 @@ export async function cmdWatch(cfg) {
       cmd("Quit", "q", () => quit()),
     ];
     for (const m of state.memories ?? [])
-      if (m.status === "pending") items.push({ kind: "lesson", label: plain(m.title), hint: "waiting", run: () => actions.openDetail(m.id) });
+      if (m.status === "pending") items.push({ kind: "lesson", label: plain(m.title).replace(/`/g, ""), hint: "waiting", run: () => actions.openDetail(m.id) });
     for (const r of state.rules ?? [])
-      if (r.kind !== "owner") items.push({ kind: r.locked ? "locked" : "rule", label: plain(r.title), hint: r.locked ? "locked rule" : "rule", run: () => actions.openDetail(r.id) });
+      if (r.kind !== "owner") items.push({ kind: r.locked ? "locked" : "rule", label: plain(r.title).replace(/`/g, ""), hint: r.locked ? "locked rule" : "rule", run: () => actions.openDetail(r.id) });
     for (const p of state.people ?? [])
       if (p.id !== state.actor) items.push({ kind: "person", label: `@${p.id}`, sub: p.title, hint: "view as", run: () => switchPersona(state, ctx, p.id) });
     return items;
@@ -620,7 +620,7 @@ export async function cmdWatch(cfg) {
     const room = Math.max(1, Math.min(9, h - 6));
     p.i = Math.max(0, Math.min(p.i, matches.length - 1));
     const first = Math.max(0, Math.min(p.i - room + 1, matches.length - room));
-    const hair = (s) => t.hair(s);
+    const hair = (s) => t.faint(s); // the card edge: faint grey, visible but calm (the #2E2E32 hairline vanished)
     const out = [];
     out.push(left + hair("╭─ ") + fg(P.lesson)(HEX) + " " + t.faint("Go to anything") + " " + hair("─".repeat(Math.max(0, pw - 21)) + "╮"));
     const q = p.q;

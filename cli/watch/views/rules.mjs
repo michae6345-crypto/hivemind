@@ -104,7 +104,8 @@ export default {
       lines.push(th.rowMark(i) + a.wash(bar + a.title(m), bg, w));
       const when = m.locked ? t.lockedText("locked ") + t.faint(a.day(m.createdAt)) : t.faint(age(m.createdAt, ctx.now));
       const fresh = isNew(m, ctx.now) ? "  " + a.ok("● new") : "";
-      lines.push(a.wash(`  ${a.scope(m.scopeId)} ${a.handle(ownerHandle(m))}  ${when}${fresh}`, bg, w));
+      // ages right-aligned and faint, like the Feed (one column of air at the edge)
+      lines.push(a.wash(th.spread(`  ${a.scope(m.scopeId)} ${a.handle(ownerHandle(m))}${fresh}`, `${when} `, w), bg, w));
       if (sel) selTo = lines.length;
     });
     if (!items.length && !v.filter) return [...top, ...th.empty({ title: "No team rules yet.", hint: "Correct an agent and approve the lesson; it shows up here.", key: "t", what: "teach a rule", width: w, height: ctx.height - top.length })];
