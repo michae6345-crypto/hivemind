@@ -55,7 +55,7 @@ const isTestMem = (m) => TEST_SLUG.test(m.slug ?? "") || TEST_TITLE.test(m.title
 // Hand-written non-seed slugs (A's scenario lessons: "kappa-gate", "embedding-batch-96") are kept unless --all-extra.
 const engineMade = (slug) => {
   const m = String(slug ?? "").match(/-([0-9a-z]{4})$/);
-  return !!m && /d/.test(m[1]);
+  return !!m && /\d/.test(m[1]);
 };
 const nonSeed = mems.filter((m) => !seedSlugs.has(m.slug));
 // Michael's experiments live in repo/playground: reset never touches its memories, events, activity or sessions.

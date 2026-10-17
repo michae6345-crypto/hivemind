@@ -246,14 +246,17 @@ team rule, with Hivemind 0/36, placebo 21/36.
 
 ### Beat 8 (new, when live): fix it once, every agent learns it
 
-> **Not live yet** (rehearsed ~3 AM). The fix event is accepted, but no lesson comes out:
-> `POST /api/events {type:"fix"}` → `200 {"lessons":[],"actions":[],"enginePath":"heuristic"}`. It's waiting on J
-> (fix capture) and B (fix → lesson). Re-run `node scripts/e2e-rehearse.mjs --beats 8` after they land, and replace
-> the expected lines below with the observed ones.
+> **Half live** (rehearsed ~3:30 AM). Capture is on main: J `1667966`. When a human rewrites lines an agent just
+> wrote, `hivemind watch` sends `POST /api/events {type:"fix", payload:{file, diff, before, after, previousAuthor, line,
+> url}}` and shows `Learning from your fix…`. **Fix → lesson isn't on main yet (owner B).** On prod the engine treats
+> `fix` as a non-correction: `200 {"lessons":[], "enginePath":"heuristic"}`. B's local build already produces it.
+> The shared DB holds `Log expert ids, never emails` (evidence type `fix`, `- console.log(user.email);` /
+> `+ logger.info({ expertId: user.id });`, by @kevin, pending). Once B pushes, re-run
+> `node scripts/e2e-rehearse.mjs --beats 8` and confirm the line below.
 
 1. Left, as `emily`: `Add a welcome hook: when a user signs up, log it.` The agent writes `console.log(user.email)`.
 2. Kevin fixes the line in his editor (`logger.info("welcome sent", { userId: user.id })`) and saves.
-3. Right (`kevin` · Feed), expected: `Lesson captured from @kevin's fix` → Queue: `Waiting on @ben`.
+3. Right (`kevin` · Here), expected per `cli/watch/fixes.mjs`: `Learning from your fix…`, then `Hivemind · Lesson captured from @kevin's fix: Log expert ids, never emails. Waiting on @ben.` Ben's Queue lists it with `proposed by @kevin`.
 4. Ben approves (`p` to ben, `3`, `a`), as in beat 2.
 5. Emily starts a fresh `claude` and asks for another log line. Her agent uses `logger` with ids, not `console.log`
    with emails. The Here view shows `This file follows every team rule`.

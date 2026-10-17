@@ -45,8 +45,12 @@ build OOMed, which points to machine memory pressure with 12 Claude sessions ope
   (`react/no-unescaped-entities`, an unescaped `'`). It does **not** break `pnpm build` (Next 16 doesn't lint during
   build; the local build passes) or Vercel (every deploy after `0fd4bbf` is green). Fix: replace `'` with `&apos;` (or
   `’`) on that line. I left Adrian's file untouched.
-- **Beat 8 "fix it once" isn't live** (owners **J** + **B**). `POST /api/events {type:"fix"}` → `200 {"lessons":[],
-  "enginePath":"heuristic"}`, so no lesson comes from a fix yet. Re-check with `node scripts/e2e-rehearse.mjs --beats 8`.
+- **Beat 8 "fix it once" is half live** (owner **B**). J's capture is on main (`1667966`), and watch sends `fix` events. But the engine on
+  main ignores them (`pipeline.ts:178`, non-correction → `lessons:[]`). B's local version works: a `fix`-evidence lesson
+  "Log expert ids, never emails" is in the shared DB. Needs B's push, then `node scripts/e2e-rehearse.mjs --beats 8`.
+- **reset-demo regex bug, fixed:** the engine-suffix check was `/d/` instead of `/d/` (heredoc ate the backslash), so
+  some engine-made leftovers survived a reset. Fixed and verified: the dry-run lists exactly the 3 suffixed slugs, and keeps
+  playground (8) + 26 scenario lessons.
 - **Shared prod DB noise during takes** (everyone). Right after a reset, other agents' tests wrote
   `@kevin edited src/experts.ts` / `@emily blocked by a locked rule` into the Feed. Before recording, stop all
   smoke/e2e runs, then reset.

@@ -141,7 +141,22 @@ if (BEATS.includes("8")) {
   const after = `import { logger } from "./logger.js";\n\nexport function welcome(user: { id: string; email: string }) {\n  logger.info("welcome sent", { userId: user.id });\n}\n`;
   const r = await call("POST", "/api/events", {
     user: "kevin",
-    body: { type: "fix", actor: "kevin", sessionId: `rehearse-fix-kevin-${stamp}`, repo: REPO, payload: { file: "src/welcome.ts", before, after, source: "rehearsal" } },
+    // Same payload shape as cli/watch/fixes.mjs (agent J): a human rewrote lines an agent just wrote.
+    body: {
+      type: "fix",
+      actor: "kevin",
+      sessionId: `rehearse-fix-kevin-${stamp}`,
+      repo: REPO,
+      payload: {
+        file: "src/welcome.ts",
+        line: 2,
+        diff: "- console.log(user.email);\n+ logger.info(\"welcome sent\", { userId: user.id });",
+        before,
+        after,
+        previousAuthor: "emily",
+        via: "rehearsal",
+      },
+    },
   });
   show("POST /api/events {type:'fix'}", `${r.status} ${r.text.slice(0, 400)}`);
   await sleep(3000);
