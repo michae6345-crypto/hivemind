@@ -8,7 +8,6 @@ import { join } from "node:path";
 import { colsFor, explanation } from "../../lib/check.mjs";
 import { linkFile } from "../git.mjs";
 
-const CHIP_BG = "#2A2A2E";
 const SEL_BG = "#232A45";
 const FLASH_MS = [100, 200]; // alpha .35 until 100ms, .7 until 200ms, then 1
 const at = (h) => (String(h).startsWith("@") ? String(h) : `@${h}`);
@@ -31,20 +30,12 @@ const day = (iso) => {
   return isNaN(d) ? "" : `${d.getDate()} ${d.toLocaleDateString("en-US", { month: "short" })}`;
 };
 
-// ---------- chips (terminal-spec §4: one space of chip bg each side, the dot in the layer colour) ----------
-function chips(th, state) {
-  const { P, bg, fg, t } = th;
-  const pill = (inner) => (th.COLOR ? bg(CHIP_BG)(` ${inner} `) : inner);
-  const layerOf = (id) => {
-    const role = state.people?.find((p) => p.id === id)?.role;
-    return role === "security" ? P.org : role === "lead" ? P.team : P.repo;
-  };
+// ---------- chips: coloured text from the theme (no dot, no box) ----------
+function chips(th) {
   return {
-    handle: (h, pos = false) => pill(`${fg(layerOf(bare(h)))("●")} ${t.text(`@${bare(h)}${pos ? "'s" : ""}`)}`),
-    scope: (id) => {
-      const col = id === "org" ? P.org : id.startsWith("team/") ? P.team : id.startsWith("repo/") ? P.repo : P.personal;
-      return pill(`${fg(col)(id.startsWith("personal/") ? "○" : "●")} ${t.text(`#${id}`)}`);
-    },
+    // chips are coloured text (theme.scopeChip / handleChip): no dot, no box
+    handle: (h, pos = false) => th.handleChip(bare(h), { pos }),
+    scope: (id) => th.scopeChip(id),
   };
 }
 
@@ -268,7 +259,7 @@ export default {
     const th = ctx.theme;
     const { t, sep } = th;
     const { width: w, height: h, now } = ctx;
-    const ch = chips(th, state);
+    const ch = chips(th);
     const file = state.lastFile;
     if (!file) return th.empty({ title: "No changes yet.", hint: "Edit a file, or let an agent, and what it breaks shows up here.", key: "?", what: "rules here", width: w, height: h });
     const f = state.files[file] ?? {};

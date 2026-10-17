@@ -17,7 +17,7 @@ export const P = {
   faint: "#71717A",
   hair: "#2E2E32", // dividers, the tab bar's rest, the timeline rail
   org: "#E4E4E7",
-  team: "#8B93FF",
+  team: "#8B8DF0",
   repo: "#2DD4BF",
   personal: "#A1A1AA",
   handle: "#E0A955",
@@ -125,12 +125,15 @@ export const sep = () => t.faint(SEP);
 export const layerColor = (scopeId = "") =>
   scopeId === "org" ? P.org : scopeId.startsWith("team/") ? P.team : scopeId.startsWith("repo/") ? P.repo : P.personal;
 
-/** `● #repo/export-service` on a dim tint of the layer colour (a ring for personal scopes). */
-export function scopeChip(scopeId) {
-  const col = layerColor(scopeId);
-  const dot = scopeId.startsWith("personal/") ? "○" : "●";
-  const label = scopeId === "org" ? "#org" : `#${scopeId}`;
-  return pill(`${fg(col)(dot)} ${t.text(label)}`);
+/**
+ * Chips are coloured text, nothing else (Michael, 17 Oct; overrides the dot + box of the editor spec): `#org` in text
+ * colour, `#team/…` periwinkle, `#repo/…` teal, `#personal/…` grey, `@handle` honey, a locked rule rose. No dot, no
+ * background, no padding, so a chip is exactly as wide as its words. NO_COLOR: the plain `#org` / `@ben`.
+ * { label } overrides the words ("#you" for your own personal scope).
+ */
+export function scopeChip(scopeId, { label } = {}) {
+  const text = label ?? (scopeId === "org" ? "#org" : `#${scopeId}`);
+  return fg(layerColor(scopeId))(text);
 }
 
 /** Not a person: agent sessions ("agent:…"), the CLI itself ("cli", "watch-…"). They read "an agent", never "@cli". */
@@ -146,14 +149,13 @@ const personColor = (id) => {
   const r = ROLE.get(id);
   return r === "security" ? P.org : r === "lead" ? P.team : r === "engineer" ? P.repo : P.handle;
 };
-/** ` ● @jordan ` on the chip background; { pos: true } puts the possessive inside: ` ● @alex's `. */
+/** `@ben` in honey (coloured text, no dot or box); { pos: true } → `@kevin's`. Agents and the CLI read "an agent". */
 export function handleChip(h, { pos = false } = {}) {
   const id = String(h ?? "").replace(/^@/, "");
-  // Agents get the same chip as people, with a neutral grey ring: a row never starts with bare text.
-  if (isBot(id)) return pill(`${fg(P.faint)("○")} ${t.muted(pos ? "an agent's" : "an agent")}`);
-  return pill(`${fg(personColor(id))("●")} ${t.text(`@${id}${pos ? "'s" : ""}`)}`);
+  if (isBot(id)) return t.muted(pos ? "an agent's" : "an agent");
+  return fg(P.handle)(`@${id}${pos ? "'s" : ""}`);
 }
-const pill = (inner) => (COLOR ? bg(P.pill)(` ${inner} `) : inner);
+void personColor; // the layer-by-role colour stays available for dots elsewhere (help, timeline)
 
 /** Tool names are plain faint text (terminal-spec §4), not pills. */
 export const badge = (label) => t.faint(label);
@@ -207,6 +209,7 @@ export const ease = (x) => 1 - Math.pow(1 - Math.max(0, Math.min(1, x)), 3); // 
 /** chip("repo", "repo/export-service") · chip("handle", "jordan") · chip("tool", "Cursor") · chip("scope", anyScopeId) */
 export function chip(kind, text) {
   if (kind === "handle") return handleChip(text);
+  if (kind === "locked") return fg(P.locked)(String(text));
   if (kind === "tool") return badge(text);
   if (kind === "org") return scopeChip("org");
   if (kind === "scope") return scopeChip(text);

@@ -116,25 +116,18 @@ export function atoms(state, ctx) {
   const th = ctx.theme;
   const { t } = th;
   const on = th.COLOR;
-  // NO_COLOR: no chip background, so no padding either (`proposed by ● @kevin`, not `proposed by  ● @kevin `).
-  const chipBg = (s) => (on ? th.bg(C.chipBg)(s) : s.trim());
   const ul = (s) => (on ? `\x1b[4m${s}\x1b[24m` : s);
-  const layerOfPerson = (id) => {
-    const r = state.people?.find((p) => p.id === id)?.role;
-    return r === "security" ? C.org : r === "lead" ? C.team : C.repo;
-  };
-  const scopeDot = (id) => (id === "org" ? C.org : id.startsWith("team/") ? C.team : id.startsWith("repo/") ? C.repo : C.person);
-  /** ` ● #repo/export-service ` (your personal scope: ` ○ #you `). */
+  /** `#repo/export-service` in its layer colour (your personal scope: `#you`). */
   const scope = (id) => {
     const mine = id === `personal/${state.actor}`;
     const label = mine ? "#you" : id === "org" ? "#org" : `#${id}`;
-    return chipBg(` ${th.fg(scopeDot(id))(id.startsWith("personal/") ? "○" : "●")} ${t.text(label)} `);
+    return th.scopeChip(id, { label }); // coloured text: no dot, no box
   };
   /** ` ● @ben ` with the person's layer dot; possessive inside the chip: ` ● @kevin's `. Agents: plain "an agent". */
   const handle = (id, { pos = false } = {}) => {
     const h = String(id ?? "").replace(/^@/, "");
     if (!h || isAgentActor(h)) return t.muted(pos ? "an agent's" : "an agent");
-    return chipBg(` ${th.fg(layerOfPerson(h))("●")} ${t.text(`@${h}${pos ? "'s" : ""}`)} `);
+    return th.handleChip(h, { pos }); // coloured text: no dot, no box
   };
   /** Title in bold text; `code` and the rule's symbols underlined in the rule's colour. */
   const title = (m, { bold = true, base } = {}) => {

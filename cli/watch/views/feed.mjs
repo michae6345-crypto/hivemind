@@ -15,7 +15,7 @@ import { link, linkFile } from "../git.mjs";
 const NOW_MS = 10 * 60000;
 const EDIT_WINDOW_MS = 30 * 60000; // edits older than this are noise
 const WASH = ["#232A45", "#21263A", "#1F222F"]; // selected wash, then two steps back (pre-blended on #1C1C1E)
-const CHIP_CELLS = 12; // " ○ an agent " is the widest chip a row starts with
+const CHIP_CELLS = 10; // chips are bare text now: "@michael" / "an agent" + air
 const TOOL_CELLS = 13;
 
 /** verb + object for each card kind (data.toCards). */
