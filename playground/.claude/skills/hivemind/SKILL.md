@@ -59,6 +59,10 @@ nothing else: no summary, no follow-up question. If the command fails, reply wit
 Run `node "../cli/hivemind.mjs" status --agent claude-code` and summarise in three plain lines, each starting with `Hivemind · `:
 API reachable, rules in the pack and pending lessons, agents wired.
 
+## When a team rule blocks a request
+
+When a team rule stops a request, say which rule and who owns it. If the user's goal is legitimate and the rule is only incidentally in the way (e.g. debugging failed payouts), suggest a compliant way to the same goal (e.g. log expert_id + trace_id and look the email up by payout_id). If the request itself is what the rule forbids (mixing Lab A and Lab B data, logging an expert's email, skipping the tenant filter), decline with no workarounds or alternative paths, name the rule's owner who can change it, and stop.
+
 ## Anything else
 
 Print these usages: `/hivemind` (open the pane), `/hivemind rules <file>`, `/hivemind teach <rule>`, `/hivemind status`,
