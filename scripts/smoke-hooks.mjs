@@ -39,7 +39,7 @@ try {
 check(ss.status === 0, "session-start exits 0");
 check(/LOCKED RULE · #org\nNever mix data from different lab customers/.test(ctx), "pack has the locked lab-isolation rule", `${ctx.length} chars`);
 check(!/\p{Extended_Pictographic}/u.test(ctx), "pack has no emojis");
-check(/^Hivemind · Loaded \d+ team rules for #repo\/export-service\.$/.test(ssOut.systemMessage ?? ""), "banner", ssOut.systemMessage);
+check(/^⬢ Hivemind · Loaded \d+ team rules for #repo\/export-service\.$/.test(ssOut.systemMessage ?? ""), "banner", ssOut.systemMessage);
 check(ctx.length <= 10000, "pack under the 10k additionalContext cap");
 
 // 2. PostToolUse from two sessions on the same file → collision warning
@@ -67,7 +67,7 @@ const second = await tool(`smoke-b-${stamp}`, "michael");
 const warn = second?.hookSpecificOutput?.additionalContext ?? "";
 console.log("   second edit →", warn.replace(/\n/g, " | "));
 check(
-  /^Hivemind · Heads up: @adrian's Cursor agent edited src\/export\.ts (just now|\d+ min ago)\.$/m.test(warn),
+  /^⬢ Hivemind · Heads up: @adrian's Cursor agent edited src\/export\.ts (just now|\d+ min ago)\.$/m.test(warn),
   "second session gets the collision line (tool + path)",
 );
 const noop = await fetch(`${BASE}/api/hooks/tool`, {

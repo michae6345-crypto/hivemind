@@ -142,7 +142,9 @@ for (const pth of ["/api/hooks/prompt", "/api/hooks/session-end", "/api/events"]
 // 1) Real correction via the Claude Code UserPromptSubmit hook (new pending lesson, or reinforces the seeded one)
 const hook = (prompt) => ({ session_id: SESSION, transcript_path: "C:/Users/kevin/.claude/projects/x.jsonl", cwd: "C:\\code\\export-service", hook_event_name: "UserPromptSubmit", prompt });
 const r1 = await post("/api/hooks/prompt", hook("no — exports must call assertSingleCustomer() before writing anything to disk"), H("kevin"));
-let ctx1 = r1.json?.hookSpecificOutput?.additionalContext ?? "";
+// Hook lines wrap on words at 80 columns (pack.ts wrap80): join continuation lines before matching.
+const one = (s) => String(s ?? "").replace(/\n {2}/g, " ");
+let ctx1 = one(r1.json?.hookSpecificOutput?.additionalContext);
 if (!ctx1 && r1.status === 200) {
   // Over the hook budget the route answers {} and after() finishes learning in the background → verify it landed.
   for (let i = 0; i < 20 && !ctx1; i++) {
@@ -152,7 +154,7 @@ if (!ctx1 && r1.status === 200) {
   }
 }
 check("1 correction → pending lesson, 'Lesson captured … Waiting on @owner.' shown to the user (hook answers < 5s)",
-  r1.status === 200 && (/^Hivemind · Lesson captured: ".+"\. Waiting on @\w+\.$/.test(ctx1) && r1.json?.systemMessage === ctx1 || /background/.test(ctx1)) && r1.ms < 5000, `${r1.ms}ms  ${ctx1 || JSON.stringify(r1.json)}`);
+  r1.status === 200 && (/^⬢ Hivemind · Lesson captured: ".+"\. Waiting on @\w+\.$/.test(ctx1) && one(r1.json?.systemMessage) === ctx1 || /background/.test(ctx1)) && r1.ms < 5000, `${r1.ms}ms  ${ctx1 || JSON.stringify(r1.json)}`);
 
 // 2) One-off instruction → must NOT become a lesson
 const r2 = await post("/api/hooks/prompt", hook("rename this variable to rowCount"), H("kevin"));
@@ -198,7 +200,7 @@ const r7 = await post("/api/events", { type: "fix", actor: "kevin", sessionId: `
 const fixLesson = (r7.json.lessons ?? [])[0];
 const fixEv = (fixLesson?.evidence ?? []).find((e) => e.type === "fix" && e.actor === "kevin");
 check("7a fix → lesson captured (or existing one reinforced), evidence type fix with file:line + permalink",
-  r7.status === 200 && !!fixLesson && !!fixEv && /^Hivemind · Lesson (captured from @kevin's fix in src\/experts\.ts:6: ".+"\. Waiting on @\w+\.|reinforced by @kevin's fix in src\/experts\.ts:6: ".+"\.)$/m.test(r7.json.message ?? "")
+  r7.status === 200 && !!fixLesson && !!fixEv && /^⬢ Hivemind · Lesson (captured from @kevin's fix in src\/experts\.ts:6: ".+"\. Waiting on @\w+\.|reinforced by @kevin's fix in src\/experts\.ts:6: ".+"\.)$/m.test(one(r7.json.message))
     && fixEv?.file === "src/experts.ts" && fixEv?.line === 6 && fixEv?.url === FIX_URL && /console\.log\(user\.email\)/.test(fixEv?.quote ?? ""),
   `${r7.ms}ms  ${r7.json.message ?? JSON.stringify(r7.json)}  [${(r7.json.lessons ?? []).map((m) => `${m.slug} ${m.status}`).join(", ")}]`);
 
@@ -210,7 +212,7 @@ check("7b cosmetic fix (rename) → no lesson", r7b.status === 200 && !(r7b.json
 const r7c = await post("/api/events", { type: "fix", actor: "kevin", repo: "repo/export-service", payload: fixPayload({ violationRuleId: "sec-no-pii-logs" }) }, H("kevin"));
 const reinf = (r7c.json.actions ?? [])[0];
 check("7c fix resolving a known violation → reinforces that rule (no new lesson)",
-  r7c.status === 200 && reinf?.action === "reinforced" && (r7c.json.lessons ?? [])[0]?.slug === "sec-no-pii-logs" && /^Hivemind · Lesson reinforced by @kevin's fix in src\/experts\.ts:6: "Never log expert personal info"\.$/.test(r7c.json.message ?? ""),
+  r7c.status === 200 && reinf?.action === "reinforced" && (r7c.json.lessons ?? [])[0]?.slug === "sec-no-pii-logs" && /^⬢ Hivemind · Lesson reinforced by @kevin's fix in src\/experts\.ts:6: "Never log expert personal info"\.$/.test(one(r7c.json.message)),
   `${r7c.ms}ms  ${r7c.json.message ?? JSON.stringify(r7c.json)}  α=${(r7c.json.lessons ?? [])[0]?.alpha}`);
 
 // 6) Session end → α/β scoring of served memories + pack_log.corrections
