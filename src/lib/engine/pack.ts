@@ -129,13 +129,18 @@ export type Directory = Awaited<ReturnType<typeof loadDirectory>>;
 
 /**
  * Provenance line: "Set by @maya · Head of Security · locked 14 Oct" | "Learned from @alex's correction · 3h ago ·
- * approved by @jordan" | "Learned from @jordan's review · 2d ago" | "Proposed by @noor's agent · …" | "Written by @maya · 9d ago".
+ * approved by @jordan" | "Learned from @kevin's fix in src/experts.ts:6 · 1h ago" | "Learned from @jordan's review · 2d ago" | "Proposed by @noor's agent · …" | "Written by @maya · 9d ago".
  */
 export function provenance(m: Memory, d: Directory): string {
   const who = `@${m.author}`;
   if (m.locked) return [`Set by ${who}`, d.title(m.author), `locked ${day(m.createdAt)}`].filter(Boolean).join(" · ");
   const approver = d.approver(m) ?? (m.status === "active" && m.source !== "human" ? d.lead(m.scopeId) : null);
   const approved = approver && approver !== m.author ? ` · approved by @${approver}` : "";
+  const origin = m.evidence[0]; // the evidence the lesson was created from
+  if (m.source === "correction" && origin?.type === "fix") {
+    const at = origin.file ? ` in ${origin.file}${origin.line ? `:${origin.line}` : ""}` : "";
+    return `Learned from ${who}'s fix${at} · ${ago(m.createdAt)}${approved}`;
+  }
   if (m.source === "correction") return `Learned from ${who}'s correction · ${ago(m.createdAt)}${approved}`;
   if (m.source === "review") return `Learned from ${who}'s review · ${ago(m.createdAt)}${approved}`;
   if (m.source === "agent") return `Proposed by ${who}'s agent · ${ago(m.createdAt)}${approved}`;
