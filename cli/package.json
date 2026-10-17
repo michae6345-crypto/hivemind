@@ -1,0 +1,17 @@
+{
+  "name": "hivemind-cli",
+  "version": "0.1.0",
+  "description": "Connect every coding agent in a repo (Claude Code, Cursor, Gemini CLI, Copilot, Codex, Windsurf) to Hivemind team memory.",
+  "type": "module",
+  "bin": {
+    "hivemind": "./hivemind.mjs"
+  },
+  "files": [
+    "hivemind.mjs",
+    "lib/"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "MIT"
+}
