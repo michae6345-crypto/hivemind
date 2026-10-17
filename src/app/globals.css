@@ -1,0 +1,94 @@
+@import "tailwindcss";
+
+/* Hivemind visual identity — PLAN.md §6 (dark-first, one accent: hive amber) */
+:root {
+  --bg: #0b0b0e;
+  --panel: #111114;
+  --elevated: #18181c;
+  --border: #26262c;
+  --text: #ededef;
+  --muted: #8a8a93;
+  --accent: #f5a524;
+
+  --chip-team: #8b93ff;
+  --chip-repo: #2dd4bf;
+  --chip-person: #fcd34d;
+  --chip-link: #c4b5fd;
+  --chip-lock: #fb7185;
+  --chip-org: #f5a524;
+
+  --ok: #4ade80;
+  --danger: #fb7185;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-panel: var(--panel);
+  --color-elevated: var(--elevated);
+  --color-line: var(--border);
+  --color-fg: var(--text);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-team: var(--chip-team);
+  --color-repo: var(--chip-repo);
+  --color-person: var(--chip-person);
+  --color-link: var(--chip-link);
+  --color-lock: var(--chip-lock);
+  --color-org: var(--chip-org);
+  --color-ok: var(--ok);
+  --color-danger: var(--danger);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --radius-hm: 6px;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
+/* Thin, quiet scrollbars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+/* Token chips — shared by the editor (CodeMirror marks) and React chips */
+.hm-chip {
+  border-radius: 4px;
+  padding: 0 4px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 150ms ease-out;
+}
+.hm-chip[data-kind="team"] { color: var(--chip-team); background: color-mix(in srgb, var(--chip-team) 14%, transparent); }
+.hm-chip[data-kind="repo"] { color: var(--chip-repo); background: color-mix(in srgb, var(--chip-repo) 14%, transparent); }
+.hm-chip[data-kind="org"] { color: var(--chip-org); background: color-mix(in srgb, var(--chip-org) 14%, transparent); }
+.hm-chip[data-kind="person"] { color: var(--chip-person); background: color-mix(in srgb, var(--chip-person) 14%, transparent); }
+.hm-chip[data-kind="link"] { color: var(--chip-link); background: color-mix(in srgb, var(--chip-link) 14%, transparent); }
+.hm-chip[data-kind="lock"] { color: var(--chip-lock); background: color-mix(in srgb, var(--chip-lock) 14%, transparent); }
+.hm-chip:hover { filter: brightness(1.15); }
+
+/* Resizable panel separators */
+[data-separator] {
+  width: 1px;
+  background: var(--border);
+  transition: background-color 150ms ease-out;
+}
+[data-separator]:hover,
+[data-separator][data-separator-state="drag"] {
+  background: var(--accent);
+}
