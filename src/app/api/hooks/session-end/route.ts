@@ -1,6 +1,8 @@
 import { after } from "next/server";
 import { err, json } from "@/lib/auth";
+import { HDR_USER } from "@/contracts";
 import { scoreSession, type SessionScore } from "@/lib/engine/pipeline";
+import { agentFromRequest } from "@/lib/engine/pack";
 
 export const maxDuration = 60;
 
@@ -16,7 +18,7 @@ export async function POST(req: Request) {
   const hook = (await req.json().catch(() => null)) as { session_id?: string } | null;
   if (!hook?.session_id) return json({});
 
-  const work = scoreSession(hook.session_id).catch((e) => {
+  const work = scoreSession(hook.session_id, { actor: req.headers.get(HDR_USER), agent: agentFromRequest(req) }).catch((e) => {
     console.error("[hooks/session-end]", e);
     return null;
   });

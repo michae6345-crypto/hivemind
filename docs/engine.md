@@ -11,18 +11,21 @@ event ─► ① filter     no LLM: drop short / "lgtm" / bot / slash-command ec
       ─► ② extract    ≤3 candidates {title, body, rule|fact|one_off|noise, scope repo|team, confidence}
                       keep only rule/fact with confidence ≥ 0.75; also rate served context-pack items helpful/harmful
       ─► ④ conflict   vs 🔒 locked memories in the scope chain → status=blocked, status_reason="Conflicts with 🔒 <title> (<owner>)"
-      ─► ③ merge      Mem0-style ADD / UPDATE / DELETE / NONE against pending+active lessons in the scope chain
-      ─► ⑤ promote    evidence from ≥2 distinct humans → active (otherwise pending for the scope owner)
+      ─► ③ merge      Mem0-style ADD / UPDATE / DELETE / NONE against unlocked pending+active lessons in the scope chain
+      ─► ⑤ approve    every learned lesson stays pending until its scope owner (lead) or security approves it
 session end ─► ⑥ score  α/β update for every memory served in that session's context pack
 ```
 
 For latency, conflict and merge run in parallel, but the conflict verdict is applied first. A lesson that contradicts a locked rule never gets merged, so it can't strengthen or overwrite anything.
 
+### Chain of command (no auto-promotion)
+Evidence never changes a lesson's status. A duplicate from a second engineer (or a lead's review comment) appends evidence and raises α, so the approver sees stronger confidence, but the lesson stays `pending` until a lead or security approves it in the inbox. Superseding works the same way: a DELETE decision proposes a new pending lesson marked "Would supersede [[old]]". The old lesson is only retired by a human decision.
+
 ### Guardrails (locked always wins)
 We hardened these after testing with the real model. Each one fixes a failure we actually saw:
 1. **Belt and braces:** a candidate is blocked if Haiku *or* the deterministic polarity guard says it contradicts a 🔒 rule. Low-effort Haiku once missed "mixing Lab A and Lab B data is fine in tests".
 2. **Guard the raw words:** the deterministic guard also runs on the engineer's original message. The extractor once "sanitized" the bad lesson into the policy itself. When only this guard fires, the blocked row keeps the engineer's own sentence, so the reviewer sees what was actually said.
-3. **Locked memories only absorb exact duplicates.** A merge UPDATE aimed at a 🔒 rule becomes a separate pending lesson. A DELETE, or an UPDATE that contradicts the rule, is blocked.
+3. **Never merge into a 🔒 rule.** Locked memories are not merge targets at all. A correction that agrees with or overlaps a locked rule becomes its own pending lesson, linked as `Related: 🔒 [[slug]]`. Only a *contradiction* of a locked rule results in `blocked`. (Earlier, a correction mentioning `assertSingleCustomer()` was absorbed as evidence into Maya's lab-isolation rule, because that rule's text mentions the function.)
 4. **Human text is never rewritten:** an UPDATE replaces the body only for engine-authored lessons (`source` correction/review/agent). Seeded or human lessons just gain evidence and α.
 5. The extractor is told to restate faithfully, even when the message contradicts served memories, so the guardrail and not the extractor decides what's allowed.
 6. **Reinforcement safety net:** if Haiku returns no rule for a correction or review comment, a heuristic restatement that clearly duplicates an existing lesson still counts as evidence. It can never create a new lesson (`reinforceOnly`).
@@ -30,10 +33,12 @@ We hardened these after testing with the real model. Each one fixes a failure we
 ### Event sources
 | Source | Route | Event type | Weight w |
 |---|---|---|---|
-| Claude Code `UserPromptSubmit` hook (engineer types to their agent) | `/api/hooks/prompt` | `correction` | by role |
+| Claude Code `UserPromptSubmit` hook (engineer types to their agent) | `/api/hooks/prompt` | `correction` (kept only if the classifier judges it a correction; "Say OK." is not stored) | by role |
 | PR review comment (`scripts/learn-from-prs.mjs`, UI) | `/api/events` | `review_comment` | by role |
 | Agent self-report (MCP `propose_memory`) | `/api/events` | `agent_proposal` | 0.3 |
 | Claude Code `SessionEnd` hook | `/api/hooks/session-end` | `session_end` | 1 |
+
+**Attribution:** `x-hm-user` → `events.actor` (including `session_end`). `x-hm-agent` (default `claude-code` on hook routes) → `events.agent`, and fills `pack_log.agent` at session end if the pack didn't set it.
 
 **Role weights:** security / lead 2.0, engineer 1.0, agent 0.3 (from `people.role`).
 
@@ -43,16 +48,18 @@ We hardened these after testing with the real model. Each one fixes a failure we
 | Decision | Effect |
 |---|---|
 | ADD | new memory, `status=pending`, `α = 1 + w`, `β = 1`, evidence `[e]` |
-| NONE (duplicate) | append evidence, `α += w`, check promotion |
+| NONE (duplicate) | append evidence, `α += w`; status unchanged |
 | UPDATE | as NONE, and the body is replaced with the merged text, but only for engine-authored lessons (never locked or human text) |
-| DELETE | new pending memory. The old one gets `status=invalid` and `invalidated_by=<new id>`. Nothing is hard-deleted (Graphiti's "invalidate, don't delete"). Agents can't invalidate. A DELETE aimed at a locked memory blocks the new lesson. |
+| DELETE | new pending memory with `status_reason="Would supersede …"` and a `[[old-slug]]` link. Nothing is retired automatically. On approval the old one should become `status=invalid` / `invalidated_by` (Graphiti's "invalidate, don't delete"); nothing is ever hard-deleted. |
 
 ### Hook feedback
 `/api/hooks/prompt` answers within 4.6s; the Claude Code hook timeout is 5s. With Haiku, a full capture (extract, then conflict ‖ merge, plus DB writes) takes about 3–4s. Measured locally: 3.2–3.8s per hook call; the heuristic path takes about 0.3–0.5s. If the pipeline runs past the budget, the route returns `{}` and Next's `after()` finishes the learning in the background, so the lesson still lands. When something is learned, the agent sees a message like:
 
-- `📝 Hivemind captured a lesson: "Exports must call assertSingleCustomer() before writing" — pending approval by Jordan Reyes`
+- `📝 Hivemind captured a lesson: "Exports must call assertSingleCustomer() before writing" — pending approval by Jordan Reyes` (new lesson, or evidence added to a still-pending one)
 - `🚫 Hivemind blocked "Mixing Lab A and Lab B data is fine in tests": conflicts with 🔒 Never mix data from different lab customers (Maya Chen)`
-- `✅ Hivemind: "…" is now confirmed by multiple engineers — active for every agent`
+- `📝 Hivemind reinforced an existing lesson: "…" (active)` (evidence added to an already-approved lesson)
+
+The captured/blocked strings are mirrored in `src/components/site/demo-script.ts` (`HIVE.lessonCaptured` / `lessonBlocked`). Keep them identical.
 
 ## Confidence math (`score.ts`)
 
@@ -102,4 +109,4 @@ node scripts/smoke-engine.mjs            # real correction, one-off (ignored), 2
 ```
 Both engine paths pass 7/7: real Haiku 5.5 (two runs in a row), and `HIVEMIND_ENGINE_MODE=heuristic`.
 
-The script resets its own rows first, including the evidence, α bumps, promotions and session scoring it applied to seeded rows, so repeated runs don't drift the demo data. Use `--no-reset` to keep them, or `--reset-only` to just clean up. It uses `scripts/seed.mjs` rows when they exist and only creates what's missing: demo scopes and people, Maya's 🔒 lab rule, and a "use logger" lesson.
+The script resets its own rows first, including the evidence, α bumps and session scoring it applied to seeded rows, so repeated runs don't drift the demo data. Use `--no-reset` to keep them, or `--reset-only` to just clean up. It uses `scripts/seed.mjs` rows when they exist and only creates what's missing: demo scopes and people, Maya's 🔒 lab rule, and a "use logger" lesson.

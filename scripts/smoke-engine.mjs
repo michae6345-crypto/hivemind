@@ -151,17 +151,29 @@ if (!ctx1 && r1.status === 200) {
     if (ev?.payload?.memoryIds?.length) ctx1 = `(background) ${ev.payload.actions.join(",")} ${ev.payload.memoryIds.join(",")}`;
   }
 }
-check("1 correction → lesson captured/reinforced (hook answers < 5s)", r1.status === 200 && /captured a lesson|reinforced|background/.test(ctx1) && r1.ms < 5000, `${r1.ms}ms  ${ctx1 || JSON.stringify(r1.json)}`);
+check("1 correction → pending lesson, 'captured … pending approval by' (hook answers < 5s)",
+  r1.status === 200 && /^📝 Hivemind captured a lesson: ".+" — pending approval by .+|background/.test(ctx1) && r1.ms < 5000, `${r1.ms}ms  ${ctx1 || JSON.stringify(r1.json)}`);
 
 // 2) One-off instruction → must NOT become a lesson
 const r2 = await post("/api/hooks/prompt", hook("rename this variable to rowCount"), H("alex"));
 check("2 one-off instruction → no lesson", r2.status === 200 && !r2.json?.hookSpecificOutput, `${r2.ms}ms  ${JSON.stringify(r2.json)}`);
 
-// 3) Same lesson from a 2nd engineer → reinforced + auto-promoted to active
+// 2b) A plain chat prompt is not a correction → not stored as a correction event at all
+const r2b = await post("/api/hooks/prompt", hook("Say OK."), H("alex", { "x-hm-agent": "cursor" }));
+await new Promise((r) => setTimeout(r, 1500));
+const okEvents = must(await sb.from("events").select("id").eq("session_id", SESSION).eq("type", "correction").ilike("payload->>text", "Say OK."), "say ok");
+const corrEv = must(await sb.from("events").select("agent").eq("session_id", SESSION).eq("type", "correction").ilike("payload->>text", "%assertSingleCustomer%"), "corr agent")[0];
+check("2b 'Say OK.' not stored as a correction; hook events carry events.agent", r2b.status === 200 && okEvents.length === 0 && corrEv?.agent === "claude-code",
+  `stored "Say OK." correction events=${okEvents.length}  correction event agent=${corrEv?.agent}`);
+
+// 3) Same lesson from a 2nd engineer → reinforced (evidence + α), but stays PENDING: only a lead/security approval activates
 const r3 = await post("/api/events", { type: "correction", actor: "noor", sessionId: `${run}-noor`, repo: "export-service",
   payload: { smoke: true, text: "Don't write the export file until assertSingleCustomer() has been called — always call it first." } }, H("noor"));
-const promoted = (r3.json.lessons ?? []).find((m) => m.status === "active");
-check("3 duplicate from 2nd actor → promoted active", r3.status === 200 && !!promoted, `${r3.ms}ms  actions=${JSON.stringify(r3.json.actions ?? r3.json)}`);
+const dupLesson = (r3.json.lessons ?? []).find((m) => /assertSingleCustomer/i.test(m.title + m.body));
+const dupActors = new Set((dupLesson?.evidence ?? []).map((e) => e.actor));
+check("3 duplicate from 2nd actor → reinforced, stays pending (no auto-promotion)",
+  r3.status === 200 && dupLesson?.status === "pending" && !dupLesson.locked && dupActors.has("alex") && dupActors.has("noor"),
+  `${r3.ms}ms  ${dupLesson ? `"${dupLesson.title}" status=${dupLesson.status} actors=${[...dupActors]} α=${dupLesson.alpha}` : JSON.stringify(r3.json)}`);
 
 // 4) Bad lesson → blocked by Maya's 🔒 rule
 const r4 = await post("/api/events", { type: "correction", actor: "alex", sessionId: SESSION, repo: "repo/export-service",
@@ -172,7 +184,7 @@ check("4 bad lesson → blocked by 🔒", !!blocked && /🔒/.test(blocked.block
 // 5) PR review comment by the lead that duplicates an existing team lesson → evidence + α += 2
 const r5 = await post("/api/events", { type: "review_comment", actor: "jordan", repo: "repo/export-service",
   payload: { smoke: true, text: "We never ship console.log in this service — always use the shared logger.", url: "https://github.com/meridian/export-service/pull/42#discussion_r1", file: "src/export.ts" } }, H("jordan"));
-const reinforced = (r5.json.actions ?? []).find((a) => a.memoryId === logger.id && /reinforced|updated|promoted/.test(a.action));
+const reinforced = (r5.json.actions ?? []).find((a) => a.memoryId === logger.id && /reinforced|updated/.test(a.action));
 check("5 review comment → reinforces existing logger lesson", !!reinforced, `${r5.ms}ms  actions=${JSON.stringify(r5.json.actions ?? r5.json)}`);
 
 // 6) Session end → α/β scoring of served memories + pack_log.corrections
@@ -180,6 +192,8 @@ const r6 = await post("/api/hooks/session-end", { session_id: SESSION, hook_even
 const loggerScore = (r6.json.scored ?? []).find((s) => s.id === logger.id);
 check("6 session end → served lesson scored, corrections counted", r6.status === 200 && r6.json.corrections >= 1 && loggerScore?.outcome === "untouched",
   `${r6.ms}ms  corrections=${r6.json.corrections}  ${(r6.json.scored ?? []).map((s) => `${s.title}: ${s.outcome} ${s.before} → ${s.after}`).join(" | ")}`);
+const endEv = must(await sb.from("events").select("actor,agent").eq("session_id", SESSION).eq("type", "session_end"), "end ev")[0];
+check("6a session_end event has actor + agent", endEv?.actor === "alex" && endEv?.agent === "claude-code", JSON.stringify(endEv));
 const r6b = await post("/api/hooks/session-end", { session_id: SESSION }, H("alex"));
 check("6b session end is idempotent", r6b.json.skipped === "already scored", JSON.stringify(r6b.json).slice(0, 120));
 

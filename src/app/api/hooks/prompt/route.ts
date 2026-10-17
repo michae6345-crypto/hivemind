@@ -2,6 +2,7 @@ import { after } from "next/server";
 import { HDR_USER } from "@/contracts";
 import { err, json } from "@/lib/auth";
 import { hookMessage, ingestEvent, normalizeRepo, type Outcome } from "@/lib/engine/pipeline";
+import { agentFromRequest } from "@/lib/engine/pack";
 
 export const maxDuration = 60;
 
@@ -11,7 +12,8 @@ const BUDGET_MS = 4600;
 /**
  * POST /api/hooks/prompt — raw Claude Code UserPromptSubmit hook JSON
  * ({ prompt, session_id, cwd, transcript_path, hook_event_name }).
- * Headers: Authorization: Bearer $HIVEMIND_TOKEN, x-hm-user, optional x-hm-repo.
+ * Headers: Authorization: Bearer $HIVEMIND_TOKEN, x-hm-user, optional x-hm-repo, x-hm-agent (default claude-code).
+ * Only prompts the classifier judges to be corrections are kept as `correction` events.
  */
 export async function POST(req: Request) {
   const token = process.env.HIVEMIND_TOKEN;
@@ -29,8 +31,8 @@ export async function POST(req: Request) {
     actor,
     sessionId: hook?.session_id,
     repo,
-    payload: { text: prompt, source: "claude-code", transcriptPath: hook?.transcript_path ?? null },
-  }).catch((e) => {
+    payload: { text: prompt, transcriptPath: hook?.transcript_path ?? null },
+  }, { agent: agentFromRequest(req), dropIfNotCorrection: true }).catch((e) => {
     console.error("[hooks/prompt]", e);
     return null;
   });

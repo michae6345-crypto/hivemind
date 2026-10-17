@@ -9,7 +9,7 @@ import { bump, fmtConfidence, roleWeight } from "./score";
 import { hasLLM, type EnginePath } from "./llm";
 
 // The learning pipeline (PLAN §5):
-//   event → ① filter → ② extract → ④ conflict vs 🔒 → ③ merge (ADD/UPDATE/DELETE/NONE) → ⑤ promote
+//   event → ① filter → ② extract → ④ conflict vs 🔒 → ③ merge (ADD/UPDATE/DELETE/NONE) → ⑤ pending until a human approves
 //   session end → ⑥ score served memories (α/β)
 // Steps run on Claude Haiku when ANTHROPIC_API_KEY is set, otherwise on deterministic heuristics.
 
@@ -24,13 +24,14 @@ type MemRow = {
   author: string | null;
   evidence: Evidence[];
   source: string;
+  slug: string | null;
   alpha: number;
   beta: number;
 };
 type PersonRow = { id: string; name: string; role: string; scope_id: string | null };
 type Ctx = { scopes: (Pick<Scope, "id" | "parentId"> & { level: string; owner: string | null; name: string })[]; people: PersonRow[] };
 
-export type Action = "added" | "reinforced" | "updated" | "promoted" | "blocked" | "invalidated";
+export type Action = "added" | "reinforced" | "updated" | "blocked";
 export type Captured = { action: Action; memory: Memory; owner: string | null; note?: string };
 export type Outcome = {
   eventId: string;
@@ -139,28 +140,32 @@ async function updateMemory(id: string, patch: Row): Promise<MemRow> {
   return data as MemRow;
 }
 
-/** Append evidence + α += w; auto-promote pending → active once ≥2 distinct humans back it (never touches locked text). */
-async function reinforce(target: MemRow, evidence: Evidence, w: number, mergedBody?: string): Promise<{ row: MemRow; promoted: boolean }> {
-  const ev = [...(target.evidence ?? []), evidence];
-  const patch: Row = { evidence: ev, alpha: Number(target.alpha) + w };
+/**
+ * Append evidence + α += w. Never changes status: chain of command means only a lead/security approval makes a
+ * lesson active, no matter how many engineers back it (more evidence = higher confidence for the approver).
+ */
+async function reinforce(target: MemRow, evidence: Evidence, w: number, mergedBody?: string): Promise<MemRow> {
+  const patch: Row = { evidence: [...(target.evidence ?? []), evidence], alpha: Number(target.alpha) + w };
   // The engine may rewrite only text it wrote itself — human-authored / seeded lessons and 🔒 rules keep their wording.
   if (mergedBody && !target.locked && ENGINE_SOURCES.has(target.source)) patch.body = mergedBody;
-  const promoted = target.status === "pending" && humanActors(ev).size >= 2;
-  if (promoted) {
-    patch.status = "active";
-    patch.status_reason = `Auto-promoted: confirmed by ${humanActors(ev).size} engineers`;
-  }
-  return { row: await updateMemory(target.id, patch), promoted };
+  return updateMemory(target.id, patch);
 }
 
 // ---------- event ingestion ----------
 
 /** Store an event, run the learning pipeline on it, mark it processed. Used by /api/events and /api/hooks/prompt. */
-export async function ingestEvent(input: EventInput): Promise<Outcome> {
+export type IngestOpts = {
+  /** Coding agent that produced the event (x-hm-agent) → events.agent. */
+  agent?: string | null;
+  /** Raw chat prompts (UserPromptSubmit): keep the event only if the classifier judged it a correction or it taught something. */
+  dropIfNotCorrection?: boolean;
+};
+
+export async function ingestEvent(input: EventInput, opts: IngestOpts = {}): Promise<Outcome> {
   const repo = normalizeRepo(input.repo);
   const { data: evRow, error } = await sb()
     .from("events")
-    .insert({ type: input.type, actor: input.actor, session_id: input.sessionId ?? null, repo, payload: input.payload ?? {} })
+    .insert({ type: input.type, actor: input.actor, agent: opts.agent ?? null, session_id: input.sessionId ?? null, repo, payload: input.payload ?? {} })
     .select("id,created_at")
     .single();
   if (error) throw new Error(`insert event: ${error.message}`);
@@ -168,12 +173,17 @@ export async function ingestEvent(input: EventInput): Promise<Outcome> {
 
   let outcome: Outcome;
   if (input.type === "session_end") {
-    await scoreSession(input.sessionId ?? "", { eventId });
+    await scoreSession(input.sessionId ?? "", { eventId, actor: input.actor, agent: opts.agent });
     outcome = { eventId, isCorrection: false, captured: [], lessons: [], path: hasLLM() ? "llm" : "heuristic" };
   } else if (input.type === "correction" || input.type === "review_comment" || input.type === "agent_proposal") {
     outcome = await learnFromEvent(eventId, { ...input, repo: repo ?? undefined });
   } else {
     outcome = { eventId, isCorrection: false, captured: [], lessons: [], path: "heuristic" };
+  }
+  if (opts.dropIfNotCorrection && input.type === "correction" && !outcome.isCorrection && !outcome.captured.length) {
+    // "Say OK." is not a correction: don't keep it as a correction event (it would inflate correction metrics).
+    await sb().from("events").delete().eq("id", eventId);
+    return outcome;
   }
   if (input.type !== "session_end") {
     const ratings = outcome.ratings ?? [];
@@ -286,7 +296,7 @@ async function learnFromEvent(eventId: string, input: EventInput): Promise<Outco
       const dupRow = dup.event === "NONE" && dup.target ? blockedDupes.find((m) => m.id === dup.target!.id) : undefined;
       const row = remember(
         dupRow
-          ? (await reinforce(dupRow, evidence, w)).row
+          ? await reinforce(dupRow, evidence, w)
           : await insertMemory({
               scope_id: scopeId, kind: b.kind, title: b.title, slug: slugify(b.title), status: "blocked",
               body: `${b.body}\n\nLearned from @${actor.replace(/^agent:/, "")} in #${repoScope}`,
@@ -297,7 +307,9 @@ async function learnFromEvent(eventId: string, input: EventInput): Promise<Outco
     };
 
     // ④ conflict vs 🔒 and ③ merge are independent → run in parallel (hook latency budget); conflict decides first.
-    const existing = mems.filter((m) => m.status !== "blocked");
+    // Locked rules are never merge targets: a correction that agrees with or overlaps a 🔒 rule becomes its own
+    // pending lesson (linked as related); only a contradiction of a 🔒 rule is blocked.
+    const existing = mems.filter((m) => m.status !== "blocked" && !m.locked);
     const [conflict, d] = await Promise.all([checkConflict(c, locked), decideMerge(c, existing)]);
     if (c.reinforceOnly && d.event !== "NONE" && d.event !== "UPDATE") Object.assign(d, heuristicMerge(c, existing));
     const lockHit = (conflict.conflict ? locked.find((m) => m.id === conflict.conflict!.id) : undefined) ?? rawLockHit;
@@ -308,39 +320,35 @@ async function learnFromEvent(eventId: string, input: EventInput): Promise<Outco
       continue;
     }
 
-    // ③ apply merge. Locked memories only ever absorb exact-duplicate evidence; they are never rewritten or retired.
-    let target = d.target ? existing.find((m) => m.id === d.target!.id) : undefined;
-    if (target?.locked && d.event !== "NONE") {
-      if (d.event === "DELETE" || heuristicConflict(c, [target])) {
-        await block(target); // merge judged it as reversing a locked rule → same outcome as ④
-        continue;
-      }
-      target = undefined; // UPDATE of a locked rule → keep the rule intact, store the candidate as its own pending lesson
-      d.event = "ADD";
-    }
+    // ③ apply merge. Evidence never changes status — every lesson waits for its scope owner's approval.
+    const target = d.target ? existing.find((m) => m.id === d.target!.id) : undefined;
     if ((d.event === "NONE" || d.event === "UPDATE") && target) {
       const merged = d.event === "UPDATE" && d.mergedText ? `${d.mergedText}\n\nLearned from @${actor} in #${repoScope}` : undefined;
-      const { row, promoted } = await reinforce(target, evidence, w, merged);
-      remember(row);
+      const row = remember(await reinforce(target, evidence, w, merged));
       captured.push({
-        action: promoted ? "promoted" : d.event === "UPDATE" ? "updated" : "reinforced",
+        action: d.event === "UPDATE" ? "updated" : "reinforced",
         memory: toMemory(row),
         owner: displayName(ctx, ownerFor(ctx, row.scope_id)),
         note: `${humanActors(row.evidence).size} engineer(s) agree · ${fmtConfidence(row.alpha, row.beta)}`,
       });
       continue;
     }
-    const row = await insertMemory({
-      scope_id: scopeId, kind: c.kind, title: c.title, body, slug: slugify(c.title), status: "pending",
-      source, author: actor, evidence: [evidence], alpha: 1 + w, beta: 1,
-    });
-    remember(row);
+    // ADD (or DELETE: a new lesson that would supersede an old one). Superseding is proposed, not applied — the old
+    // lesson is only retired when a human approves the new one.
+    const related = locked.filter((l) => overlap(tokens(`${c.title} ${c.body}`), tokens(`${l.title} ${l.body}`)) >= 2 && l.slug);
+    const links = [
+      ...related.map((l) => `Related: 🔒 [[${l.slug}]]`),
+      ...(d.event === "DELETE" && target?.slug ? [`Would supersede [[${target.slug}]]`] : []),
+    ];
+    const row = remember(
+      await insertMemory({
+        scope_id: scopeId, kind: c.kind, title: c.title, slug: slugify(c.title), status: "pending",
+        body: links.length ? `${body}\n${links.join("\n")}` : body,
+        status_reason: d.event === "DELETE" && target ? `Would supersede "${target.title}" if approved` : null,
+        source, author: actor, evidence: [evidence], alpha: 1 + w, beta: 1,
+      }),
+    );
     captured.push({ action: "added", memory: toMemory(row), owner: displayName(ctx, owner) });
-    // DELETE: the new lesson supersedes an old unlocked one → invalidate (never hard-delete). Agents can't invalidate.
-    if (d.event === "DELETE" && target && !isAgent) {
-      const old = remember(await updateMemory(target.id, { status: "invalid", invalidated_by: row.id, status_reason: `Superseded by "${c.title}"` }));
-      captured.push({ action: "invalidated", memory: toMemory(old), owner: displayName(ctx, owner), note: `superseded by ${row.id}` });
-    }
   }
 
   console.log(
@@ -353,19 +361,10 @@ async function learnFromEvent(eventId: string, input: EventInput): Promise<Outco
 export function hookMessage(o: Outcome): string | null {
   const lines = o.captured.map((c) => {
     const t = c.memory.title;
-    switch (c.action) {
-      case "added":
-        return `📝 Hivemind captured a lesson: "${t}" — pending approval by ${c.owner ?? "the scope owner"}`;
-      case "blocked":
-        return `🚫 Hivemind blocked "${t}": ${(c.note ?? "conflicts with a 🔒 rule").replace(/^Conflicts/, "conflicts")}`;
-      case "promoted":
-        return `✅ Hivemind: "${t}" is now confirmed by multiple engineers — active for every agent`;
-      case "reinforced":
-      case "updated":
-        return `📝 Hivemind reinforced an existing lesson: "${t}" (${c.memory.status})`;
-      case "invalidated":
-        return `♻️ Hivemind retired the old lesson "${t}"`;
-    }
+    // Strings are mirrored in src/components/site/demo-script.ts (HIVE.lessonCaptured / lessonBlocked) — keep identical.
+    if (c.action === "blocked") return `🚫 Hivemind blocked "${t}": ${(c.note ?? "conflicts with a 🔒 rule").replace(/^Conflicts/, "conflicts")}`;
+    if (c.memory.status === "pending") return `📝 Hivemind captured a lesson: "${t}" — pending approval by ${c.owner ?? "the scope owner"}`;
+    return `📝 Hivemind reinforced an existing lesson: "${t}" (${c.memory.status})`;
   });
   return lines.length ? lines.join("\n") : null;
 }
@@ -389,7 +388,10 @@ export type SessionScore = { sessionId: string; corrections: number; packs: numb
  *   touched but not contradicted (re-stated)          → no change
  * Also writes pack_log.corrections = number of correction events in the session. Idempotent per session.
  */
-export async function scoreSession(sessionId: string, opts: { eventId?: string } = {}): Promise<SessionScore> {
+export async function scoreSession(
+  sessionId: string,
+  opts: { eventId?: string; actor?: string | null; agent?: string | null } = {},
+): Promise<SessionScore> {
   const res: SessionScore = { sessionId, corrections: 0, packs: 0, scored: [] };
   if (!sessionId) return { ...res, skipped: "no session id" };
 
@@ -400,7 +402,7 @@ export async function scoreSession(sessionId: string, opts: { eventId?: string }
   }
   let eventId = opts.eventId;
   if (!eventId) {
-    const { data } = await sb().from("events").insert({ type: "session_end", session_id: sessionId, payload: {} }).select("id").single();
+    const { data } = await sb().from("events").insert({ type: "session_end", session_id: sessionId, actor: opts.actor ?? null, agent: opts.agent ?? null, payload: {} }).select("id").single();
     eventId = data?.id;
   }
 
@@ -416,6 +418,7 @@ export async function scoreSession(sessionId: string, opts: { eventId?: string }
 
   if (packs?.length) {
     await sb().from("pack_log").update({ corrections: corrections.length }).eq("session_id", sessionId);
+    if (opts.agent) await sb().from("pack_log").update({ agent: opts.agent }).eq("session_id", sessionId).is("agent", null);
     const ids = [...new Set(packs.flatMap((p) => (p.memory_ids as string[]) ?? []))];
     const { data: mems } = ids.length ? await sb().from("memories").select(MEM_COLS).in("id", ids) : { data: [] };
     for (const m of (mems ?? []) as MemRow[]) {
