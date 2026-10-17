@@ -9,6 +9,7 @@ Re-run after each big merge: `pnpm build` · `node scripts/e2e-demo.mjs` (server
 |---|---|
 | `pnpm build` | ✅ passes (19 routes: website `/`, app `/app`, `/app/approvals`, `/app/results`, 14 API routes) |
 | `pnpm typecheck` / `pnpm lint` | ✅ |
+| Prod deploy fail ~11:54 PM (`hivemind-4b4fizv9y`) | ✅ fixed. Root cause: a CLI deploy uploaded a working copy in which a demo session had edited `demo/export-service/src/export.ts` (logged `expert_email`). The root tsconfig typechecked `demo/`, so it failed with `TS2339: Property 'expert_email' does not exist on type 'Row'`. Committed `main` was fine. Fix: `demo` added to `tsconfig.json` `exclude` (ESLint already ignores it). The demo repo is a fictional target that agents edit live, and it must never gate the app build |
 | Migrations | ✅ fixed the filename collision: `0002_people_title_rejection_event.sql` → `0003_…`. It was already applied, so this is a rename only. If anyone uses the Supabase CLI migration history, note the new prefix |
 | Gotcha | If the build fails with `.next/dev/types/validator.ts … Cannot find module '../../../src/app/(ui)/approvals/page.js'`, stale dev-server types from before the `/app` move are the cause. Run `rm -rf .next/dev`. Vercel isn't affected |
 
