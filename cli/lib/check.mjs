@@ -20,10 +20,19 @@ const toPosix = (p) => p.replace(/\\/g, "/");
 
 /** "@maya" from the rule's ownerId, else from the display name ("Maya Chen, Head of Security"). */
 function handle(v, rule) {
+  if (rule?.handle) return rule.handle;
+  if (v.owner.startsWith("@")) return v.owner; // the API sends handles now; older servers sent "Maya Chen, Head of Security"
   const id = rule?.ownerId || v.owner.split(/[ ,]/)[0].toLowerCase();
   return `@${id.startsWith("agent") ? "agent" : id}`;
 }
 const ownerTitle = (v, rule) => (v.owner.includes(",") ? v.owner.split(",").slice(1).join(",").trim() : (rule?.ownerRole ?? ""));
+
+/** Underline columns for line `i`: the API's exact columns (single-line hits), else our own heuristic. Tab-expanded. */
+function colsFor(v, i, line, rule) {
+  if (v.startCol == null || v.startLine !== v.endLine) return span(line, rule);
+  const at = (n) => expand(line.slice(0, n)).length;
+  return [at(v.startCol), at(v.endCol ?? line.length)];
+}
 
 /** The LLM's one-line explanation, i.e. whatever follows the standard "…Locked by X, Role." / "…From X's lesson." wording. */
 function explanation(v) {
@@ -68,7 +77,7 @@ function frame(file, lines, v, rule) {
   const width = String(Math.max(last + 1, ...fixLines.map((f) => f.n))).length;
   const gut = (n = "") => c.gray(`${String(n).padStart(width)} │`);
   const bar = c.gray(`${" ".repeat(width)} │`);
-  const [sc] = span(lines[v.startLine] ?? "", rule);
+  const [sc] = colsFor(v, v.startLine, lines[v.startLine] ?? "", rule);
 
   const badge = v.locked ? c.bold(c.rose("locked rule:")) : c.bold(c.lesson("team lesson:"));
   const out = [
@@ -90,7 +99,7 @@ function frame(file, lines, v, rule) {
     } else {
       out.push(`${num} ${hit ? text : c.dim(text)}`);
       if (hit) {
-        const [s, e] = span(lines[i], rule);
+        const [s, e] = colsFor(v, i, lines[i], rule);
         const end = Math.min(e, MAX_COLS);
         out.push(`${bar} ${" ".repeat(Math.min(s, MAX_COLS - 1))}${col("~".repeat(Math.max(1, end - s)))} ${col(why)}`);
       }
@@ -150,12 +159,23 @@ function stagedFiles(root) {
     .filter((f) => CODE_EXT.test(f.abs));
 }
 
+/**
+ * Default: deterministic (regex) hits only, so the same file prints the same frames every run.
+ * --deep also waits for the Haiku pass (the API answers pending:true first, then serves the full result from its cache).
+ */
 async function checkOne(cfg, file, text) {
-  const [res, rules] = await Promise.all([
-    post(cfg, "/api/vscode/check", { repo: cfg.repo, file, text }, { timeout: 30000 }),
+  const ask = () => post(cfg, "/api/vscode/check", { repo: cfg.repo, file, text }, { timeout: 30000 });
+  const [first, rules] = await Promise.all([
+    ask(),
     api(cfg, `/api/vscode/rules?${new URLSearchParams({ repo: cfg.repo, file })}`).then((r) => r.data.rules ?? []).catch(() => []),
   ]);
-  return { violations: res.violations ?? [], rules: new Map(rules.map((r) => [r.id, r])) };
+  let res = first;
+  for (let i = 0; cfg.flags.deep && res.pending && i < 4; i++) {
+    await new Promise((r) => setTimeout(r, 2000));
+    res = await ask();
+  }
+  const all = res.violations ?? [];
+  return { violations: cfg.flags.deep ? all : all.filter((v) => v.source !== "llm"), rules: new Map(rules.map((r) => [r.id, r])) };
 }
 
 const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;

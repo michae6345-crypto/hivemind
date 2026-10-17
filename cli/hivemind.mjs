@@ -6,7 +6,7 @@
 //   hivemind status [--repo …] [--url …] [--dir …]
 //   hivemind teach "<rule>" [--scope repo/x|team/x]
 //   hivemind rules  [--file path]
-//   hivemind check  <file…> | --staged [--fix]
+//   hivemind check  <file…> | --staged [--fix] [--deep]
 // Every command takes --agent <kind> (else HIVEMIND_AGENT, else "cli") for x-hm-agent attribution.
 // Precedence: flag > env (HIVEMIND_API_URL, HIVEMIND_TOKEN, HIVEMIND_USER, HIVEMIND_REPO) > .hivemind.json > defaults
 // (URL: production; token: <hivemind>/.env.local).
@@ -25,7 +25,7 @@ const GENERIC = { id: "other", label: "Any MCP agent", rules: { file: "AGENTS.md
 const agentOf = (id) => byId[id] ?? (id === "other" ? GENERIC : null);
 
 // ---------- args ----------
-const BOOLEAN = new Set(["dry-run", "no-sync", "no-vscode", "copilot-cli", "personal", "help", "json", "staged", "fix"]);
+const BOOLEAN = new Set(["dry-run", "no-sync", "no-vscode", "copilot-cli", "personal", "help", "json", "staged", "fix", "deep"]);
 function parseArgs(argv) {
   const [cmd = "help", ...rest] = argv;
   const flags = {};
@@ -387,7 +387,8 @@ ${c.bold("Usage")}
   hivemind status [--repo …] [--url …] [--dir …]
   hivemind teach  "<rule>" [--scope repo/<name>|team/<name>]   propose a lesson (a human approves it)
   hivemind rules  [--file <path>]                              print the rules that apply (to a file)
-  hivemind check  <file…> | --staged [--fix]                   team-rule violations as code frames; --fix applies quick fixes
+  hivemind check  <file…> | --staged [--fix] [--deep]          team-rule violations as code frames; --fix applies quick fixes,
+                                                               --deep adds the LLM pass (default: deterministic only)
 
   Any command: --agent <claude-code|cursor|…> (x-hm-agent; default HIVEMIND_AGENT or "cli"), --user <id>
 

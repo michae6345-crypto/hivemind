@@ -27,7 +27,7 @@ To choose agents yourself, pass `--agents cursor,codex`.
 | `status` | Pings the API, then shows the rules in the pack, pending lessons, and each agent's MCP, hooks and rules files |
 | `teach "<rule>" [--scope repo/x|team/x]` | Sends the rule to `/api/events` as a correction, so it gets the same extract, merge and 🔒 checks as any other correction. Prints `Lesson proposed — waiting on @<owner>`, or `Blocked by a locked rule`. A `team/…` scope is sent as a proposal for that scope |
 | `rules [--file path]` | Prints the rules that apply now. With `--file`, it prints that file's rules plus live edits, using MCP `get_team_rules`. Output is colored on a TTY and plain markdown when piped |
-| `check <file…>` / `check --staged` `[--fix]` | Checks files against the team's rules via `POST /api/vscode/check`, the same regex + Haiku engine as the VS Code squiggles. Each violation prints as a code frame: `file:line:col`, 2 lines of context, the range underlined `~~~~` (rose for locked rules, blue for lessons), the rule, the owner's `@handle` and the quick fix as a diff. `--fix` applies the quick fixes (deduped, bottom-up) and re-checks. Exits 1 while a locked rule is broken, so `hivemind check --staged` works as a pre-commit hook |
+| `check <file…>` / `check --staged` `[--fix] [--deep]` | Checks files against the team's rules via `POST /api/vscode/check`, the same regex + Haiku engine as the VS Code squiggles. Each violation prints as a code frame: `file:line:col`, 2 lines of context, the range underlined `~~~~` (rose for locked rules, blue for lessons), the rule, the owner's `@handle` and the quick fix as a diff. `--fix` applies the quick fixes (deduped, bottom-up) and re-checks. Exits 1 while a locked rule is broken, so `hivemind check --staged` works as a pre-commit hook |
 
 Every command accepts `--agent <kind>`, which sets the `x-hm-agent` header. The default is `$HIVEMIND_AGENT`, else `cli`.
 
@@ -49,37 +49,41 @@ Settings are resolved in this order: flags, then `HIVEMIND_API_URL` / `HIVEMIND_
 
 ```text
 $ cd demo/export-service && hivemind check demo/violations.ts
+…
 locked rule: Never log expert personal info
-   ╭─[demo/violations.ts:15:3]
+   ╭─[demo/violations.ts:15:41]
    │
 13 │   const rows: Row[] = [...labA, ...labB];
 14 │   console.log("exporting quarterly report", { quarter, rows: rows.length });
 15 │   logger.info("report requested", { by: requestedBy.email });
-   │   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ breaks a locked rule
+   │                                         ~~~~~~~~~~~~~~~~~ Logs an expert's email.
 16 │   return rows.map((r) => `${r.id},${r.lab_customer_id},${r.payout_cents}`).join("
 ");
 17 │ }
    │
-   ├─ owner  @maya · Head of Security
-   ╰─ fix    log the expert's id, not their contact details
+   ├─ owner  @maya · Security
+   ╰─ fix    log the expert id instead
 15 │ -   logger.info("report requested", { by: requestedBy.email });
 15 │ +   logger.info("report requested", { by: requestedBy.id });
-…
-Hivemind · 3 locked rules broken · 1 lesson · run with --fix to apply 3 quick fixes
+
+Hivemind · 2 locked rules broken · 1 lesson · run with --fix to apply 2 quick fixes
 ```
 
-The house style is no emojis: color carries the meaning (rose = locked rule, blue #4C6EF5 = team lesson), and owners
-are `@handles`. The regex pass is deterministic, so the fixture gives the same frames on every run:
+The house style is no emojis: color carries the meaning (rose = locked rule, blue #4C6EF5 = team lesson), and people
+are `@handles`.
 
-- It catches a missing `assertSingleCustomer` in an export function.
-- It catches rows from two lab customers being combined.
-- It catches `console.*`.
-- It catches an expert's email or phone in a log call.
+By default `check` prints only the API's deterministic detectors, so a file gives byte-identical output on every run:
 
-LLM hits for a rule the regex pass already flagged are dropped.
+- Lab A and Lab B rows mixed
+- PII in logs
+- float money
+- `console.*`
+- a missing `assertSingleCustomer`
 
-`--fix` can't fix everything. Combining Lab A and Lab B rows stays flagged after the fixes, because that needs a human; the
-re-check names `@maya`.
+`--deep` also waits for the Haiku pass.
+
+`--fix` can't fix everything. The lab mixing stays flagged after the fixes, because it needs a human; the re-check names
+`@maya`.
 
 Pre-commit hook: `printf '#!/bin/sh
 hivemind check --staged
