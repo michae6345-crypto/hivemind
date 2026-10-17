@@ -117,5 +117,8 @@ export const rich = external?.rich ?? ((s) => String(s).replace(/@[\w.-]+/g, (h)
 export const HEX = external?.HEX ?? "⬢";
 export const brand = () => `${t.lesson(HEX)} ${t.bold(t.text("Hivemind"))}`;
 
+/** watch/theme.mjs statusPill(text, hex) (wash = 16% of the hex) when present, so pills match watch exactly. */
+export const themeStatusPill = typeof external?.statusPill === "function" ? external.statusPill : null;
+
 /** Whether the shared watch theme was found (shown in --version). */
 export const themeSource = external ? "watch/theme.mjs" : "built-in spec";
