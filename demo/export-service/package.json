@@ -1,0 +1,7 @@
+{
+  "name": "export-service",
+  "private": true,
+  "description": "Demo target repo for Hivemind (fictional). Builds per-customer dataset exports for AI labs.",
+  "type": "module",
+  "scripts": { "typecheck": "tsc --noEmit" }
+}

@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "hivemind": {
+      "type": "http",
+      "url": "${HIVEMIND_API_URL:-http://localhost:3000}/api/mcp",
+      "headers": {
+        "Authorization": "Bearer ${HIVEMIND_TOKEN}",
+        "x-hm-user": "${HIVEMIND_USER:-sam}",
+        "x-hm-repo": "${HIVEMIND_REPO:-repo/export-service}"
+      }
+    }
+  }
+}

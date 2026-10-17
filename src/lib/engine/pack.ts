@@ -69,7 +69,9 @@ export async function buildPack({ repo, user, session, log = true }: PackInput):
   if (error) throw new Error(error.message);
   const mems = (memRows ?? []).map(toMemory).filter((m) => !m.expiresAt || m.expiresAt > now);
 
-  const locked = mems.filter((m) => m.locked).sort((a, b) => chain.indexOf(b.scopeId) - chain.indexOf(a.scopeId));
+  const locked = mems
+    .filter((m) => m.locked)
+    .sort((a, b) => chain.indexOf(b.scopeId) - chain.indexOf(a.scopeId) || b.alpha - a.alpha);
   const directives = mems.filter((m) => !m.locked && m.kind === "directive").sort((a, b) => rank(b) - rank(a));
   const lessons = mems.filter((m) => !m.locked && (m.kind === "lesson" || m.kind === "fact")).sort((a, b) => rank(b) - rank(a));
   const owners = mems.filter((m) => !m.locked && m.kind === "owner").sort((a, b) => specificity(b.scopeId) - specificity(a.scopeId));
@@ -128,7 +130,7 @@ export async function buildPack({ repo, user, session, log = true }: PackInput):
 
   const pack: ContextPack = { markdown: out, memoryIds: ids, tokens: Math.ceil(out.length / 4) };
 
-  if (log && session) {
+  if (log && session && !session.startsWith("preview")) { // UI preview calls (session=preview) are not sessions
     const lockedCount = locked.filter((m) => ids.includes(m.id)).length;
     await Promise.all([
       sb.from("pack_log").insert({ session_id: session, actor: user, repo: repoId || null, memory_ids: ids, tokens: pack.tokens }),
