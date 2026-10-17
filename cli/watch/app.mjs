@@ -4,13 +4,14 @@ import { appendFileSync, readFileSync } from "node:fs";
 import { basename, relative, resolve } from "node:path";
 import * as theme from "./theme.mjs";
 import { HEX, P, REDUCED, bold, fg, label, plain, scopeChip, sep, t } from "./theme.mjs";
-import { Screen, clip, keys, padEnd, spread, strip, width } from "./term.mjs";
+import { Screen, clip, keys, padEnd, spread, strip, width, wrap } from "./term.mjs";
 import { blockedBy, chainOf, makeApi, ownerOf, plainError, toCards } from "./data.mjs";
 import here from "./views/here.mjs";
 import rules from "./views/rules.mjs";
 import queue from "./views/queue.mjs";
 import feed from "./views/feed.mjs";
 import detail from "./views/detail.mjs";
+import { switchPersona } from "./views/rulekit.mjs";
 import { celebration } from "./celebrate.mjs";
 import { startWatcher } from "./watcher.mjs";
 import { writeWatchState } from "./statusline.mjs";
@@ -173,6 +174,7 @@ export async function cmdWatch(cfg) {
       loaded = true;
     } catch (e) {
       if (state.online !== false) state.offlineReason = plainError(e);
+      state.offlineStatus = e?.status ?? null; // 401/403 = the token; anything else = the network or the server
       state.online = false;
     }
     render();
@@ -250,8 +252,9 @@ export async function cmdWatch(cfg) {
     let mid;
     let caret = null;
     if (sent) {
+      // The answer wraps inside the box (up to 3 lines): "Blocked: contradicts @greg's locked rule "…"." must be whole.
       const col = sent.tone === "locked" ? t.lockedText : t.lessonText;
-      mid = theme.rich(plain(sent.msg), { base: col });
+      mid = wrap(plain(sent.msg), inner, 3).map((l) => theme.rich(l, { base: col }));
     } else {
       const room = inner - 3;
       const text = tt.text;
@@ -262,7 +265,8 @@ export async function cmdWatch(cfg) {
     const chipText = scopeChip(cfg.repo);
     const right = tt.sending ? t.faint("sending") : t.blueText("enter");
     const bottom = `${b("╰─ ")}${chipText} ${b("─".repeat(Math.max(0, w - 8 - width(chipText) - width(right))))} ${right} ${b("─╯")}`;
-    return { lines: [clip(top, w, ""), `${b("│")} ${padEnd(mid, inner)} ${b("│")}`, clip(bottom, w, "")], caret };
+    const rows = [mid].flat().map((m) => `${b("│")} ${padEnd(m, inner)} ${b("│")}`);
+    return { lines: [clip(top, w, ""), ...rows, clip(bottom, w, "")], caret };
   }
 
   /** A hairline, then key hints: key bold in chrome text, the word faint, three spaces between pairs. */
@@ -281,12 +285,13 @@ export async function cmdWatch(cfg) {
     return [hairline(w), clip(" " + keep.join("   "), w)];
   }
 
-  /** One line above the footer for errors and confirmations (403s in plain words, approvals). */
-  function toastLine(w, now) {
+  /** Up to two lines above the footer for errors and confirmations (403s in plain words, approvals). Wrapped, not
+   * clipped: the end of the sentence carries the point ("… Locked by @greg.", "… @ben can."). */
+  function toastLines(w, now) {
     const tt = state.toast;
-    if (!tt || now - tt.at > tt.ms) return null;
+    if (!tt || now - tt.at > tt.ms) return [];
     const col = { ok: t.ok, locked: t.lockedText, lesson: t.lessonText, muted: t.muted }[tt.tone] ?? t.muted;
-    return clip(` ${theme.rich(plain(tt.msg), { base: col })}`, w);
+    return wrap(plain(tt.msg), w - 1, 2).map((l) => clip(` ${theme.rich(l, { base: col })}`, w));
   }
 
   let lastFrame = [];
@@ -297,14 +302,16 @@ export async function cmdWatch(cfg) {
     const now = Date.now();
     const top = [...header(w), ...tabBar(w)];
     const box = teachBox(w, now);
-    const toast = toastLine(w, now);
-    const bottom = [...(toast ? [toast] : []), ...box.lines, ...footer(w, now)];
+    const bottom = [...toastLines(w, now), ...box.lines, ...footer(w, now)];
     const bodyH = Math.max(1, h - top.length - bottom.length);
     const ctx = ctxFor(w, bodyH);
 
     let body = [];
     if (state.online === false) {
-      body.push("", clip(`  ${t.muted("Not connected to Hivemind. Set ")}${t.blueText("HIVEMIND_TOKEN")}${t.muted(" and restart watch.")}`, w));
+      // Said once, in the body (spec §0.1). Only a rejected token needs a restart; the network and 5xx recover on their own.
+      const auth = !cfg.token || state.offlineStatus === 401 || state.offlineStatus === 403;
+      const msg = auth ? "Not connected to Hivemind. Set HIVEMIND_TOKEN and restart watch." : "Not connected to Hivemind. Retrying every few seconds.";
+      body.push("", ...wrap(msg, w - 2, 2).map((l) => `  ${l.split(/(HIVEMIND_TOKEN)/).map((x, i) => (i % 2 ? t.blueText(x) : t.muted(x))).join("")}`));
       ctx.height = bodyH - body.length;
     }
     const cel = state.celebration;
@@ -412,6 +419,11 @@ export async function cmdWatch(cfg) {
     if (key.name === "right") return actions.setTab(TABS[(i + 1) % TABS.length].id);
     if (key.name === "left") return actions.setTab(TABS[(i + TABS.length - 1) % TABS.length].id);
     if (/^[1-4]$/.test(str ?? "")) return actions.setTab(TABS[Number(str) - 1].id);
+    // p cycles kevin → emily → ben → greg from any tab (Rules and Queue handle it themselves).
+    if (key.name === "p" && !key.ctrl && !key.meta) {
+      switchPersona(state, ctx);
+      return render();
+    }
     if (key.name === "t") {
       state.teach = { focus: true, text: "" };
       return render();
