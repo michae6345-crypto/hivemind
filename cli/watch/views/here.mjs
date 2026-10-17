@@ -303,7 +303,9 @@ export default {
       const block = () => broken(th, ch, v, lines, file, rule, state, ctx, vs.length > 1 && i === index);
       const age = now - (view.born?.[`${file}|${keyOf(v, lines)}`] ?? 0);
       const alpha = th.REDUCED ? 1 : age < FLASH_MS[0] ? 0.35 : age < FLASH_MS[1] ? 0.7 : 1;
-      out.push("", ...(alpha < 1 ? th.faded(alpha, block) : block()));
+      const ls = alpha < 1 ? th.faded(alpha, block) : block();
+      ls[0] = th.rowMark(i) + ls[0]; // click selects this violation, a second click opens it
+      out.push("", ...ls);
     }
     const fol = followed(state, f.text ?? "", new Set(vs.map((v) => v.ruleId)));
     if (fol.length && out.length + 3 <= h) {
@@ -314,6 +316,11 @@ export default {
     }
     return out;
   },
+  /** Mouse: select(i) / selected() address the violations in render order. */
+  select(i, state) {
+    (state.view.here ??= {}).index = i;
+  },
+  selected: (state) => state.view.here?.index ?? 0,
   /** w / e (why): the rule behind the selected violation. */
   why(state) {
     const vs = ordered(visible(state));

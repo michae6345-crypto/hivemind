@@ -157,7 +157,8 @@ export default {
         const lines = card(m, act, state, ctx, a, w, flash);
         if (v.notes[m.id]) lines.push(t.lockedText(v.notes[m.id]));
         if (isSel) selFrom = out.length;
-        lines.forEach((l, j) => out.push(a.wash((j === 0 ? rule : "  ") + l, bg, w)));
+        const at = cards.findIndex((c) => c.m === m);
+        lines.forEach((l, j) => out.push((j === 0 ? th.rowMark(at) : "") + a.wash((j === 0 ? rule : "  ") + l, bg, w)));
         if (isSel) selTo = out.length;
         if (i < s.cards.length - 1) out.push("");
       });
@@ -167,6 +168,11 @@ export default {
     return out.slice(Math.max(0, start), Math.max(0, start) + room).map((l) => th.clip(l, w));
   },
 
+  /** Mouse: cards in render order (the same list j/k walks). */
+  select(i, state) {
+    view(state).index = i;
+  },
+  selected: (state) => view(state).index,
   onKey(key, state, ctx) {
     const v = view(state);
     const { cards } = model(state, ctx);

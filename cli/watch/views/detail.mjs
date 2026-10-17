@@ -139,7 +139,7 @@ export default {
     const found = findMemory(state.detail, state, ctx);
     const m = found ? { ...found, symbols: vs?.symbols ?? found.symbols } : vs ? fromVsRule(vs) : null;
     const back = { here: "Here", rules: "Rules", queue: "Queue", feed: "Feed" }[state.tab] ?? v.from ?? "Rules";
-    const out = [a.chromeText(`‹ ${back}`), ""];
+    const out = [th.rowMark("back") + a.chromeText(`‹ ${back}`), ""]; // clicking it goes back
     if (!m) return [...out, t.muted("This rule isn't in Hivemind anymore.")];
 
     // kind · scope, title, rule text
@@ -204,6 +204,7 @@ export default {
     return out.slice(v.scroll, v.scroll + room).map((l) => th.clip(l, w));
   },
 
+  wheelStep: 3, // the wheel scrolls 3 lines a notch
   onKey(key, state, ctx) {
     const v = view(state);
     if (key.name === "j" || key.name === "down") return (v.scroll += 1), true;

@@ -93,7 +93,7 @@ export default {
         if (sel) selFrom = lines.length;
         const fold = v.collapsed[s.key] ? t.faint("▸ ") : "";
         const scopeText = s.key === "you" || s.key === "org" || !s.scopeId ? null : `#${s.scopeId}`;
-        lines.push(a.wash(fold + a.section(s.word, s.rows.length, scopeText), sel ? C.selBg : null, w));
+        lines.push(th.rowMark(i) + a.wash(fold + a.section(s.word, s.rows.length, scopeText), sel ? C.selBg : null, w));
         if (sel) selTo = lines.length;
         return;
       }
@@ -101,7 +101,7 @@ export default {
       const bg = sel ? C.selBg : null;
       const bar = sel ? a.chrome("▎ ") : m.locked ? t.locked("▎ ") : m.kind === "owner" || m.kind === "fact" ? t.faint("▎ ") : t.lesson("▎ ");
       if (sel) selFrom = lines.length;
-      lines.push(a.wash(bar + a.title(m), bg, w));
+      lines.push(th.rowMark(i) + a.wash(bar + a.title(m), bg, w));
       const when = m.locked ? t.lockedText("locked ") + t.faint(a.day(m.createdAt)) : t.faint(age(m.createdAt, ctx.now));
       const fresh = isNew(m, ctx.now) ? "  " + a.ok("● new") : "";
       lines.push(a.wash(`  ${a.scope(m.scopeId)} ${a.handle(ownerHandle(m))}  ${when}${fresh}`, bg, w));
@@ -116,6 +116,11 @@ export default {
     return [...top, ...lines.slice(Math.max(0, start), Math.max(0, start) + room)];
   },
 
+  /** Mouse: items (section heads and rules) in render order. */
+  select(i, state) {
+    view(state).index = i;
+  },
+  selected: (state) => view(state).index,
   onKey(key, state, ctx) {
     const v = view(state);
     if (v.filtering) {

@@ -1,6 +1,12 @@
 // Pure-ANSI screen: alternate buffer, line-diffed redraws inside synchronized-output brackets (no flicker in
 // Windows Terminal / VS Code), raw keys, resize. Zero deps; restores the terminal on every exit path.
 import { emitKeypressEvents } from "node:readline";
+import { PassThrough } from "node:stream";
+
+// xterm mouse: button press/release (1000) in SGR encoding (1006). Off is always sent on stop, even if never on,
+// so no exit path (q, Ctrl+C, a crash, a snapshot) can leave the terminal reporting clicks as text.
+export const MOUSE_ON = "\x1b[?1000h\x1b[?1006h";
+export const MOUSE_OFF = "\x1b[?1000l\x1b[?1002l\x1b[?1006l";
 
 const ANSI = /\x1b\[[0-9;:?]*[A-Za-z]|\x1b\][^\x07]*\x07/g;
 const WIDE = /[ᄀ-ᅟ⺀-꓏가-힣豈-﫿︰-﹏＀-｠￠-￦]|\p{Extended_Pictographic}/u;
@@ -84,9 +90,9 @@ export class Screen {
   get rows() {
     return this.out.rows || Number(process.env.LINES) || 36;
   }
-  start() {
+  start({ mouse = false } = {}) {
     this.on = true;
-    this.out.write("\x1b[?1049h\x1b[?25l\x1b[H\x1b[2J");
+    this.out.write(`\x1b[?1049h\x1b[?25l\x1b[H\x1b[2J${mouse ? MOUSE_ON : ""}`);
     const restore = () => this.stop();
     process.once("exit", restore);
     this.out.on("resize", () => {
@@ -98,7 +104,7 @@ export class Screen {
   stop() {
     if (!this.on) return;
     this.on = false;
-    this.out.write("\x1b[0m\x1b[0 q\x1b[?25h\x1b[?1049l");
+    this.out.write(`${MOUSE_OFF}\x1b[0m\x1b[0 q\x1b[?25h\x1b[?1049l`);
   }
   /** Draw full-screen `lines`; only rows that changed are rewritten. cursor = {row, col} shows the real caret there. */
   draw(lines, cursor = null) {
@@ -118,15 +124,54 @@ export class Screen {
 }
 
 /** Raw keypresses → cb(str, key). Ctrl+C arrives as a key (raw mode), so the caller handles quitting. */
-export function keys(cb) {
+export function keys(cb, { onMouse } = {}) {
   if (!process.stdin.isTTY) return () => {};
-  emitKeypressEvents(process.stdin);
+  // stdin → (SGR mouse reports split out) → readline's keypress parser. Mouse reports never reach the key handler, so
+  // a click can't type "<0;12;3M" into the teach box or trigger shortcuts.
+  const keysIn = new PassThrough();
+  emitKeypressEvents(keysIn);
+  keysIn.on("keypress", cb);
+  let held = "";
+  let flushTimer = null;
+  const flush = () => {
+    flushTimer = null;
+    // Nothing followed a lone ESC within 25ms: it's the Escape key. Say so now rather than waiting out readline's
+    // 500ms "maybe it's a sequence" timer.
+    if (held === "\x1b") cb(undefined, { name: "escape", sequence: "\x1b", ctrl: false, meta: false, shift: false });
+    else if (held) keysIn.write(held);
+    held = "";
+  };
+  const onData = (chunk) => {
+    clearTimeout(flushTimer);
+    let s = held + String(chunk);
+    held = "";
+    // A report split across reads ("\x1b[<0;1" … "2;3M"): hold the tail briefly; a lone ESC goes on after 25ms.
+    const tail = s.match(/\x1b(\[(<[\d;]*)?)?$/);
+    if (tail) {
+      held = tail[0];
+      s = s.slice(0, -held.length);
+      flushTimer = setTimeout(flush, 25);
+    }
+    let rest = "";
+    let last = 0;
+    for (const m of s.matchAll(MOUSE_RE)) {
+      rest += s.slice(last, m.index);
+      last = m.index + m[0].length;
+      onMouse?.({ b: Number(m[1]), x: Number(m[2]) - 1, y: Number(m[3]) - 1, down: m[4] === "M" });
+    }
+    rest += s.slice(last);
+    if (rest) keysIn.write(rest);
+  };
   process.stdin.setRawMode(true);
   process.stdin.resume();
-  process.stdin.on("keypress", cb);
+  process.stdin.on("data", onData);
   return () => {
-    process.stdin.off("keypress", cb);
+    clearTimeout(flushTimer);
+    process.stdin.off("data", onData);
+    keysIn.off("keypress", cb);
     if (process.stdin.isTTY) process.stdin.setRawMode(false);
     process.stdin.pause();
   };
 }
+/** SGR mouse report: ESC [ < button ; col ; row (1-based) M=press m=release. */
+const MOUSE_RE = /\x1b\[<(\d+);(\d+);(\d+)([Mm])/g;

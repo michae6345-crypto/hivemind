@@ -121,7 +121,7 @@ export default {
       const line = c.kind === "fix" || th.width(head) + 2 + th.width(when) > w ? th.spread(head, ` ${when}`, w) : `${head}  ${when}`;
       const age = c.born ? Math.floor((now - c.born) / 100) : Infinity;
       const wash = i === sel ? WASH[0] : age < WASH.length ? WASH[age] : null;
-      return washed(th, th.clip(line, w), wash, w);
+      return washed(th, th.clip(th.rowMark(i) + line, w), wash, w);
     };
 
     // Collisions: one honey line under the newest edit of that file; ▎ bar when it's the file watch last flagged.
@@ -160,6 +160,12 @@ export default {
     return out;
   },
 
+  /** Mouse: rows are the non-collision cards, in render order. The wheel moves 3 rows a notch. */
+  wheelStep: 3,
+  select(i, state) {
+    (state.view.feed ??= { sel: -1 }).sel = i;
+  },
+  selected: (state) => state.view.feed?.sel ?? -1,
   /** w / e (why): the selected row's rule; with nothing selected, the newest block or fix. A block explains the locked rule that stopped it. */
   why(state) {
     const list = visible(state, Date.now()).filter((c) => c.kind !== "collision");

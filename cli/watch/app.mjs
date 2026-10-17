@@ -1,10 +1,11 @@
 // `hivemind watch`: the shell. Header, tab bar (Here · Rules · Queue · Feed), key routing, the teach input docked at
 // the bottom, toasts, polling, resize, alternate screen. Views live in ./views/<id>.mjs (contract: ./README.md).
-import { appendFileSync, readFileSync } from "node:fs";
-import { relative, resolve } from "node:path";
+import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { homedir } from "node:os";
+import { join, relative, resolve } from "node:path";
 import * as theme from "./theme.mjs";
-import { HEX, P, REDUCED, bold, fg, label, plain, scopeChip, sep, t } from "./theme.mjs";
-import { Screen, clip, keys, padEnd, spread, strip, width, wrap } from "./term.mjs";
+import { HEX, P, REDUCED, ROW_MARK_RE, bold, fg, label, plain, scopeChip, sep, t } from "./theme.mjs";
+import { MOUSE_OFF, Screen, clip, keys, padEnd, spread, strip, width, wrap } from "./term.mjs";
 import { blockedBy, chainOf, makeApi, ownerOf, plainError, toCards } from "./data.mjs";
 import here from "./views/here.mjs";
 import rules from "./views/rules.mjs";
@@ -232,10 +233,12 @@ export async function cmdWatch(cfg) {
     const narrow = w < 50;
     let row = "";
     let bar = "";
+    layout.tabs = []; // where each label sits, for clicks
     for (const v of TABS) {
       const n = typeof v.count === "function" ? v.count(state) : null;
       const text = narrow ? ` ${v.title[0]} ` : ` ${v.title}${n ? ` ${n}` : ""} `;
       const on = state.tab === v.id && !state.detail;
+      layout.tabs.push({ id: v.id, from: width(row), to: width(row) + width(text) });
       row += (on ? bold(t.text(text)) : t.faint(text)) + " ";
       bar += (on ? t.blue("━".repeat(width(text))) : hairline(width(text))) + hairline(1);
     }
@@ -273,17 +276,31 @@ export async function cmdWatch(cfg) {
   /** A hairline, then key hints: key bold in chrome text, the word faint, three spaces between pairs. */
   function footer(w, now) {
     const v = state.detail ? detail : TABS.find((x) => x.id === state.tab);
-    const own = (v?.keys?.(state) ?? []).map(([a, b]) => KEY(a, b));
-    let hints = state.teach.focus
-      ? [KEY("enter", "send"), KEY("esc", "cancel")]
-      : [...own, ...(!state.detail && v?.why?.(state) ? [KEY("w", "why")] : []), KEY("t", "teach"), KEY("?", "rules here"), KEY("tab", "switch"), KEY("q", "quit")];
-    if (state.busy && now - state.busy.since > 400) hints = [t.muted(`${state.busy.label}…`)]; // a word, not a spinner
+    const H = (k, what) => ({ k, s: KEY(k, what) }); // a hint you can also click
+    const own = (v?.keys?.(state) ?? []).map(([a, b]) => H(a, b));
+    let hints = state.help
+      ? [H("esc", "close help"), H("q", "quit")]
+      : state.teach.focus
+        ? [H("enter", "send"), H("esc", "cancel")]
+        : [...own, ...(!state.detail && v?.why?.(state) ? [H("w", "why")] : []), H("t", "teach"), H("?", "rules here"), H("h", "help"), H("tab", "switch"), H("q", "quit")];
+    if (state.busy && now - state.busy.since > 400) hints = [{ k: null, s: t.muted(`${state.busy.label}…`) }]; // a word, not a spinner
     // Fit whole pairs, never a cut "t…": drop from the end, but `q quit` always stays last.
     const quit = hints.at(-1);
     const keep = [];
-    for (const h of [...new Set(hints.slice(0, -1))]) if (width(" " + [...keep, h, quit].join("   ")) <= w) keep.push(h);
+    const seen = new Set();
+    for (const h of hints.slice(0, -1)) {
+      if (seen.has(h.s)) continue;
+      seen.add(h.s);
+      if (width(" " + [...keep, h, quit].map((x) => x.s).join("   ")) <= w) keep.push(h);
+    }
     if (quit) keep.push(quit);
-    return [hairline(w), clip(" " + keep.join("   "), w)];
+    layout.hints = [];
+    let col = 1;
+    for (const h of keep) {
+      layout.hints.push({ k: h.k, from: col, to: col + width(h.s) });
+      col += width(h.s) + 3;
+    }
+    return [hairline(w), clip(" " + keep.map((x) => x.s).join("   "), w)];
   }
 
   /** Up to two lines above the footer for errors and confirmations (403s in plain words, approvals). Wrapped, not
@@ -296,6 +313,8 @@ export async function cmdWatch(cfg) {
   }
 
   let lastFrame = [];
+  // Where things are on screen (for the mouse): tab labels, footer hints, body rows → item marks, the teach box.
+  let layout = { tabs: [], hints: [], tabsRow: 0, bodyTop: 0, marks: [], boxFrom: -1, boxTo: -1, footerRow: -1 };
   let lastWatchState = "";
   const firedSeen = new Set();
   function compose() {
@@ -322,14 +341,28 @@ export async function cmdWatch(cfg) {
       ctx.height = bodyH - body.length;
     } else if (cel) state.celebration = null;
     const view = state.detail ? detail : TABS.find((v) => v.id === state.tab);
+    const bodyStart = body.length;
     try {
-      body.push(...view.render(state, ctx));
+      body.push(...(state.help ? helpLines(w) : view.render(state, ctx)));
     } catch (e) {
       body.push(t.lockedText(` ${view.id} view crashed: ${e.message}`));
     }
     body = body.slice(0, bodyH).map((l) => clip(l, w));
+    // Row marks (theme.rowMark): an item owns its marked line and the lines under it, up to a blank line or the next
+    // mark. Read them for clicks, then strip them so the terminal never sees them.
+    const marks = [];
+    let cur = null;
+    body = body.map((l, r) => {
+      const m = r >= bodyStart ? l.match(ROW_MARK_RE) : null;
+      if (m) cur = m[1];
+      else if (!strip(l).trim()) cur = null;
+      marks.push(r >= bodyStart ? cur : null);
+      return m ? l.replace(ROW_MARK_RE, "") : l;
+    });
     while (body.length < bodyH) body.push("");
     const lines = [...top, ...body, ...bottom];
+    const boxFrom = top.length + bodyH + toastLines(w, now).length;
+    layout = { ...layout, tabsRow: top.length - 2, bodyTop: top.length, marks, boxFrom, boxTo: boxFrom + box.lines.length - 1, footerRow: h - 1 };
     const caret = box.caret ? { row: h - 2 - 2, col: box.caret.col } : null;
     return { lines, caret };
   }
@@ -355,6 +388,129 @@ export async function cmdWatch(cfg) {
       lastWatchState = sig;
       writeWatchState(cfg, { file: state.lastFile, flags });
     }
+  }
+
+  // ---------- help (h) ----------
+  function helpLines(w) {
+    const k = (key, what) => `  ${bold(t.blueText(key.padEnd(16)))} ${t.muted(what)}`;
+    const lines = [
+      bold(t.faint("KEYS")),
+      k("1-4  tab  ← →", "switch Here · Rules · Queue · Feed"),
+      k("j/k  ↑ ↓", "move · enter opens · esc goes back"),
+      k("a  r", "approve / reject the selected lesson (Queue)"),
+      k("w  e", "why: the rule's full history"),
+      k("f", "apply the suggested fix (Here)"),
+      k("t", "teach Hivemind a rule"),
+      k("?", "rules for the file that last changed"),
+      k("p", "switch persona (kevin · emily · ben · greg)"),
+      k("i", `invert scrolling (now ${state.invertScroll ? "inverted" : "as your OS sets it"})`),
+      k("h", "this help"),
+      k("q  ctrl+c", "quit"),
+      "",
+      bold(t.faint("MOUSE")),
+      mouseOn ? k("click", "a tab, a row (click again to open), a key hint below") : k("off", "started with --no-mouse"),
+      k("wheel", "scrolls the list; follows your touchpad's natural/inverted setting"),
+      k("shift + drag", "select text to copy while the mouse is on (Windows Terminal, VS Code)"),
+      k("--no-mouse", "start without mouse support · --invert-scroll starts inverted"),
+    ];
+    return lines.map((l) => clip(l, w));
+  }
+
+  // ---------- mouse ----------
+  const mouseOn = !cfg.flags["no-mouse"] && !process.env.HIVEMIND_NO_MOUSE;
+  const persisted = (() => {
+    try {
+      return JSON.parse(readFileSync(join(homedir(), ".hivemind", "state.json"), "utf8"));
+    } catch {
+      return {};
+    }
+  })();
+  state.invertScroll = !!(cfg.flags["invert-scroll"] || /^(1|true|yes)$/i.test(process.env.HIVEMIND_INVERT_SCROLL ?? "") || persisted.invertScroll === true);
+  function toggleInvert() {
+    state.invertScroll = !state.invertScroll;
+    try {
+      // Remember it (~/.hivemind/state.json, next to the recent repos), without touching the other keys.
+      const dir = join(homedir(), ".hivemind");
+      let s = {};
+      try {
+        s = JSON.parse(readFileSync(join(dir, "state.json"), "utf8"));
+      } catch {
+        /* first write */
+      }
+      mkdirSync(dir, { recursive: true });
+      writeFileSync(join(dir, "state.json"), JSON.stringify({ ...s, invertScroll: state.invertScroll }, null, 2) + "\n");
+    } catch {
+      /* read-only home: the toggle still holds for this session */
+    }
+    actions.toast(state.invertScroll ? "Scrolling inverted (i to undo)." : "Scrolling follows your OS setting again.", "muted", 2500);
+  }
+
+  const wheel = { n: 0, timer: null };
+  let lastClick = { row: -1, mark: null, at: 0 };
+  /** One mouse report from term.keys(): { b, x, y (0-based), down }. */
+  function onMouse(ev) {
+    if (ev.b & 64) {
+      // Wheel: 64 up, 65 down (the terminal already applied the OS natural/inverted setting). Touchpads send bursts;
+      // add them up and apply once per frame.
+      const dir = (ev.b & 1 ? 1 : -1) * (state.invertScroll ? -1 : 1);
+      wheel.n += dir;
+      if (!wheel.timer) wheel.timer = setTimeout(flushWheel, 16);
+      return;
+    }
+    if (!ev.down || ev.b & 32 || (ev.b & 3) !== 0) return; // left press only (no drags, no right/middle)
+    click(ev.x, ev.y);
+  }
+  function flushWheel() {
+    wheel.timer = null;
+    const n = wheel.n;
+    wheel.n = 0;
+    if (!n || state.teach.focus || state.help) return;
+    const v = state.detail ? detail : TABS.find((x) => x.id === state.tab);
+    const ctx = ctxFor(screen.cols, screen.rows);
+    const key = n > 0 ? { name: "down", ch: undefined } : { name: "up", ch: undefined };
+    const steps = Math.min(60, Math.abs(n) * (v.wheelStep ?? 1));
+    for (let i = 0; i < steps; i++) safeKey(v, key, ctx);
+    render();
+  }
+  /** A footer hint's key → the same keypress the keyboard would send. */
+  function press(k) {
+    if (!k || k === "j/k" || k === "↑↓" || k.includes("/")) return;
+    const named = { enter: ["\r", "return"], esc: ["\x1b", "escape"], tab: ["\t", "tab"] }[k];
+    onKey(named ? named[0] : k, { name: named ? named[1] : k });
+  }
+  function click(x, y) {
+    const now = Date.now();
+    const inBox = y >= layout.boxFrom && y <= layout.boxTo;
+    if (state.teach.focus && !inBox) {
+      state.teach = { focus: false, text: "" }; // a click anywhere else closes the teach box
+      return render();
+    }
+    if (state.help) {
+      state.help = false;
+      return render();
+    }
+    if (y === layout.tabsRow) {
+      const tab = layout.tabs.find((tb) => x >= tb.from && x < tb.to);
+      if (tab) actions.setTab(tab.id);
+      return;
+    }
+    if (y === layout.footerRow) {
+      const h = layout.hints.find((hn) => x >= hn.from && x < hn.to);
+      if (h) press(h.k);
+      return;
+    }
+    const r = y - layout.bodyTop;
+    const mark = layout.marks[r];
+    if (mark == null) return;
+    if (mark === "back") return actions.closeDetail();
+    const v = state.detail ? detail : TABS.find((tb) => tb.id === state.tab);
+    if (!v.select) return;
+    const i = Number(mark);
+    const again = v.selected?.(state) === i || (lastClick.mark === mark && now - lastClick.at < 450);
+    lastClick = { row: r, mark, at: now };
+    v.select(i, state);
+    if (again) safeKey(v, { name: "return", ch: "\r" }, ctxFor(screen.cols, screen.rows)); // second click = enter
+    render();
   }
 
   // ---------- keys ----------
@@ -408,6 +564,10 @@ export async function cmdWatch(cfg) {
   }
 
   function onKey(str, raw = {}) {
+    if (state.help && !(raw.ctrl && raw.name === "c") && raw.name !== "q") {
+      state.help = false; // any key closes the help (q still quits)
+      return render();
+    }
     const key = { ...raw, name: raw.name ?? str, ch: str };
     if (key.ctrl && key.name === "c") return quit();
     if (state.teach.focus) return onTeachKey(str, key);
@@ -432,6 +592,14 @@ export async function cmdWatch(cfg) {
     // p cycles kevin → emily → ben → greg from any tab (Rules and Queue handle it themselves).
     if (key.name === "p" && !key.ctrl && !key.meta) {
       switchPersona(state, ctx);
+      return render();
+    }
+    if (key.name === "h" && !key.ctrl && !key.meta) {
+      state.help = !state.help;
+      return render();
+    }
+    if (key.name === "i" && !key.ctrl && !key.meta) {
+      toggleInvert();
       return render();
     }
     if (key.name === "t") {
@@ -496,23 +664,26 @@ export async function cmdWatch(cfg) {
     if (typeof cfg.flags.press !== "string") state.toast = null;
     animUntil = 0;
     process.stdout.write(compose().lines.join("\n") + "\n");
+    // Snapshots never turn the mouse on; still, on a real terminal make sure it's off (a crashed watch may have left it).
+    if (process.stdout.isTTY) process.stdout.write(MOUSE_OFF);
     // No process.exit(): on Windows it can abort inside libuv while fetch sockets are closing. Nothing else is pending.
     process.exitCode = 0;
     return;
   }
   if (!tty) return logMode(cfg, state, poll, hooks);
 
-  screen.start();
+  screen.start({ mouse: mouseOn });
   screen.onResize = () => render();
   for (const sig of ["SIGINT", "SIGTERM", "SIGHUP", "SIGBREAK"]) process.on(sig, quit);
   // An async slip in a view (a failed approve, a fetch) is a toast, not a dead pane.
   process.on("unhandledRejection", (e) => actions.toast(plainError(e), "locked", 5000));
   process.on("uncaughtException", (e) => {
+    stopKeys(); // raw mode off too, not just the screen and the mouse
     screen.stop();
     console.error(e);
     process.exit(1);
   });
-  stopKeys = keys(onKey);
+  stopKeys = keys(onKey, { onMouse: mouseOn ? onMouse : undefined });
   render();
   await poll(true);
   interval = setInterval(() => poll(), POLL_MS);

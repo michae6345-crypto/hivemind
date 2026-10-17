@@ -28,6 +28,15 @@ export default {
 ```
 
 `key` = Node readline keypress `{ name, ctrl, shift, meta, sequence }` plus `ch` (the typed character).
+Mouse (xterm SGR 1000+1006, on unless `--no-mouse`): click a tab to switch; click a row to select it and click it again
+(or double-click) to open it; click a footer key hint to press it; click outside the teach box to close it; the wheel /
+touchpad scrolls the current list (`view.wheelStep` rows a notch, bursts coalesced into one redraw per frame). The
+wheel follows the OS natural/inverted setting; `--invert-scroll`, `HIVEMIND_INVERT_SCROLL=1` or `"invertScroll": true`
+in `~/.hivemind/state.json` flips it, and `i` toggles it live. Shift + drag still selects text. Mouse mode is switched
+off on every exit path (q, Ctrl+C, signals, a crash, `--snapshot` on a TTY).
+Views opt into clicks with `select(i, state)` / `selected(state)` and `th.rowMark(i)` at the start of item i's first
+line (a zero-width marker the shell reads for hit-testing and strips before drawing); `rowMark("back")` closes Detail.
+
 Global keys (only if the view didn't handle them): `tab`/`shift-tab`/`←`/`→`/`1-4` switch tabs · `t` teach ·
 `?` rules for the file that last changed · `esc` closes detail · `q`/`ctrl-c` quit.
 

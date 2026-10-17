@@ -84,6 +84,13 @@ export const t = {
   handle: fg(P.handle),
 };
 
+/**
+ * Clickable rows: a view puts rowMark(i) at the start of item i's first line. It's a zero-width OSC that width() and
+ * clip() skip; the shell reads it (screen row → item) and strips it before anything is drawn.
+ */
+export const rowMark = (i) => `\x1b]hm;${i}\x07`;
+export const ROW_MARK_RE = /\x1b\]hm;([^\x07]*)\x07/;
+
 export const HEX = "⬢";
 export const HEX_OPEN = "⬡";
 export const SEP = " · ";

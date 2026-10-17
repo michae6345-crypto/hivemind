@@ -30,7 +30,7 @@ const GENERIC = { id: "other", label: "Any MCP agent", rules: { file: "AGENTS.md
 const agentOf = (id) => byId[id] ?? (id === "other" ? GENERIC : null);
 
 // ---------- args ----------
-const BOOLEAN = new Set(["dry-run", "no-sync", "no-vscode", "copilot-cli", "no-statusline", "personal", "help", "json", "staged", "fix", "deep", "version", "once", "snapshot", "notify", "no-motion", "claude", "auto", "open", "last", "clear"]);
+const BOOLEAN = new Set(["no-mouse", "invert-scroll", "dry-run", "no-sync", "no-vscode", "copilot-cli", "no-statusline", "personal", "help", "json", "staged", "fix", "deep", "version", "once", "snapshot", "notify", "no-motion", "claude", "auto", "open", "last", "clear"]);
 function parseArgs(argv) {
   // `hivemind --open` / `hivemind --user ben`: flags with no subcommand → cmd "" (main decides: open or help).
   const [cmd = "", ...rest] = argv[0]?.startsWith("--") && !["--help", "--version"].includes(argv[0]) ? ["", ...argv] : argv;
