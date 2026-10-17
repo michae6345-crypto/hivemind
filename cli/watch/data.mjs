@@ -120,21 +120,21 @@ export function toCards(live, memById, ctx) {
       if (f.repo !== shortRepo) continue;
       const nums = (f.text.match(/(\d+) lessons and (\d+)/) ?? []).slice(1).map(Number);
       const n = nums.length ? nums[0] + nums[1] : 0;
-      put({ key: f.id, kind: "session", at: f.at, actor: f.actor, agent, line: `${whose(f.actor, agent)} loaded ${n} team rules for #repo/${shortRepo}.` });
+      put({ key: f.id, kind: "session", at: f.at, actor: f.actor, agent, line: `${whose(f.actor, agent)} loaded ${n} team rules for #repo/${shortRepo}.`, scopeId: `repo/${shortRepo}` });
     } else if (f.type === "approval" && m) {
       if (m.status !== "active") continue;
       const approver = f.id.startsWith("ev-") ? f.actor : null;
-      put({ key: `approved:${m.id}`, kind: "approved", at: f.at, actor: approver ?? approverOf(m.scopeId), author: m.author, agent, memory: m, line: `"${plain(m.title)}". Every agent now knows it.` });
+      put({ key: `approved:${m.id}`, kind: "approved", at: f.at, actor: approver ?? approverOf(m.scopeId), author: m.author, agent, memory: m, scopeId: m.scopeId, line: `"${plain(m.title)}". Every agent now knows it.`, meta: `approved by ${handle(approver ?? approverOf(m.scopeId))} · ${provenance(m)}` });
     } else if (f.type === "rejection" && m) {
-      put({ key: `rejected:${m.id}`, kind: "rejected", at: f.at, actor: f.actor, memory: m, line: `"${plain(m.title)}" was rejected.` });
+      put({ key: `rejected:${m.id}`, kind: "rejected", at: f.at, actor: f.actor, memory: m, scopeId: m.scopeId, line: `"${plain(m.title)}" was rejected.`, meta: provenance(m) });
     } else if (f.type === "blocked" && m) {
       const b = blockedBy(m, memById);
-      put({ key: `blocked:${m.id}`, kind: "blocked", at: f.at, actor: m.author, agent, memory: m, block: b, line: `Contradicts @${b.owner}'s locked rule "${plain(b.title)}".` });
+      put({ key: `blocked:${m.id}`, kind: "blocked", at: f.at, actor: m.author, agent, memory: m, block: b, scopeId: m.scopeId, line: `Contradicts @${b.owner}'s locked rule "${plain(b.title)}".`, meta: `${whose(m.author, agent, { suffix: " agent" })} proposed "${plain(m.title)}"${b.why ? ` · ${b.why}` : ""}` });
     } else if (f.type === "correction" && m && m.status === "pending") {
       const kind = m.source === "agent" ? "proposed" : "captured";
-      put({ key: `pending:${m.id}`, kind, at: m.evidence?.[0]?.at ?? f.at, actor: m.author, agent, memory: m, line: `"${plain(m.title)}". Waiting on @${approverOf(m.scopeId) ?? "a lead"}.` });
+      put({ key: `pending:${m.id}`, kind, at: m.evidence?.[0]?.at ?? f.at, actor: m.author, agent, memory: m, scopeId: m.scopeId, line: `"${plain(m.title)}". Waiting on @${approverOf(m.scopeId) ?? "a lead"}.`, meta: provenance(m) });
     } else if ((f.type === "correction" || f.type === "review_comment") && !m && f.repo === shortRepo) {
-      put({ key: f.id, kind: "correction", at: f.at, actor: f.actor, agent, line: plain(f.text) });
+      put({ key: f.id, kind: "correction", at: f.at, actor: f.actor, agent, line: `${handle(f.actor)} ${plain(f.text)}` });
     }
   }
 

@@ -1,7 +1,7 @@
 // `hivemind watch`: the shell. Header, tab bar (Here · Rules · Queue · Feed), key routing, the teach input docked at
 // the bottom, toasts, polling, resize, alternate screen. Views live in ./views/<id>.mjs (contract: ./README.md).
 import { appendFileSync, readFileSync } from "node:fs";
-import { relative, resolve } from "node:path";
+import { basename, relative, resolve } from "node:path";
 import * as theme from "./theme.mjs";
 import { HEX, P, REDUCED, bold, fg, label, plain, scopeChip, sep, t } from "./theme.mjs";
 import { Screen, clip, keys, padEnd, spread, strip, width } from "./term.mjs";
@@ -204,7 +204,7 @@ export async function cmdWatch(cfg) {
     const locked = state.rules.filter((r) => r.locked).length;
     const waiting = state.pending?.count ?? 0;
     const counts = ` ${t.muted(`${state.rules.length} rules`)}${sep()}${t.muted(`${locked} locked`)}${sep()}${waiting ? t.lessonText(`${waiting} waiting`) : t.muted("0 waiting")}${state.approver && waiting ? t.faint(` on @${state.approver.id}`) : ""}`;
-    const watching = state.lastFile ? t.faint(`last change ${state.lastFile}`) : t.faint(`watching ${relative(process.cwd(), cfg.root) || "."}`);
+    const watching = state.lastFile ? t.faint(`last change ${state.lastFile}`) : t.faint(`watching ${basename(cfg.root)}`);
     return [spread(left, status + " ", w), spread(counts, watching + " ", w)];
   }
 
@@ -406,7 +406,9 @@ export async function cmdWatch(cfg) {
     state.toast = null;
     animUntil = 0;
     process.stdout.write(compose().lines.join("\n") + "\n");
-    process.exit(0);
+    // No process.exit(): on Windows it can abort inside libuv while fetch sockets are closing. Nothing else is pending.
+    process.exitCode = 0;
+    return;
   }
   if (!tty) return logMode(cfg, state, poll, hooks);
 
