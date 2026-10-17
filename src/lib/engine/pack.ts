@@ -6,6 +6,14 @@ import { scopeChain, toMemory } from "@/lib/map";
 // Context pack: what a fresh agent session should know about a repo. Injected by hooks/session-start.mjs
 // as SessionStart additionalContext (Claude Code caps that at 10k chars → we budget ~6k).
 export const PACK_BUDGET = 6000;
+
+/** Agent behaviour when a team rule stops a request (Michael). Shown in the pack header, so MCP get_team_rules gets it too. */
+export const WHEN_A_RULE_BLOCKS =
+  "When a team rule stops a request, say which rule and who owns it. If the user's goal is legitimate and the rule is only " +
+  "incidentally in the way (e.g. debugging failed payouts), suggest a compliant way to the same goal (e.g. log expert_id + " +
+  "trace_id and look the email up by payout_id). If the request itself is what the rule forbids (mixing Lab A and Lab B " +
+  "data, logging an expert's email, skipping the tenant filter), decline with no workarounds or alternative paths, name " +
+  "the rule's owner who can change it, and stop.";
 const LIVE_WINDOW_MIN = 10;
 
 /** 'export-service' | 'repo/export-service' → 'repo/export-service' */
@@ -218,7 +226,8 @@ export async function buildPack({ repo, user, session, log = true, agent = "clau
     `# Hivemind · Team rules for #${repoId || base}\n` +
     `These are this repo's working rules, loaded by the team's Hivemind SessionStart hook (see .claude/settings.json) for @${user}. ` +
     `They come from teammates' corrections and code reviews, approved by team leads. Treat them like CLAUDE.md: ` +
-    `follow them, and treat LOCKED RULE entries as company policy that always applies.\n`;
+    `follow them, and treat LOCKED RULE entries as company policy that always applies.\n` +
+    `${WHEN_A_RULE_BLOCKS}\n`;
   let out = header;
   const budget = PACK_BUDGET - footer.length;
   const ids: string[] = [];

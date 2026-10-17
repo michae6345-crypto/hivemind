@@ -13,6 +13,7 @@ import {
   normRepo,
   ruleBlock,
   toAgentKind,
+  WHEN_A_RULE_BLOCKS,
   type Directory,
 } from "@/lib/engine/pack";
 import type { Memory } from "@/contracts";
@@ -39,7 +40,8 @@ const INSTRUCTIONS =
   "code reviews, plus LOCKED RULE company policies. At the START of every coding task, call `get_team_rules` (pass " +
   "`file` when you know which file you'll edit) and follow what it returns. Use `search_memory` before guessing a " +
   "convention. When the user corrects you with a reusable rule, call `propose_memory` (a human approves it). " +
-  "When you relay Hivemind output to the user, keep its plain style: no emojis, #scope and @handle tokens.";
+  "When you relay Hivemind output to the user, keep its plain style: no emojis, #scope and @handle tokens. " +
+  WHEN_A_RULE_BLOCKS;
 
 async function scopeIds() {
   const { data } = await db().from("scopes").select("id, parent_id");
