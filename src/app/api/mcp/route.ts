@@ -1,14 +1,21 @@
 import { createMcpHandler } from "mcp-handler";
 import { z } from "zod";
-import { HDR_USER } from "@/contracts";
-import { caller, err } from "@/lib/auth";
+import { HDR_AGENT, HDR_USER, type AgentKind } from "@/contracts";
+import { err } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { scopeChain, toMemory } from "@/lib/map";
-import { normRepo } from "@/lib/engine/pack";
+import { buildPack, minutesAgo, normRepo, toAgentKind, whoseAgent } from "@/lib/engine/pack";
+import { rulesForFile } from "@/app/api/activity/record";
 
-// MCP (Streamable HTTP) for coding agents: search_memory + propose_memory. Bearer HIVEMIND_TOKEN required.
-// Agents can only PROPOSE: proposals go through POST /api/events (type agent_proposal) so the engine can merge
-// and conflict-check them; if that route isn't available we insert a `pending` memory directly. Never active.
+// MCP (Streamable HTTP) — Hivemind for every agent, including ones without hooks (Cursor, Copilot, claude.ai…).
+// Tools: get_team_rules (call first), search_memory, propose_memory (pending only). Prompt: hivemind_briefing.
+// Resource: hivemind://context-pack.
+//
+// Auth: `Authorization: Bearer <HIVEMIND_TOKEN>`, or `?token=` for clients that can't send headers (claude.ai
+// connectors without the headers beta). URL tokens leak into logs/history — hackathon trade-off, see
+// docs/integrations/claude-ai.md. Identity: x-hm-user / ?user=, x-hm-repo / ?repo=, x-hm-agent / ?agent=.
+
+type Ctx = { user: string; repo: string; agent: AgentKind; origin: string; token: string };
 
 const oneLine = (s: string, n = 280) => {
   const t = s.replace(/\s+/g, " ").trim();
@@ -17,15 +24,65 @@ const oneLine = (s: string, n = 280) => {
 const text = (t: string) => ({ content: [{ type: "text" as const, text: t }] });
 const slugify = (s: string) =>
   s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40) || "lesson";
+const newSession = (c: Ctx) => `mcp-${c.agent}-${c.user}-${crypto.randomUUID().slice(0, 8)}`;
+
+const INSTRUCTIONS =
+  "Hivemind is this engineering team's shared memory: rules and lessons learned from teammates' corrections and " +
+  "code reviews, plus 🔒 company policies. At the START of every coding task, call `get_team_rules` (pass `file` " +
+  "when you know which file you'll edit) and follow what it returns. Use `search_memory` before guessing a " +
+  "convention. When the user corrects you with a reusable rule, call `propose_memory` (a human approves it).";
 
 async function scopeIds() {
   const { data } = await db().from("scopes").select("id, parent_id");
   return (data ?? []).map((s) => ({ id: s.id as string, parentId: s.parent_id as string | null }));
 }
 
-function server(ctx: { user: string; repo: string; origin: string; auth: string }) {
+/** Pack markdown + (optionally) rules and live edits for one file. */
+async function teamRules(c: Ctx, repoArg?: string, file?: string, log = true) {
+  const repo = normRepo(repoArg) || c.repo;
+  const pack = await buildPack({ repo, user: c.user, session: log ? newSession(c) : null, log, agent: c.agent });
+  if (!file) return { markdown: pack.markdown, repo, file: null, rules: [] as RuleChip[], memoryIds: pack.memoryIds };
+
+  const f = file.replace(/\\/g, "/").replace(/^\.\//, "");
+  const rules = (await rulesForFile(repo, f)).slice(0, 6);
+  const since = new Date(Date.now() - 10 * 60000).toISOString();
+  let q = db().from("activity").select("*").eq("file", f).gte("created_at", since).neq("actor", c.user);
+  if (repo) q = q.eq("repo", repo);
+  const { data: edits } = await q.order("created_at", { ascending: false }).limit(3);
+
+  let md = `## Rules for \`${f}\`\n`;
+  md += rules.length
+    ? rules.map((m) => `- ${m.locked ? "🔒 " : ""}**${m.title}** (#${m.scopeId}) — ${oneLine(m.body, 200)}`).join("\n")
+    : "- No file-specific rules; the team rules below still apply.";
+  for (const e of edits ?? []) md += `\n- ⚠️ ${whoseAgent(e.actor, e.agent)} edited this file ${minutesAgo(e.created_at)} — coordinate first.`;
+  const chips: RuleChip[] = rules.map((m) => ({ id: m.id, slug: m.slug, title: m.title, scopeId: m.scopeId, locked: m.locked }));
+  return { markdown: `${md}\n\n${pack.markdown}`, repo, file: f, rules: chips, memoryIds: pack.memoryIds };
+}
+type RuleChip = { id: string; slug: string; title: string; scopeId: string; locked: boolean };
+
+function server(c: Ctx) {
   return createMcpHandler(
     (s) => {
+      s.registerTool(
+        "get_team_rules",
+        {
+          title: "Get team rules (call first)",
+          description:
+            "CALL THIS FIRST at the start of any coding task in this repo, before reading or editing code. Returns the " +
+            "team's Hivemind rules: 🔒 company policies, conventions learned from teammates' corrections and reviews, " +
+            "who owns what, and who else is editing right now. Pass `file` (repo-relative path) to also get the rules " +
+            "that apply to that file. Follow the returned rules for the rest of the task.",
+          inputSchema: z.object({
+            repo: z.string().optional().describe("Repo scope, e.g. 'export-service' or 'repo/export-service'. Defaults to the connector's repo."),
+            file: z.string().optional().describe("Repo-relative path of the file you're about to edit, e.g. 'src/export.ts'."),
+          }),
+        },
+        async ({ repo, file }) => {
+          const r = await teamRules(c, repo, file);
+          return { ...text(r.markdown), structuredContent: { repo: r.repo, file: r.file, rules: r.rules, memoryIds: r.memoryIds } };
+        },
+      );
+
       s.registerTool(
         "search_memory",
         {
@@ -37,7 +94,7 @@ function server(ctx: { user: string; repo: string; origin: string; auth: string 
         },
         async ({ query, scope }) => {
           let q = db().from("memories").select("*").eq("status", "active");
-          const sc = normRepo(scope) || ctx.repo;
+          const sc = normRepo(scope) || c.repo;
           if (sc) {
             const all = await scopeIds();
             if (all.some((x) => x.id === sc)) q = q.in("scope_id", scopeChain(sc, all));
@@ -78,19 +135,24 @@ function server(ctx: { user: string; repo: string; origin: string; auth: string 
         },
         async ({ title, body, scope }) => {
           const all = await scopeIds();
-          const want = scope?.trim() || ctx.repo || "org";
+          const want = scope?.trim() || c.repo || "org";
           const scopeId = all.some((x) => x.id === want) ? want : all.some((x) => x.id === normRepo(want)) ? normRepo(want) : "org";
 
-          // 1) through the learning engine
+          // 1) through the learning engine (merge + 🔒 conflict check)
           try {
-            const r = await fetch(`${ctx.origin}/api/events`, {
+            const r = await fetch(`${c.origin}/api/events`, {
               method: "POST",
-              headers: { "content-type": "application/json", authorization: ctx.auth, [HDR_USER]: ctx.user },
+              headers: {
+                "content-type": "application/json",
+                authorization: `Bearer ${c.token}`,
+                [HDR_USER]: c.user,
+                [HDR_AGENT]: c.agent,
+              },
               body: JSON.stringify({
                 type: "agent_proposal",
-                actor: ctx.user,
-                repo: ctx.repo || undefined,
-                payload: { title, body, scope: scopeId, text: `${title}: ${body}` },
+                actor: c.user,
+                repo: c.repo || undefined,
+                payload: { title, body, scope: scopeId, text: `${title}: ${body}`, agent: c.agent },
               }),
               signal: AbortSignal.timeout(25000),
             });
@@ -124,8 +186,8 @@ function server(ctx: { user: string; repo: string; origin: string; auth: string 
               slug: `${slugify(title)}-${Math.random().toString(36).slice(2, 6)}`,
               status: "pending",
               source: "agent",
-              author: ctx.user,
-              evidence: [{ type: "agent", quote: body, actor: `agent:${ctx.user}`, at: new Date().toISOString() }],
+              author: c.user,
+              evidence: [{ type: "agent", quote: body, actor: `agent:${c.agent}:${c.user}`, at: new Date().toISOString() }],
               alpha: 1.3,
               beta: 1,
             });
@@ -133,18 +195,102 @@ function server(ctx: { user: string; repo: string; origin: string; auth: string 
           return text(`⏳ "${title}" proposed for #${scopeId} (pending) — a human must approve it before it applies.`);
         },
       );
+
+      s.registerPrompt(
+        "hivemind_briefing",
+        {
+          title: "Hivemind briefing",
+          description: "Load the team's rules for this repo into the conversation before you start coding.",
+          argsSchema: z.object({
+            repo: z.string().optional().describe("Repo, e.g. export-service"),
+            file: z.string().optional().describe("File you're about to edit"),
+          }),
+        },
+        async ({ repo, file }) => {
+          const r = await teamRules(c, repo, file);
+          return {
+            description: `Hivemind team rules for ${r.repo || "this repo"}`,
+            messages: [
+              {
+                role: "user" as const,
+                content: {
+                  type: "text" as const,
+                  text: `${r.markdown}\n\nFollow these team rules for the rest of this conversation. Reply "Briefed." and wait for my task.`,
+                },
+              },
+            ],
+          };
+        },
+      );
+
+      s.registerResource(
+        "context-pack",
+        "hivemind://context-pack",
+        {
+          title: "Hivemind context pack",
+          description: "The team's current rules, lessons and owners for this repo (markdown).",
+          mimeType: "text/markdown",
+        },
+        async (uri) => {
+          const r = await teamRules(c, undefined, undefined, false);
+          return { contents: [{ uri: uri.href, mimeType: "text/markdown", text: r.markdown }] };
+        },
+      );
     },
-    { serverInfo: { name: "hivemind", version: "0.1.0" } },
+    { serverInfo: { name: "hivemind", version: "0.2.0" }, instructions: INSTRUCTIONS },
   );
 }
 
+// ---- attribution: header/query → MCP clientInfo (initialize or per-request _meta) → cache → claude.ai IPs → UA
+const seenClients = new Map<string, AgentKind>(); // `${ip}|${ua}` → kind learned at initialize (best effort, per instance)
+const CLAUDE_AI_NET = { base: ip4("160.79.104.0"), mask: 0xfffff800 }; // Anthropic outbound 160.79.104.0/21
+
+function ip4(s: string): number {
+  const p = s.split(".").map(Number);
+  return p.length === 4 && p.every((n) => n >= 0 && n < 256) ? ((p[0] << 24) | (p[1] << 16) | (p[2] << 8) | p[3]) >>> 0 : -1;
+}
+
+function detectAgent(req: Request, url: URL, rpc: unknown): AgentKind {
+  const explicit = req.headers.get(HDR_AGENT) || url.searchParams.get("agent");
+  if (explicit) return toAgentKind(explicit);
+  const ua = req.headers.get("user-agent") ?? "";
+  const ip = (req.headers.get("cf-connecting-ip") || req.headers.get("x-forwarded-for") || "").split(",")[0].trim();
+  const key = `${ip}|${ua}`;
+  const msgs = Array.isArray(rpc) ? rpc : [rpc];
+  for (const m of msgs) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const p = (m as any)?.params;
+    const name = p?.clientInfo?.name ?? p?._meta?.["io.modelcontextprotocol/clientInfo"]?.name;
+    if (typeof name === "string" && name) {
+      const kind = toAgentKind(name);
+      if (seenClients.size > 500) seenClients.clear();
+      seenClients.set(key, kind);
+      return kind;
+    }
+  }
+  const cached = seenClients.get(key);
+  if (cached) return cached;
+  if (ip && (ip4(ip) & CLAUDE_AI_NET.mask) >>> 0 === CLAUDE_AI_NET.base) return "claude-ai";
+  return toAgentKind(ua);
+}
+
 async function handle(req: Request) {
-  const c = caller(req);
-  if (process.env.HIVEMIND_TOKEN && !c.viaToken) return err("missing or bad bearer token", 401);
-  const user = c.user === "agent" ? "agent" : c.user;
-  const repo = normRepo(req.headers.get("x-hm-repo"));
-  const h = server({ user, repo, origin: new URL(req.url).origin, auth: req.headers.get("authorization") ?? "" });
-  return h(req);
+  const url = new URL(req.url);
+  const expected = process.env.HIVEMIND_TOKEN;
+  const bearer = (req.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, "");
+  const token = bearer || url.searchParams.get("token") || "";
+  if (expected && token !== expected) return err("missing or bad token (Authorization: Bearer … or ?token=)", 401);
+
+  let rpc: unknown = null;
+  if (req.method === "POST") rpc = await req.clone().json().catch(() => null);
+  const c: Ctx = {
+    user: req.headers.get(HDR_USER) || url.searchParams.get("user") || "agent",
+    repo: normRepo(req.headers.get("x-hm-repo") || url.searchParams.get("repo")),
+    agent: detectAgent(req, url, rpc),
+    origin: url.origin,
+    token,
+  };
+  return server(c)(req);
 }
 
 export { handle as GET, handle as POST, handle as DELETE };

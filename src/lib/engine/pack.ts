@@ -1,5 +1,5 @@
 import "server-only";
-import type { ContextPack, Memory } from "@/contracts";
+import { AgentKind, HDR_AGENT, type ContextPack, type Memory } from "@/contracts";
 import { db } from "@/lib/db";
 import { scopeChain, toMemory } from "@/lib/map";
 
@@ -34,14 +34,47 @@ function oneLine(body: string, max = 320): string {
   return s.length > max ? s.slice(0, max - 1).trimEnd() + "…" : s;
 }
 
+// ---- Cross-vendor attribution (x-hm-agent header, else MCP clientInfo / User-Agent) ----
+const AGENT_LABEL: Record<AgentKind, string> = {
+  "claude-code": "Claude Code", cursor: "Cursor", "gemini-cli": "Gemini CLI", copilot: "Copilot", codex: "Codex",
+  "claude-ai": "Claude.ai", windsurf: "Windsurf", vscode: "VS Code", other: "",
+};
+export const agentLabel = (a: string | null | undefined) => AGENT_LABEL[a as AgentKind] ?? "";
+
+/** Map a header value, MCP clientInfo.name or User-Agent to an AgentKind ("other" if unknown). */
+export function toAgentKind(raw: string | null | undefined): AgentKind {
+  const s = (raw ?? "").toLowerCase().trim();
+  if (!s) return "other";
+  const exact = AgentKind.safeParse(s);
+  if (exact.success) return exact.data;
+  if (s.includes("claude-code") || s.includes("claude code")) return "claude-code";
+  if (s.includes("cursor")) return "cursor";
+  if (s.includes("gemini")) return "gemini-cli";
+  if (s.includes("codex")) return "codex";
+  if (s.includes("windsurf") || s.includes("codeium")) return "windsurf";
+  if (s.includes("copilot") || s.includes("visual studio code") || s.includes("vscode")) return "copilot";
+  if (s.includes("claude")) return "claude-ai"; // claude.ai / Claude Desktop connectors
+  return "other";
+}
+
+/** Agent for hook/activity/pack routes: x-hm-agent header (or ?agent=), default claude-code. */
+export function agentFromRequest(req: Request, fallback: AgentKind = "claude-code"): AgentKind {
+  const raw = req.headers.get(HDR_AGENT) || new URL(req.url).searchParams.get("agent");
+  return raw ? toAgentKind(raw) : fallback;
+}
+
+/** "@adrian's Cursor agent" */
+export const whoseAgent = (actor: string | null | undefined, agent?: string | null) =>
+  `@${actor ?? "someone"}'s ${agentLabel(agent) ? agentLabel(agent) + " " : ""}agent`;
+
 export function minutesAgo(iso: string): string {
   const m = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
   return m === 0 ? "just now" : `${m} min ago`;
 }
 
-export type PackInput = { repo: string; user: string; session?: string | null; log?: boolean };
+export type PackInput = { repo: string; user: string; session?: string | null; log?: boolean; agent?: AgentKind };
 
-export async function buildPack({ repo, user, session, log = true }: PackInput): Promise<ContextPack> {
+export async function buildPack({ repo, user, session, log = true, agent = "claude-code" }: PackInput): Promise<ContextPack> {
   const sb = db();
   const repoId = normRepo(repo);
   const [{ data: scopeRows }, { data: personRow }] = await Promise.all([
@@ -84,7 +117,7 @@ export async function buildPack({ repo, user, session, log = true }: PackInput):
     const key = `${a.actor}|${a.file}`;
     if (seen.has(key)) continue;
     seen.add(key);
-    live.push(`- @${a.actor ?? "someone"}'s agent edited \`${a.file}\` ${minutesAgo(String(a.created_at))} — coordinate before changing it.`);
+    live.push(`- ${whoseAgent(a.actor, a.agent)} edited \`${a.file}\` ${minutesAgo(String(a.created_at))} — coordinate before changing it.`);
   }
 
   // ---- Greedy fill under the char budget ----
@@ -134,10 +167,11 @@ export async function buildPack({ repo, user, session, log = true }: PackInput):
   if (log && session && !session.startsWith("preview")) { // UI preview calls (session=preview) are not sessions
     const lockedCount = locked.filter((m) => ids.includes(m.id)).length;
     await Promise.all([
-      sb.from("pack_log").insert({ session_id: session, actor: user, repo: repoId || null, memory_ids: ids, tokens: pack.tokens }),
+      sb.from("pack_log").insert({ session_id: session, actor: user, agent, repo: repoId || null, memory_ids: ids, tokens: pack.tokens }),
       sb.from("events").insert({
         type: "session_start",
         actor: user,
+        agent,
         session_id: session,
         repo: repoId || null,
         payload: { memoryIds: ids, lessons: ids.length - lockedCount, locked: lockedCount, tokens: pack.tokens },

@@ -8,7 +8,7 @@ import { readFileSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const TIMEOUT_MS = 8000;
+const TIMEOUT_MS = 12000; // settings.json gives the hook 15s; a cold dev server can take ~10s
 
 function loadEnvFile(path) {
   try {
@@ -51,7 +51,11 @@ async function main() {
 
   const qs = new URLSearchParams({ repo, user, session });
   const res = await fetch(`${api}/api/context-pack?${qs}`, {
-    headers: { Authorization: `Bearer ${process.env.HIVEMIND_TOKEN ?? ""}`, "x-hm-user": user },
+    headers: {
+      Authorization: `Bearer ${process.env.HIVEMIND_TOKEN ?? ""}`,
+      "x-hm-user": user,
+      "x-hm-agent": process.env.HIVEMIND_AGENT || "claude-code",
+    },
     signal: AbortSignal.timeout(TIMEOUT_MS),
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);

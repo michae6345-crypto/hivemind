@@ -39,10 +39,15 @@ check(/🔒/.test(ctx) && /lab customers/i.test(ctx), "pack has the 🔒 lab-iso
 check(ctx.length <= 10000, "pack under the 10k additionalContext cap");
 
 // 2. PostToolUse from two sessions on the same file → collision warning
-const tool = (session, user) =>
+const tool = (session, user, agent) =>
   fetch(`${BASE}/api/hooks/tool`, {
     method: "POST",
-    headers: { "content-type": "application/json", Authorization: `Bearer ${TOKEN}`, "x-hm-user": user },
+    headers: {
+      "content-type": "application/json",
+      Authorization: `Bearer ${TOKEN}`,
+      "x-hm-user": user,
+      ...(agent ? { "x-hm-agent": agent } : {}),
+    },
     body: JSON.stringify({
       hook_event_name: "PostToolUse",
       session_id: session,
@@ -52,12 +57,12 @@ const tool = (session, user) =>
       tool_response: { success: true },
     }),
   }).then((r) => r.json());
-const first = await tool(`smoke-a-${stamp}`, "adrian");
+const first = await tool(`smoke-a-${stamp}`, "adrian", "cursor");
 console.log("   first edit →", JSON.stringify(first).slice(0, 200));
 const second = await tool(`smoke-b-${stamp}`, "michael");
 const warn = second?.hookSpecificOutput?.additionalContext ?? "";
 console.log("   second edit →", warn.replace(/\n/g, " | "));
-check(/@adrian's agent edited export\.ts/.test(warn), "second session gets a collision warning");
+check(/@adrian's Cursor agent edited export\.ts/.test(warn), "second session gets a collision warning naming the tool");
 const noop = await fetch(`${BASE}/api/hooks/tool`, {
   method: "POST",
   headers: { "content-type": "application/json", Authorization: `Bearer ${TOKEN}`, "x-hm-user": "michael" },
@@ -67,18 +72,18 @@ check(JSON.stringify(noop) === "{}", "non-edit tool returns {}");
 
 // 3. Live feed
 const live = await fetch(`${BASE}/api/activity/live`).then((r) => r.json());
-check(live.items?.some((i) => i.sessionId === `smoke-b-${stamp}` && i.warning), "live items flag the collision");
+check(live.items?.some((i) => i.sessionId === `smoke-b-${stamp}` && i.warning && i.agent === "claude-code"), "live items flag the collision");
+check(live.items?.some((i) => i.sessionId === `smoke-a-${stamp}` && i.agent === "cursor"), "live items attribute the Cursor edit");
 check(live.feed?.some((f) => f.type === "collision"), "live feed has a collision event", `${live.feed?.length} feed items`);
 
 // 4. MCP tools (JSON-RPC over Streamable HTTP)
-const mcp = async (method, params, id) => {
-  const r = await fetch(`${BASE}/api/mcp`, {
+const mcp = async (method, params, id, { query = "", auth = true } = {}) => {
+  const r = await fetch(`${BASE}/api/mcp${query}`, {
     method: "POST",
     headers: {
       "content-type": "application/json",
       accept: "application/json, text/event-stream",
-      Authorization: `Bearer ${TOKEN}`,
-      "x-hm-user": "noor",
+      ...(auth ? { Authorization: `Bearer ${TOKEN}`, "x-hm-user": "noor", "x-hm-repo": "repo/export-service" } : {}),
       "mcp-protocol-version": "2025-06-18",
     },
     body: JSON.stringify({ jsonrpc: "2.0", id, method, params }),
@@ -89,7 +94,18 @@ const mcp = async (method, params, id) => {
 };
 const list = await mcp("tools/list", {}, 1);
 const names = (list.body.result?.tools ?? []).map((t) => t.name);
-check(names.includes("search_memory") && names.includes("propose_memory"), "MCP lists search_memory + propose_memory", names.join(","));
+check(["get_team_rules", "search_memory", "propose_memory"].every((n) => names.includes(n)), "MCP lists its 3 tools", names.join(","));
+const rules = await mcp("tools/call", { name: "get_team_rules", arguments: { file: "src/export.ts" } }, 4);
+const rtext = rules.body.result?.content?.[0]?.text ?? JSON.stringify(rules.body);
+const chips = rules.body.result?.structuredContent?.rules ?? [];
+check(/Rules for `src\/export\.ts`/.test(rtext) && /lab customers/i.test(rtext), "get_team_rules returns file rules + pack", `${rtext.length} chars, ${chips.length} rule chips`);
+const prompts = await mcp("prompts/list", {}, 5);
+check((prompts.body.result?.prompts ?? []).some((p) => p.name === "hivemind_briefing"), "MCP lists prompt hivemind_briefing");
+const res = await mcp("resources/read", { uri: "hivemind://context-pack" }, 6);
+check(/Locked policies/.test(res.body.result?.contents?.[0]?.text ?? ""), "MCP resource hivemind://context-pack reads the pack");
+const qs = `?token=${encodeURIComponent(TOKEN)}&user=noor&repo=export-service&agent=claude-ai`;
+const viaQuery = await mcp("tools/list", {}, 7, { query: qs, auth: false });
+check(viaQuery.status === 200 && (viaQuery.body.result?.tools ?? []).length >= 3, "MCP accepts ?token= for header-less clients");
 const search = await mcp("tools/call", { name: "search_memory", arguments: { query: "logger console" } }, 2);
 const stext = search.body.result?.content?.[0]?.text ?? JSON.stringify(search.body);
 check(/logger/i.test(stext), "search_memory finds the logger lesson");

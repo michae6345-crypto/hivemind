@@ -3,6 +3,7 @@ import type { ActivityItem, FeedEvent, LiveResponse } from "@/contracts";
 import { err, json } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { toActivity, toMemory } from "@/lib/map";
+import { toAgentKind, whoseAgent } from "@/lib/engine/pack";
 import { COLLISION_WINDOW_MIN } from "../record";
 
 // GET /api/activity/live → { items: last 30 min of agent edits (collisions flagged), feed: recent FeedEvents }
@@ -51,14 +52,15 @@ export async function GET() {
         );
       if (other) {
         const gap = mins(t - new Date(other.created_at).getTime());
-        item.warning = `@${other.actor}'s agent edited this file ${gap} min earlier`;
+        item.warning = `${whoseAgent(other.actor, other.agent)} edited this file ${gap} min earlier`;
         feed.push({
           id: `col-${r.id}`,
           type: "collision",
           actor: item.actor,
-          text: `started editing ${short(r.repo)}/${r.file} while @${other.actor}'s agent is in it`,
+          text: `started editing ${short(r.repo)}/${r.file} while ${whoseAgent(other.actor, other.agent)} is in it`,
           at: r.created_at,
           repo: item.repo,
+          ...(item.agent ? { agent: item.agent } : {}),
         });
       }
       return item;
@@ -67,7 +69,13 @@ export async function GET() {
     // ---- events
     for (const e of ev.data ?? []) {
       const p = e.payload ?? {};
-      const base = { id: `ev-${e.id}`, actor: e.actor ?? "someone", at: e.created_at, repo: short(e.repo) || undefined };
+      const base = {
+        id: `ev-${e.id}`,
+        actor: e.actor ?? "someone",
+        at: e.created_at,
+        repo: short(e.repo) || undefined,
+        ...(e.agent ? { agent: toAgentKind(e.agent) } : {}),
+      };
       const memoryId = typeof p.memoryId === "string" ? p.memoryId : undefined;
       if (e.type === "session_start") {
         const n = Array.isArray(p.memoryIds) ? p.memoryIds.length : 0;

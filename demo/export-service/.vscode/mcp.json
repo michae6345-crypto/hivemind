@@ -1,0 +1,18 @@
+{
+  "inputs": [
+    { "type": "promptString", "id": "hivemind-token", "description": "Hivemind token (HIVEMIND_TOKEN from the hivemind .env.local)", "password": true },
+    { "type": "promptString", "id": "hivemind-user", "description": "Your Hivemind user id (e.g. adrian, michael)" }
+  ],
+  "servers": {
+    "hivemind": {
+      "type": "http",
+      "url": "http://localhost:3000/api/mcp",
+      "headers": {
+        "Authorization": "Bearer ${input:hivemind-token}",
+        "x-hm-user": "${input:hivemind-user}",
+        "x-hm-repo": "repo/export-service",
+        "x-hm-agent": "copilot"
+      }
+    }
+  }
+}

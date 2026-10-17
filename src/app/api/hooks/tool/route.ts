@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { caller, err } from "@/lib/auth";
 import { recordActivity } from "@/app/api/activity/record";
+import { agentFromRequest } from "@/lib/engine/pack";
 
 // Claude Code PostToolUse http hook (matcher Edit|Write|MultiEdit). Body = raw hook JSON.
 // Records the edit; returns collision / rule warnings as additionalContext, or {} when there's nothing to say.
@@ -23,7 +24,7 @@ export async function POST(req: Request) {
   const repo = req.headers.get("x-hm-repo")?.trim() || (cwd ? `repo/${leaf(cwd)}` : "");
 
   try {
-    const { warnings } = await recordActivity({ sessionId: String(h.session_id ?? "unknown"), actor: c.user, repo, file });
+    const { warnings } = await recordActivity({ sessionId: String(h.session_id ?? "unknown"), actor: c.user, repo, file, agent: agentFromRequest(req) });
     if (!warnings.length) return NextResponse.json({});
     return NextResponse.json({
       hookSpecificOutput: { hookEventName: "PostToolUse", additionalContext: `Hivemind:\n${warnings.join("\n")}` },
