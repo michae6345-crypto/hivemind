@@ -123,8 +123,23 @@ async function beatA() {
 }
 
 async function beatB() {
-  if (!lesson) return report("b", "approve with chain of command", false, "skipped: no lesson from (a)");
-  if (lesson.status !== "pending") return report("b", "approve with chain of command", false, `lesson is already ${lesson.status}; reset the DB and re-run`);
+  let note = "";
+  if (!lesson || lesson.status !== "pending") {
+    // (a) didn't leave a pending lesson: still exercise the approve route on a seeded pending lesson in Jordan's subtree
+    const r = await call("GET", `/api/memories?scope=${encodeURIComponent(REPO)}&status=pending`);
+    const fallback = (r.json?.memories ?? []).find((m) => m.scopeId === REPO);
+    if (!fallback) return report("b", "approve with chain of command", false, `no pending lesson from (a) (${lesson ? lesson.status : "none"}) and no seeded pending lesson in ${REPO}`);
+    note = `(a) left no pending lesson (${lesson ? lesson.status : "none"}); using seeded pending ${fallback.slug} instead`;
+    const keep = lesson;
+    lesson = fallback;
+    await approveFlow(note);
+    if (keep) lesson = keep; // (c) keeps using (a)'s lesson
+    return;
+  }
+  await approveFlow(note);
+}
+
+async function approveFlow(note) {
   const eng = await call("POST", `/api/memories/${lesson.id}/approve`, { user: "alex", role: "engineer" });
   if (eng.status === 404) return report("b", "approve with chain of command", false, "POST /api/memories/:id/approve → 404 (route not on main yet; owner: A)");
   const lead = await call("POST", `/api/memories/${lesson.id}/approve`, { user: "jordan", role: "lead" });
@@ -134,6 +149,7 @@ async function beatB() {
     `alex (engineer) → HTTP ${eng.status} ${short(eng.json?.error ?? eng.text, 120)}`,
     `jordan (lead)   → HTTP ${lead.status} status=${status ?? "?"} ${lead.status !== 200 ? short(lead.json?.error ?? lead.text, 140) : ""}`,
     lead.status === 403 ? `lesson scope is ${lesson.scopeId}; a team lead can only approve inside team/data-pipelines and below` : "",
+    note,
   ]);
 }
 

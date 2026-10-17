@@ -62,6 +62,6 @@ npx vercel deploy --prod         # production
 | Secrets in the client bundle | Only `NEXT_PUBLIC_*` vars are referenced from UI code |
 | `cacheComponents: true` | Route segment `export const dynamic` is **not allowed**. Use `await connection()` (as `/api/metrics` does) for request-time routes. All API routes currently build as `ƒ` (dynamic) |
 | Long-running routes | Default Vercel function limit (Fluid compute) is 300 s. Hook routes call Haiku with short timeouts, and Claude Code's http hook timeouts are 5–10 s, so the engine must answer well inside that. If a route grows slow, add `export const maxDuration = 30` (allowed with cacheComponents) |
-| `after()` | Not used today. It is supported on Vercel; if the engine uses it for post-response work, nothing extra is needed |
+| `after()` | `/api/hooks/prompt` answers within ~4.6 s and finishes learning in `after()` (`maxDuration = 60`). Supported on Vercel; both build fine under `cacheComponents` |
 | Node version | Local is Node 24. Vercel's default (22.x) is fine. Scripts in `scripts/` run locally, not on Vercel |
 | Region | Supabase project region vs Vercel function region: pick the same region (Project → Settings → Functions) to keep hook latency low |
