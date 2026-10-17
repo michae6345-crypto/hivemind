@@ -115,10 +115,10 @@ export default {
             : obj
               ? th.t.muted(` ${obj}`)
               : "";
-      const line =
-        c.kind === "fix" // the age stays on the row, right-aligned, however narrow the pane
-          ? th.spread(` ${chip}${pad}${toolCell}${v}${object}`, ` ${th.t.faint(ago(c.at, now))}`, w)
-          : ` ${chip}${pad}${tool}${v}${object}  ${th.t.faint(ago(c.at, now))}`;
+      // The age stays on the row however narrow the pane: when the row doesn't fit, the object is cut, not "just …".
+      const head = ` ${chip}${pad}${c.kind === "fix" ? toolCell : tool}${v}${object}`;
+      const when = th.t.faint(ago(c.at, now));
+      const line = c.kind === "fix" || th.width(head) + 2 + th.width(when) > w ? th.spread(head, ` ${when}`, w) : `${head}  ${when}`;
       const age = c.born ? Math.floor((now - c.born) / 100) : Infinity;
       const wash = i === sel ? WASH[0] : age < WASH.length ? WASH[age] : null;
       return washed(th, th.clip(line, w), wash, w);

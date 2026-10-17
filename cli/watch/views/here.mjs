@@ -143,7 +143,14 @@ function broken(th, ch, v, lines, file, rule, state, ctx, selected) {
     const a = Math.min(s, Math.max(0, code - 1));
     const b = Math.min(Math.max(e, a + 1), code);
     out.push(clip(`${num}${t.text(text.slice(0, a))}${tint(t.text(text.slice(a, b)))}${t.text(text.slice(b))}`, w));
-    if (i === v.endLine) out.push(clip(`${" ".repeat(gw)}${g(" │ ")}${" ".repeat(a)}${tone("~".repeat(Math.max(1, b - a)))} ${tone(shortNote(v))}`, w));
+    if (i === v.endLine) {
+      // The note goes after the ~~~~ when it fits, else before it (never cut: "~~~~ persona…" at 58-64 columns).
+      const note = shortNote(v);
+      const n = Math.max(1, b - a);
+      const squiggle = tone("~".repeat(n));
+      const marks = a + n + 1 + note.length <= code || a < note.length + 1 ? `${" ".repeat(a)}${squiggle} ${tone(note)}` : `${" ".repeat(a - note.length - 1)}${tone(note)} ${squiggle}`;
+      out.push(clip(`${" ".repeat(gw)}${g(" │ ")}${marks}`, w));
+    }
   }
   out.push(`${" ".repeat(gw - 1)}${g("╰─")}`);
   out.push(...provenance(th, ch, rule, v, state, ctx.now).map((l) => clip(l, w)));

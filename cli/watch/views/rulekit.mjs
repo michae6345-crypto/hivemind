@@ -114,7 +114,8 @@ export function atoms(state, ctx) {
   const th = ctx.theme;
   const { t } = th;
   const on = th.COLOR;
-  const chipBg = (s) => th.bg(C.chipBg)(s);
+  // NO_COLOR: no chip background, so no padding either (`proposed by ● @kevin`, not `proposed by  ● @kevin `).
+  const chipBg = (s) => (on ? th.bg(C.chipBg)(s) : s.trim());
   const ul = (s) => (on ? `\x1b[4m${s}\x1b[24m` : s);
   const layerOfPerson = (id) => {
     const r = state.people?.find((p) => p.id === id)?.role;
