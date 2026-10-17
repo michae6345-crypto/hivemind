@@ -29,9 +29,10 @@ const chip = (scope: string) => {
   return span(` #${scope} `, "#E4E4E7", `${c}22`);
 };
 const link = (label: string, cmd: string, args: unknown[]) => `[${span(label, LINK)}](command:${cmd}?${encodeURIComponent(JSON.stringify(args))})`;
+const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const dayMonth = (iso: string) => {
   const d = new Date(iso);
-  return isNaN(d.getTime()) ? "" : d.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+  return isNaN(d.getTime()) ? "" : `${d.getDate()} ${MON[d.getMonth()]}`; // "14 Oct"
 };
 
 /** Spec provenance line: correction → "Learned from …", locked → "Set by @maya · Head of Security · locked 14 Oct", else "Written by …". */
