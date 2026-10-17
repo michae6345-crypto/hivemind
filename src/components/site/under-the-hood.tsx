@@ -94,7 +94,7 @@ function Card({
 }
 
 /** 1. watch flags the save: the line, then the ~~~~ draws under the exact expression, then the fix. */
-function CatchSnippet() {
+export function CatchSnippet() {
   const { ref, beat } = useBeats(4);
   return (
     <div ref={ref}>
@@ -127,7 +127,7 @@ function CatchSnippet() {
 }
 
 /** 2. a fix becomes a lesson: the bad line is struck out, the new one types in, then Hivemind's line. */
-function FixSnippet() {
+export function FixSnippet() {
   const { ref, beat } = useBeats(3, 600);
   const typed = 'logger.info("sent", { expertId });';
   const [chars, setChars] = useState(0);
@@ -165,7 +165,7 @@ function FixSnippet() {
 }
 
 /** 4. the agent starts an edit; the heads-up slides in with a honey flash. */
-function CollideSnippet() {
+export function CollideSnippet() {
   const { ref, beat } = useBeats(2, 700);
   return (
     <div ref={ref}>
@@ -194,7 +194,7 @@ function CollideSnippet() {
  * the 4-line block reply that ends on the cue, `/hivemind why`, and the rule's history unrolling under it. The
  * proposal's author is the site's cast (@emily) instead of prod's @omar.
  */
-function WhySnippet() {
+export function WhySnippet() {
   const { ref, beat } = useBeats(13, 330, 300);
   const dim = { color: C.faint };
   const at = (n: number) => beat >= n;
@@ -293,7 +293,7 @@ function WhyCard() {
 }
 
 /** Which agents it works with, and how to start: a small card instead of a loose strip. */
-function AgentsCard() {
+export function AgentsCard() {
   return (
     <motion.article
       initial={{ opacity: 0, y: 14 }}

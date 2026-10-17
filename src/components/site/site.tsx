@@ -11,7 +11,7 @@ import { cn } from "@/components/hm/utils";
 import { Dither } from "./dither";
 import { HeroHive } from "./hero-hive";
 import { HowItWorksPinned, HowItWorksSteps } from "./how-it-works";
-import { UnderTheHood } from "./under-the-hood";
+import { Progression } from "./progression";
 import { Structure } from "./structure";
 import { InitMock } from "./live-work";
 import { TryApprove } from "./try-approve";
@@ -282,11 +282,11 @@ function YoureTheLead() {
 function UnderHood() {
   return (
     <section className="px-4 pt-32">
-      <SectionHead id="hood" title="What it does while you work.">
-        All of it in the terminal, next to whichever agent you use.
+      <SectionHead id="hood" title="What happens while you work.">
+        One afternoon on the export service, in order. All of it in the terminal, next to whichever agent you use.
       </SectionHead>
-      <div className="mt-14">
-        <UnderTheHood />
+      <div className="mt-16">
+        <Progression />
       </div>
     </section>
   );
