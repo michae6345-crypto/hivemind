@@ -238,19 +238,25 @@ export async function cmdWatch(cfg) {
     return [clip(mark, w)];
   }
 
-  /** Labels, then a hairline with a heavy chrome-blue segment under the active tab. Under 50 columns: H R Q F. */
+  /** Labels, then a hairline with a heavy chrome-blue segment under the active tab. Full labels whenever they fit
+   * (they do at 46 columns, the demo split); only narrower than that do the others shorten to H R Q F, and the
+   * active tab always keeps its name (Adrian, watch-v2 §2). */
   function tabBar(w) {
-    const narrow = w < 50;
+    const fullWidth = TABS.reduce((n, v) => {
+      const c = typeof v.count === "function" ? v.count(state) : null;
+      return n + width(` ${v.title}${c ? ` ${c}` : ""} `) + 1;
+    }, 0);
+    const narrow = fullWidth > w - 1;
     let row = "";
     let bar = "";
     layout.tabs = []; // where each label sits, for clicks
     for (const v of TABS) {
       const n = typeof v.count === "function" ? v.count(state) : null;
-      const text = narrow ? ` ${v.title[0]} ` : ` ${v.title}${n ? ` ${n}` : ""} `;
       const on = state.tab === v.id && !state.detail;
+      const text = narrow && !on ? ` ${v.title[0]} ` : ` ${v.title}${n && !narrow ? ` ${n}` : ""} `;
       layout.tabs.push({ id: v.id, from: width(row), to: width(row) + width(text) });
       // Pills: the active tab sits on a soft blue tint (and keeps the blue underline below); the rest are muted.
-      const label = narrow ? text : ` ${v.title}${n ? " " : ""}`;
+      const label = narrow ? (on ? ` ${v.title}` : text) : ` ${v.title}${n ? " " : ""}`;
       const count = !narrow && n ? `${n} ` : narrow ? "" : " ";
       row += (on
         ? theme.bg(P.tabBg)(bold(t.text(label)) + (n && !narrow ? t.blueText(count) : t.text(count)))
@@ -299,7 +305,7 @@ export async function cmdWatch(cfg) {
       ? [H("esc", "close help"), H("q", "quit")]
       : state.teach.focus
         ? [H("enter", "send"), H("esc", "cancel")]
-        : [...own, ...(!state.detail && v?.why?.(state) ? [H("w", "why")] : []), H("t", "teach"), H("?", "rules here"), H("h", "help"), H("tab", "switch"), H("q", "quit")];
+        : [...own, ...(!state.detail && v?.why?.(state) ? [H("w", "why")] : []), { k: ":", s: KEY("⌃K", "search") }, H("t", "teach"), H("?", "rules here"), H("h", "help"), H("tab", "switch"), H("q", "quit")];
     if (state.busy && now - state.busy.since > 400) {
       const spin = REDUCED ? "" : `${t.blue(SPIN[Math.floor((now - state.busy.since) / 90) % SPIN.length])} `;
       hints = [{ k: null, s: `${spin}${t.muted(`${state.busy.label}…`)}` }];

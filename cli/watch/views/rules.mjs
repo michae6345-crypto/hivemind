@@ -72,6 +72,11 @@ export default {
     const a = atoms(state, ctx);
     const v = view(state);
     const { items, total } = model(state, ctx);
+    // First open: the cursor starts on the first rule, not on the LOCKED header (headers stay selectable to fold).
+    if (!v.placed && items.some((x) => x.type === "row")) {
+      v.placed = true;
+      if (items[v.index]?.type === "head") v.index = items.findIndex((x) => x.type === "row");
+    }
     v.index = Math.max(0, Math.min(v.index, items.length - 1));
 
     const top = [];

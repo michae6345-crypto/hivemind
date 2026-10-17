@@ -143,7 +143,8 @@ export default {
     for (const s of sections) {
       if (!s.cards.length && s.key !== "you" && s.key !== "mine") continue;
       if (out.length) out.push("");
-      out.push(a.section(s.title, s.cards.length));
+      // What waits on you is the one section in honey: it's yours to act on (Adrian, watch-v2 §5).
+      out.push(s.key === "you" && s.cards.length ? th.bold(t.lessonText(s.title)) + t.faint(` · ${s.cards.length}`) : a.section(s.title, s.cards.length));
       out.push("");
       if (!s.cards.length) {
         out.push(t.muted(s.key === "mine" ? "You haven't taught Hivemind anything yet." : "Nothing waiting."));

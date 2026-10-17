@@ -25,7 +25,7 @@ function words(c) {
       return ["edited", c.file ?? "a file"];
     case "session": {
       const n = String(typeof c.line === "string" ? c.line : "").match(/loaded (\d+)/)?.[1];
-      return ["loaded", n ? `${n} team rules` : "the team rules"];
+      return ["loaded", `${n ? `${n} team rules` : "the team rules"}${c.times > 1 ? ` · ${c.times} sessions` : ""}`];
     }
     case "approved":
       return ["approved", "a lesson"];
@@ -76,8 +76,19 @@ function washed(th, line, hex, width) {
   return open + padded.replace(/\x1b\[49m/g, "\x1b[49m" + open) + "\x1b[49m";
 }
 
+/** Cards worth a row. Back-to-back session starts by the same person and tool that loaded the same rules fold into
+ * the newest one ("loaded 16 team rules · 4 sessions"), so a busy hour isn't six identical rows (Adrian, watch-v2). */
 function visible(state, now) {
-  return (state.cards ?? []).filter((c) => (c.kind === "edit" ? now - Date.parse(c.at) < EDIT_WINDOW_MS : true));
+  const out = [];
+  for (const c of (state.cards ?? []).filter((x) => (x.kind === "edit" ? now - Date.parse(x.at) < EDIT_WINDOW_MS : true))) {
+    const prev = out.at(-1);
+    if (prev && c.kind === "session" && prev.kind === "session" && prev.actor === c.actor && prev.agent === c.agent && String(prev.line) === String(c.line)) {
+      prev.times = (prev.times ?? 1) + 1;
+      continue;
+    }
+    out.push(c.kind === "session" ? { ...c } : c);
+  }
+  return out;
 }
 
 export default {
