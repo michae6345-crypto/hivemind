@@ -27,6 +27,23 @@ function loadEnvFile(path) {
   }
 }
 
+// The house prefix and line rule shared with the server (src/lib/engine/pack.ts HM / wrap80; this hook is plain Node,
+// so it keeps its own copy): "⬢ Hivemind · ", plain text, wrapped on words at 80 columns, never cut mid-word.
+const HM = "⬢ Hivemind · ";
+function wrap80(text, width = 80) {
+  const out = [];
+  let cur = "";
+  for (const word of String(text).split(" ")) {
+    const next = cur ? `${cur} ${word}` : word;
+    if (cur && [...next].length > (out.length ? width - 2 : width)) {
+      out.push(cur);
+      cur = word;
+    } else cur = next;
+  }
+  out.push(cur);
+  return out.map((l, i) => (i ? `  ${l}` : l)).join("\n");
+}
+
 // systemMessage = the one-line banner the user sees; additionalContext = the pack the model sees.
 function emit(text, banner) {
   const out = { hookSpecificOutput: { hookEventName: "SessionStart", additionalContext: text } };
@@ -69,8 +86,8 @@ async function main() {
   const pack = await res.json();
   if (!pack?.markdown) throw new Error("empty pack");
   const rules = pack.rules ?? pack.memoryIds?.length ?? 0;
-  const banner = `Hivemind · Loaded ${rules} team rules for #${pack.repo || repo}.`; // wording: Adrian's brand spec; plain text (no ANSI)
+  const banner = wrap80(`${HM}Loaded ${rules} team rules for #${pack.repo || repo}.`); // Adrian's v2 tone; plain text (no ANSI)
   emit(pack.markdown.slice(0, 9500), banner); // Claude Code caps additionalContext at 10,000 chars
 }
 
-main().catch((e) => emit(`Hivemind · Team memory unavailable (${e?.message ?? e}). Proceed using the repo's own docs.`));
+main().catch((e) => emit(wrap80(`${HM}Team memory unavailable (${e?.message ?? e}). Proceed using the repo's own docs.`)));

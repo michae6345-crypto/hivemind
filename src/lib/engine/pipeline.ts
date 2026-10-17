@@ -8,6 +8,7 @@ import { decideMerge, heuristicMerge } from "./merge";
 import { bump, fmtConfidence, roleWeight } from "./score";
 import { hasLLM, type EnginePath } from "./llm";
 import { describeFix, excerpt, heuristicFixExtract, isCosmetic, parseFix } from "./fix";
+import { HM, wrap80 } from "./pack";
 
 // The learning pipeline (PLAN §5):
 //   event → ① filter → ② extract → ④ conflict vs 🔒 → ③ merge (ADD/UPDATE/DELETE/NONE) → ⑤ pending until a human approves
@@ -455,16 +456,17 @@ async function learnFromEvent(eventId: string, input: EventInput): Promise<Outco
 export function hookMessage(o: Outcome): string | null {
   const lines = o.captured.map((c) => {
     const t = c.memory.title;
-    // Wording: public/brand/vscode (Adrian), mirrored in src/components/site/demo-script.ts — keep identical.
-    // Plain text: Claude Code doesn't document ANSI rendering in systemMessage, so no colour codes.
+    // Wording: Adrian's watch-v2 tone ("⬢ Hivemind · …"), mirrored in src/components/site/demo-script.ts.
+    // Plain text: Claude Code doesn't document ANSI rendering in systemMessage, so no colour codes. One line, wrapped on
+    // words at 80 columns (wrap80) so a long title never splits mid-word.
     const at = o.where ? ` in ${o.where}` : "";
     const lock = `${c.owner ? `${c.owner}'s` : "the"} locked rule "${c.rule ?? "a locked rule"}"`;
     if (c.action === "blocked")
-      return o.fixBy ? `Hivemind · Blocked: ${o.fixBy}'s fix${at} contradicts ${lock}.` : `Hivemind · Blocked${at}: contradicts ${lock}.`;
+      return wrap80(o.fixBy ? `${HM}Blocked: ${o.fixBy}'s fix${at} contradicts ${lock}.` : `${HM}Blocked${at}: contradicts ${lock}.`);
     if (c.memory.status === "pending")
-      return `Hivemind · Lesson captured${o.fixBy ? ` from ${o.fixBy}'s fix` : ""}${at}: "${t}". Waiting on ${c.owner ?? "the scope owner"}.`;
-    if (o.fixBy) return `Hivemind · Lesson reinforced by ${o.fixBy}'s fix${at}: "${t}".`;
-    return `Hivemind · Lesson reinforced${at}: "${t}" is already a team rule.`;
+      return wrap80(`${HM}Lesson captured${o.fixBy ? ` from ${o.fixBy}'s fix` : ""}${at}: "${t}". Waiting on ${c.owner ?? "the scope owner"}.`);
+    if (o.fixBy) return wrap80(`${HM}Lesson reinforced by ${o.fixBy}'s fix${at}: "${t}".`);
+    return wrap80(`${HM}Lesson reinforced${at}: "${t}" is already a team rule.`);
   });
   return lines.length ? lines.join("\n") : null;
 }

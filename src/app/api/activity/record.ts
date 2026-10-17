@@ -2,12 +2,12 @@ import "server-only";
 import { db } from "@/lib/db";
 import { scopeChain, toMemory } from "@/lib/map";
 import type { AgentKind, Memory } from "@/contracts";
-import { HM, headsUp, normRepo, noEmoji } from "@/lib/engine/pack";
+import { HM, headsUp, normRepo, noEmoji, wrap80 } from "@/lib/engine/pack";
 
 // Shared by POST /api/activity and POST /api/hooks/tool: record an edit, return collision + rule-hit warnings.
 export const COLLISION_WINDOW_MIN = 10;
-/** User-facing collision line (wording: Adrian's brand spec): "Hivemind · Heads up: @alex's Cursor agent edited src/export.ts 2 min ago." */
-export const COLLISION_PREFIX = "Hivemind · Heads up: ";
+/** User-facing collision line (Adrian's v2 tone): "⬢ Hivemind · Heads up: @alex's Cursor agent edited src/export.ts 2 min ago." */
+export const COLLISION_PREFIX = `${HM}Heads up: `;
 const GENERIC_STEMS = new Set(["index", "utils", "util", "main", "types", "test", "tests", "config", "readme", "package"]);
 
 const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -49,7 +49,7 @@ export async function recordActivity(input: { sessionId: string; actor: string; 
 async function ruleHits(repo: string, file: string): Promise<string[]> {
   return (await rulesForFile(repo, file))
     .slice(0, 3)
-    .map((m) => `${HM}${m.locked ? "Locked rule" : "Team lesson"} for ${file}: ${noEmoji(m.title)} (#${m.scopeId}).`);
+    .map((m) => wrap80(`${HM}${m.locked ? "Locked rule" : "Team lesson"} for ${file}: ${noEmoji(m.title)} (#${m.scopeId}).`));
 }
 
 /** Active memories in the repo's scope chain that mention this file (path, name, or distinctive stem); locked first. */

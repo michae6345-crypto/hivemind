@@ -9,8 +9,9 @@ export const PACK_BUDGET = 6000;
 
 /** Agent behaviour when a team rule stops a request (Michael). Shown in the pack header, so MCP get_team_rules gets it too. */
 export const WHEN_A_RULE_BLOCKS =
-  "When a team rule stops a request, reply with exactly these 4 short lines and nothing else (no lists, no essay, don't restate the rule):\n" +
-  'Blocked by Hivemind · LOCKED RULE "<rule title>" · @<owner>   (TEAM RULE if it isn\'t locked)\n' +
+  "When a team rule stops a request, reply with exactly these 4 short lines and nothing else (no lists, no essay, don't restate the rule; " +
+  "plain text, no emojis, keep each line under 80 characters):\n" +
+  '⬢ Hivemind · Blocked · LOCKED RULE "<rule title>" · @<owner>   (TEAM RULE if it isn\'t locked)\n' +
   "<one sentence: why it applies to this request>\n" +
   "<line 3: judge the user's underlying goal, not the method they named. Goal legitimate, rule only in the way (\"log the " +
   "email so I can trace failed payouts\" → the goal is tracing payouts): Instead: <one-sentence compliant approach>, plus at " +
@@ -83,16 +84,41 @@ export function minutesAgo(iso: string): string {
   return m === 0 ? "just now" : `${m} min ago`;
 }
 
-// ---- House style for everything an agent/user reads in the terminal (Adrian's editor spec, 17 Oct):
-// no emojis, one prefix "Hivemind · ", #scope and @handle tokens, LOCKED RULE / TEAM LESSON labels, provenance lines.
-export const HM = "Hivemind · ";
+// ---- House style for everything an agent/user reads in the terminal (Adrian's watch-v2 tone, 17 Oct):
+// no emojis, one prefix "⬢ Hivemind · " (the hex is the only glyph), plain-text @handles and paths, one line where
+// possible, and never a word cut at 80 columns (wrap80). The Claude Code pane and the watch pane read as one product.
+export const HM = "⬢ Hivemind · ";
 const EMOJI = /\p{Extended_Pictographic}️?\s*/gu;
 export const noEmoji = (s: string) => s.replace(EMOJI, "").replace(/[ \t]{2,}/g, " ");
 
-/** "Hivemind · Heads up: @alex's Cursor agent edited src/export.ts 2 min ago." */
+/**
+ * Wrap on words at `width` columns; continuation lines are indented two spaces so they read as one message. A single
+ * word longer than the line (a long path) stays whole: it may overflow, it is never cut.
+ */
+export function wrap80(text: string, width = 80): string {
+  return text
+    .split("\n")
+    .map((line) => {
+      const out: string[] = [];
+      let cur = "";
+      for (const word of line.split(" ")) {
+        const next = cur ? `${cur} ${word}` : word;
+        const room = out.length ? width - 2 : width;
+        if (cur && [...next].length > room) {
+          out.push(cur);
+          cur = word;
+        } else cur = next;
+      }
+      out.push(cur);
+      return out.map((l, i) => (i ? `  ${l}` : l)).join("\n");
+    })
+    .join("\n");
+}
+
+/** "⬢ Hivemind · Heads up: @alex's Cursor agent edited src/export.ts 2 min ago." */
 export function headsUp(actor: string | null | undefined, agent: string | null | undefined, file: string, iso: string, mine = false) {
   const who = mine ? "another of your agent sessions" : whoseAgent(actor, agent);
-  return `${HM}Heads up: ${who} edited ${file} ${minutesAgo(iso)}.`;
+  return wrap80(`${HM}Heads up: ${who} edited ${file} ${minutesAgo(iso)}.`);
 }
 
 /** "just now" · "12 min ago" · "3h ago" · "2d ago" */
@@ -167,7 +193,7 @@ export function ruleBlock(m: Memory, d: Directory, bodyMax = 260): string {
   return `${ruleLabel(m)}\n${noEmoji(m.title)}\n${provenance(m, d)}\n${noEmoji(oneLine(m.body, bodyMax))}\n`;
 }
 
-/** ContextPack + counts for the session banner ("Hivemind · Loaded {rules} team rules for #{repo} ({locked} locked)"). */
+/** ContextPack + counts for the session banner ("⬢ Hivemind · Loaded {rules} team rules for #{repo} ({locked} locked)"). */
 export type PackResult = ContextPack & { repo: string; rules: number; locked: number };
 
 export type PackInput = { repo: string; user: string; session?: string | null; log?: boolean; agent?: AgentKind };
