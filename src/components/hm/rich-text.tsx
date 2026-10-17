@@ -6,7 +6,16 @@ import { useHivemind } from "./store";
 import { tokenize, type Token } from "./utils";
 
 /** Renders body text with live #scope @person [[slug]] 🔒 chips; click opens in the inspector. */
-export function RichText({ text, className }: { text: string; className?: string }) {
+export function RichText({
+  text,
+  className,
+  inert,
+}: {
+  text: string;
+  className?: string;
+  /** Render chips as spans (use inside buttons/links). */
+  inert?: boolean;
+}) {
   const { people, memoryBySlug, openMemory, select } = useHivemind();
   const personIds = useMemo(() => new Set(people.map((p) => p.id)), [people]);
   const tokens = useMemo(() => tokenize(text, personIds), [text, personIds]);
@@ -31,6 +40,15 @@ export function RichText({ text, className }: { text: string; className?: string
       );
     } else {
       const label = t.kind === "link" ? (memoryBySlug(t.id)?.title ?? t.id) : t.text;
+      if (inert) {
+        parts.push(
+          <span key={`c${i}`} className="hm-chip" data-kind={t.kind} data-id={t.id}>
+            {label}
+          </span>,
+        );
+        last = t.to;
+        return;
+      }
       parts.push(
         <button
           type="button"

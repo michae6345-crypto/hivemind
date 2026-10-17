@@ -450,12 +450,15 @@ const seed: Seed[] = [
   },
 ];
 
-export const memories: Memory[] = seed.map(({ ageDays, id, ...m }) => ({
-  ...m,
-  id: id ?? `mem-${m.slug}`,
-  createdAt: daysAgo(ageDays),
-  updatedAt: daysAgo(ageDays),
-}));
+export const memories: Memory[] = seed.map(({ ageDays, id, ...m }) => {
+  const latest = m.evidence.map((e) => e.at).sort().at(-1);
+  return {
+    ...m,
+    id: id ?? `mem-${m.slug}`,
+    createdAt: m.evidence[0]?.at ?? daysAgo(ageDays),
+    updatedAt: latest ?? daysAgo(ageDays),
+  };
+});
 
 export const feed: FeedEvent[] = [
   { id: "f1", type: "blocked", actor: "noor", text: "proposed a lesson that 🔒 [[sec-lab-isolation]] blocked", at: minutesAgo(1), memoryId: "mem-mix-labs-in-tests", repo: "dataset-builder" },

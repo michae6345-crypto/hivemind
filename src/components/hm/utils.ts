@@ -64,6 +64,15 @@ export function approverFor(memory: Memory, scopes: Scope[], people: Person[]): 
   return people.find((p) => p.role === "security");
 }
 
+/** People whose agents load a lesson in this scope: everyone working at or below it,
+ *  and for a repo, the team that owns the repo. */
+export function reachFor(scopeId: string, scopes: Scope[], people: Person[]): number {
+  if (scopeId.startsWith("personal/")) return 1;
+  const s = scopes.find((x) => x.id === scopeId);
+  const anchor = s?.level === "repo" ? (s.parentId ?? scopeId) : scopeId;
+  return people.filter((p) => scopeChain(p.scopeId, scopes).some((c) => c.id === anchor)).length;
+}
+
 export function canLock(person: Person | undefined): boolean {
   return person?.role === "security";
 }

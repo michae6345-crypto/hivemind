@@ -144,6 +144,33 @@ function tokenCompletions(env: TokenEnv) {
   };
 }
 
+// Light markdown styling: keep the source visible (like Obsidian's source mode), but
+// bold reads bold and inline code reads as code; the ** and ` markers go quiet.
+function markdownMarks() {
+  const deco = new MatchDecorator({
+    regexp: /\*\*([^*\n]+)\*\*|`([^`\n]+)`/g,
+    decoration: (m) => Decoration.mark({ class: m[1] ? "hm-md-bold" : "hm-md-code" }),
+  });
+  const markers = new MatchDecorator({
+    regexp: /\*\*|`/g,
+    decoration: () => Decoration.mark({ class: "hm-md-marker" }),
+  });
+  const plugin = (d: MatchDecorator) =>
+    ViewPlugin.fromClass(
+      class {
+        decorations: DecorationSet;
+        constructor(view: EditorView) {
+          this.decorations = d.createDeco(view);
+        }
+        update(u: ViewUpdate) {
+          this.decorations = d.updateDeco(u, this.decorations);
+        }
+      },
+      { decorations: (v) => v.decorations },
+    );
+  return [plugin(deco), plugin(markers)];
+}
+
 export const hmEditorTheme = EditorView.theme(
   {
     "&": {
@@ -178,6 +205,9 @@ export const hmEditorTheme = EditorView.theme(
       color: "var(--text)",
     },
     ".cm-completionDetail": { color: "var(--muted)", marginLeft: "8px", fontStyle: "normal" },
+    ".hm-md-bold": { fontWeight: "600", color: "var(--text)" },
+    ".hm-md-code": { color: "var(--chip-repo)" },
+    ".hm-md-marker": { color: "var(--muted)", opacity: "0.6" },
     ".hm-hovercard": { padding: "8px 10px", maxWidth: "280px", fontFamily: "var(--font-geist-sans)" },
     ".hm-hovercard-title": { fontWeight: "600", fontSize: "13px" },
     ".hm-hovercard-detail": { color: "var(--muted)", fontSize: "12px", marginTop: "2px" },
@@ -187,6 +217,7 @@ export const hmEditorTheme = EditorView.theme(
 
 export function hmTokens(env: TokenEnv): Extension[] {
   return [
+    ...markdownMarks(),
     chipPlugin(env),
     chipClicks(env),
     chipHover(env),
