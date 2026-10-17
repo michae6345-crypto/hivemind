@@ -1,6 +1,7 @@
 // Per-agent wiring. Formats verified against each vendor's docs on 2026-10-16 (see cli/README.md for links).
 // Every writer merges keys or leaves the existing file alone; nothing is overwritten.
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { hasTemplates, wireFromTemplates } from "./templates.mjs";
 import { examplePath, mergeJson, read, write } from "./util.mjs";
 
@@ -72,7 +73,19 @@ function wireClaude(ctx) {
       },
       ctx.dryRun,
     ),
+    installSkill(ctx),
   ];
+}
+
+// /hivemind skill (rules · teach · status). Its CLI fallback points at this CLI, or <--hivemind-dir>/cli when given.
+const SKILL_TEMPLATE = join(dirname(fileURLToPath(import.meta.url)), "..", "templates", "claude-skill", "SKILL.md");
+export const SKILL_FILE = ".claude/skills/hivemind/SKILL.md";
+function installSkill(ctx) {
+  const p = join(ctx.root, ...SKILL_FILE.split("/"));
+  if (read(p) !== null) return { action: "unchanged", file: p };
+  const cliPath = ctx.hivemindDirFlag ? `${ctx.hivemindDir}/cli/hivemind.mjs` : fileURLToPath(new URL("../hivemind.mjs", import.meta.url)).replace(/\\/g, "/");
+  write(p, read(SKILL_TEMPLATE).replaceAll("{{HIVEMIND_CLI}}", `node "${cliPath}"`), ctx.dryRun);
+  return { action: "created", file: p };
 }
 
 // ---------- Cursor: .cursor/mcp.json (${env:VAR} in headers is documented) ----------

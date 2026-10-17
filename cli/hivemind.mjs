@@ -4,32 +4,42 @@
 //                   [--no-sync] [--no-vscode] [--copilot-cli] [--dry-run]
 //   hivemind sync   [--agents a,b] [--repo …] [--url …] [--dir …] [--user <id>]
 //   hivemind status [--repo …] [--url …] [--dir …]
-// Precedence: flag > env (HIVEMIND_API_URL, HIVEMIND_TOKEN, HIVEMIND_USER, HIVEMIND_REPO) > .hivemind.json > <hivemind>/.env.local.
+//   hivemind teach "<rule>" [--scope repo/x|team/x]
+//   hivemind rules  [--file path]
+// Every command takes --agent <kind> (else HIVEMIND_AGENT, else "cli") for x-hm-agent attribution.
+// Precedence: flag > env (HIVEMIND_API_URL, HIVEMIND_TOKEN, HIVEMIND_USER, HIVEMIND_REPO) > .hivemind.json > defaults
+// (URL: production; token: <hivemind>/.env.local).
 import { existsSync, statSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { AGENTS, byId, mcpWired } from "./lib/agents.mjs";
+import { AGENTS, SKILL_FILE, byId, mcpWired } from "./lib/agents.mjs";
 import { rulesFrontmatter } from "./lib/templates.mjs";
-import { END, START, api, banner, c, mergeJson, onPath, read, readEnvFile, rel, sym, table, upsertBlock, write } from "./lib/util.mjs";
+import { END, START, api, banner, c, callerAgent, mcpCall, mergeJson, onPath, post, read, readEnvFile, rel, sym, table, upsertBlock, write } from "./lib/util.mjs";
 
 const HM_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const CONFIG = ".hivemind.json";
+const DEFAULT_URL = "https://hivemind-beta-virid.vercel.app";
 const GENERIC = { id: "other", label: "Any MCP agent", rules: { file: "AGENTS.md" }, mcpFile: null };
 const agentOf = (id) => byId[id] ?? (id === "other" ? GENERIC : null);
 
 // ---------- args ----------
+const BOOLEAN = new Set(["dry-run", "no-sync", "no-vscode", "copilot-cli", "personal", "help", "json"]);
 function parseArgs(argv) {
   const [cmd = "help", ...rest] = argv;
   const flags = {};
+  const positional = [];
   for (let i = 0; i < rest.length; i++) {
     const a = rest[i];
-    if (!a.startsWith("--")) continue;
+    if (!a.startsWith("--")) {
+      positional.push(a);
+      continue;
+    }
     const [k, v] = a.slice(2).split(/=(.*)/s);
     if (v !== undefined) flags[k] = v;
-    else if (rest[i + 1] && !rest[i + 1].startsWith("--")) flags[k] = rest[++i];
+    else if (!BOOLEAN.has(k) && rest[i + 1] && !rest[i + 1].startsWith("--")) flags[k] = rest[++i];
     else flags[k] = true;
   }
-  return { cmd, flags };
+  return { cmd, flags, positional };
 }
 
 function resolveConfig(flags) {
@@ -43,7 +53,8 @@ function resolveConfig(flags) {
   }
   const rawRepo = flags.repo || process.env.HIVEMIND_REPO || saved.repo || basename(root);
   const repo = String(rawRepo).includes("/") ? String(rawRepo) : `repo/${rawRepo}`;
-  const url = String(flags.url || process.env.HIVEMIND_API_URL || saved.url || dev.HIVEMIND_API_URL || "http://localhost:3000").replace(/\/+$/, "");
+  // .env.local only supplies the token; its localhost URL must not leak into generated configs.
+  const url = String(flags.url || process.env.HIVEMIND_API_URL || saved.url || DEFAULT_URL).replace(/\/+$/, "");
   const actor = (typeof flags.user === "string" && flags.user) || process.env.HIVEMIND_USER || "cli";
   return { root, saved, repo, url, actor, token: process.env.HIVEMIND_TOKEN || dev.HIVEMIND_TOKEN, flags, dryRun: !!flags["dry-run"] };
 }
@@ -168,7 +179,7 @@ async function cmdInit(cfg) {
   const sessionStartScript = join(HM_ROOT, "hooks", "session-start.mjs").replace(/\\/g, "/");
   // Hook commands point at <hivemind>/hooks/…; --hivemind-dir overrides (e.g. "../.." for a repo inside the checkout).
   const hivemindDir = String(typeof cfg.flags["hivemind-dir"] === "string" ? cfg.flags["hivemind-dir"] : HM_ROOT).replace(/\\/g, "/");
-  const ctx = { ...cfg, hmRoot: HM_ROOT, hivemindDir, sessionStartScript, skipVscode: !!cfg.flags["no-vscode"], copilotCli: !!cfg.flags["copilot-cli"] };
+  const ctx = { ...cfg, hmRoot: HM_ROOT, hivemindDir, hivemindDirFlag: typeof cfg.flags["hivemind-dir"] === "string", sessionStartScript, skipVscode: !!cfg.flags["no-vscode"], copilotCli: !!cfg.flags["copilot-cli"] };
 
   const rows = [];
   const notes = [];
@@ -277,7 +288,8 @@ async function cmdStatus(cfg) {
     if (!chosen.has(a.id) && (a === GENERIC || (!mcp && !(rulesText ?? "").includes(START)))) continue;
     let rules = c.gray("—");
     if (a.id === "claude-code") {
-      rules = c.gray("live via SessionStart");
+      const skill = read(join(cfg.root, ...SKILL_FILE.split("/"))) !== null;
+      rules = `${c.gray("live via SessionStart")}${skill ? ` · ${sym.ok} /hivemind skill` : ""}`;
     } else if (rulesText?.includes(START) && rulesText.includes(END)) {
       const age = Math.round((Date.now() - statSync(rulesPath).mtimeMs) / 60000);
       rules = `${sym.ok} ${a.rules.file} ${c.gray(age < 1 ? "just now" : age < 60 ? `${age}m ago` : `${Math.round(age / 60)}h ago`)}`;
@@ -295,6 +307,71 @@ async function cmdStatus(cfg) {
   if (!reachable) process.exit(1);
 }
 
+// ---------- teach ----------
+/** Nearest owner up the scope chain ("repo/export-service" → jordan). */
+function ownerOf(scopeId, scopes) {
+  const byScope = new Map(scopes.map((s) => [s.id, s]));
+  for (let s = byScope.get(scopeId); s; s = byScope.get(s.parentId)) if (s.owner) return s.owner;
+  return null;
+}
+
+async function cmdTeach(cfg, positional) {
+  const rule = positional.join(" ").trim();
+  if (!rule) fail('usage: hivemind teach "<rule>" [--scope repo/<name>|team/<name>]');
+  const scope = typeof cfg.flags.scope === "string" ? cfg.flags.scope : null;
+  // A correction goes through the learning engine (extract → merge → 🔒 conflict check). The engine scopes corrections
+  // itself, so an explicit team/org scope is sent as a proposal for that scope instead.
+  const explicit = scope && !scope.startsWith("repo/");
+  const event = explicit
+    ? { type: "agent_proposal", actor: cfg.actor, repo: cfg.repo, payload: { title: rule.slice(0, 80), body: rule, scope, via: callerAgent() } }
+    : { type: "correction", actor: cfg.actor, repo: scope ?? cfg.repo, sessionId: `cli-${Date.now()}`, payload: { text: rule, via: callerAgent() } };
+  if (!cfg.flags.json) console.log(banner("teach"), c.gray(`${scope ?? event.repo} · @${cfg.actor} · ${callerAgent()}`));
+  const [res, scopes] = await Promise.all([
+    post(cfg, "/api/events", event).catch((e) => fail(e.message)),
+    api(cfg, "/api/scopes").then((r) => r.data.scopes ?? []).catch(() => []),
+  ]);
+  if (cfg.flags.json) return console.log(JSON.stringify(res, null, 2));
+  const actionOf = new Map((res.actions ?? []).map((a) => [a.memoryId, a]));
+  if (!res.lessons?.length) {
+    console.log(`${sym.dot} Nothing new to learn: Hivemind didn't find a reusable rule in that, or already knows it.`);
+    return;
+  }
+  for (const m of res.lessons) {
+    const act = actionOf.get(m.id);
+    const owner = ownerOf(m.scopeId, scopes);
+    const meta = c.gray(`"${m.title}" · #${m.scopeId} · ${m.status}`);
+    if (m.status === "blocked") {
+      console.log(`🚫 Blocked by a 🔒 rule${act?.note || m.blockedReason ? ` — ${act?.note || m.blockedReason}` : ""}`);
+    } else if (act?.action === "reinforced" || act?.action === "updated" || m.status === "active") {
+      console.log(`${sym.ok} Already known — your correction was added as evidence${m.status === "pending" && owner ? ` (still waiting on @${owner})` : ""}`);
+    } else {
+      console.log(`📝 Lesson proposed — waiting on @${owner ?? "a lead"}`);
+    }
+    console.log(`   ${meta}`);
+  }
+}
+
+// ---------- rules ----------
+async function cmdRules(cfg) {
+  const file = typeof cfg.flags.file === "string" ? cfg.flags.file.replace(/\\/g, "/").replace(/^\.\//, "") : undefined;
+  let markdown;
+  try {
+    markdown = (await mcpCall(cfg, "get_team_rules", { repo: cfg.repo, ...(file ? { file } : {}) })).text;
+  } catch (e) {
+    if (file) fail(`couldn't get rules for ${file}: ${e.message}`);
+    // Without MCP the plain pack still answers "what applies here".
+    const qs = new URLSearchParams({ repo: cfg.repo, user: cfg.actor, log: "0" });
+    markdown = (await api(cfg, `/api/context-pack?${qs}`).catch((e2) => fail(e2.message))).data.markdown;
+  }
+  if (!process.stdout.isTTY || cfg.flags.json) return process.stdout.write(markdown.trimEnd() + "\n");
+  for (const line of markdown.split("\n")) {
+    if (line.startsWith("#")) console.log(c.bold(c.amber(line)));
+    else if (line.includes("🔒")) console.log(c.red(line));
+    else if (line.includes("⚠️")) console.log(c.yellow(line));
+    else console.log(line.replace(/\*\*(.+?)\*\*/g, (_, t) => c.bold(t)));
+  }
+}
+
 // ---------- main ----------
 const HELP = `${banner("— team memory for every coding agent")}
 
@@ -304,13 +381,18 @@ ${c.bold("Usage")}
                   [--hivemind-dir <path>] [--no-sync] [--no-vscode] [--copilot-cli] [--dry-run]
   hivemind sync   [--agents …] [--repo …] [--url …] [--dir …] [--dry-run] [--personal --user <id>]
   hivemind status [--repo …] [--url …] [--dir …]
+  hivemind teach  "<rule>" [--scope repo/<name>|team/<name>]   propose a lesson (a human approves it)
+  hivemind rules  [--file <path>]                              print the rules that apply (to a file)
+
+  Any command: --agent <claude-code|cursor|…> (x-hm-agent; default HIVEMIND_AGENT or "cli"), --user <id>
 
 ${c.bold("Env")}  HIVEMIND_API_URL  HIVEMIND_TOKEN  HIVEMIND_USER  HIVEMIND_REPO`;
 
-const { cmd, flags } = parseArgs(process.argv.slice(2));
-const commands = { init: cmdInit, sync: cmdSync, status: cmdStatus };
+const { cmd, flags, positional } = parseArgs(process.argv.slice(2));
+if (typeof flags.agent === "string") process.env.HIVEMIND_AGENT = flags.agent;
+const commands = { init: cmdInit, sync: cmdSync, status: cmdStatus, teach: cmdTeach, rules: cmdRules };
 if (!commands[cmd] || flags.help) {
   console.log(HELP);
   process.exit(commands[cmd] || cmd === "help" || cmd === "--help" ? 0 : 1);
 }
-commands[cmd](resolveConfig(flags)).catch((e) => fail(e?.stack ?? e));
+commands[cmd](resolveConfig(flags), positional).catch((e) => fail(e?.stack ?? e));

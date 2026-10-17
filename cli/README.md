@@ -9,7 +9,7 @@ fresh for agents that have no hooks. Node 20+, zero dependencies.
 npm i -g ./cli                                       # from the hivemind checkout; or run node <hivemind>/cli/hivemind.mjs
 export HIVEMIND_TOKEN=<token> HIVEMIND_USER=<you>    # PowerShell: setx HIVEMIND_TOKEN <token>; setx HIVEMIND_USER <you>
 cd your-repo
-hivemind init --url https://<hivemind-host>
+hivemind init                                        # --url <api> for a self-hosted or local server
 git add -A && git commit -m "Connect coding agents to Hivemind"
 hivemind status
 ```
@@ -25,9 +25,23 @@ To choose agents yourself, pass `--agents cursor,codex`.
 | `init [--agents …] [--repo repo/<name>] [--user <id>] [--url <api>] [--dir <path>] [--hivemind-dir <path>] [--no-sync] [--no-vscode] [--copilot-cli] [--dry-run]` | Writes the MCP, hook and rules config for each agent, then syncs the rules files |
 | `sync [--agents …] [--dry-run] [--personal --user <id>]` | Fetches `/api/context-pack` and writes it between `<!-- hivemind:start -->` / `<!-- hivemind:end -->` markers. Idempotent. Run it in CI or a cron to keep rules fresh |
 | `status` | Pings the API, then shows the rules in the pack, pending lessons, and each agent's MCP, hooks and rules files |
+| `teach "<rule>" [--scope repo/x|team/x]` | Sends the rule to `/api/events` as a correction, so it gets the same extract, merge and 🔒 checks as any other correction. Prints `📝 Lesson proposed — waiting on @<owner>`, or `🚫 Blocked by a 🔒 rule`. A `team/…` scope is sent as a proposal for that scope |
+| `rules [--file path]` | Prints the rules that apply now. With `--file`, it prints that file's rules plus live edits, using MCP `get_team_rules`. Output is colored on a TTY and plain markdown when piped |
+
+Every command accepts `--agent <kind>`, which sets the `x-hm-agent` header. The default is `$HIVEMIND_AGENT`, else `cli`.
+
+**Claude Code skill.** `init` also installs `.claude/skills/hivemind/SKILL.md`, which provides four commands:
+
+- `/hivemind`: shows the rules that apply now, via MCP `get_team_rules`
+- `/hivemind rules <file>`: shows the rules for one file
+- `/hivemind teach <rule>`: proposes a rule, via MCP `propose_memory`
+- `/hivemind status`: checks the connection
+
+Each command falls back to this CLI when MCP isn't available.
 
 Settings are resolved in this order: flags, then `HIVEMIND_API_URL` / `HIVEMIND_TOKEN` / `HIVEMIND_USER` /
-`HIVEMIND_REPO`, then `.hivemind.json`, then the hivemind checkout's `.env.local`. Every request sends
+`HIVEMIND_REPO`, then `.hivemind.json`. After that the URL defaults to production
+(`https://hivemind-beta-virid.vercel.app`), and the token falls back to the hivemind checkout's `.env.local`. Every request sends
 `Authorization: Bearer $HIVEMIND_TOKEN` and `x-hm-agent: <agent>`.
 
 ## What gets written

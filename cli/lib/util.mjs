@@ -118,13 +118,56 @@ export function onPath(name) {
 }
 
 // ---------- HTTP ----------
-export async function api(cfg, path, { agent = "other", timeout = 20000 } = {}) {
+/** Which agent is calling: HIVEMIND_AGENT (set by the Claude Code skill etc.), else "cli". */
+export const callerAgent = () => process.env.HIVEMIND_AGENT || "cli";
+
+const headers = (cfg, agent) => ({
+  Authorization: `Bearer ${cfg.token ?? ""}`,
+  "x-hm-user": cfg.actor,
+  "x-hm-repo": cfg.repo,
+  "x-hm-agent": agent ?? callerAgent(),
+});
+
+async function errorText(res, path) {
+  const body = await res.json().catch(() => null);
+  return `HTTP ${res.status} from ${path.split("?")[0]}${body?.error ? `: ${body.error}` : ""}`;
+}
+
+export async function api(cfg, path, { agent, timeout = 20000 } = {}) {
   const t0 = Date.now();
+  const res = await fetch(cfg.url + path, { headers: headers(cfg, agent), signal: AbortSignal.timeout(timeout) });
+  const ms = Date.now() - t0;
+  if (!res.ok) throw Object.assign(new Error(await errorText(res, path)), { ms });
+  return { data: await res.json(), ms };
+}
+
+export async function post(cfg, path, body, { agent, timeout = 60000 } = {}) {
   const res = await fetch(cfg.url + path, {
-    headers: { Authorization: `Bearer ${cfg.token ?? ""}`, "x-hm-user": cfg.actor, "x-hm-agent": agent },
+    method: "POST",
+    headers: { ...headers(cfg, agent), "content-type": "application/json" },
+    body: JSON.stringify(body),
     signal: AbortSignal.timeout(timeout),
   });
-  const ms = Date.now() - t0;
-  if (!res.ok) throw Object.assign(new Error(`HTTP ${res.status} from ${path.split("?")[0]}`), { ms });
-  return { data: await res.json(), ms };
+  if (!res.ok) throw new Error(await errorText(res, path));
+  return res.json();
+}
+
+/** One stateless MCP tools/call over Streamable HTTP (the server answers as JSON or a single SSE message). */
+export async function mcpCall(cfg, name, args, { agent, timeout = 20000 } = {}) {
+  const res = await fetch(`${cfg.url}/api/mcp`, {
+    method: "POST",
+    headers: { ...headers(cfg, agent), "content-type": "application/json", accept: "application/json, text/event-stream" },
+    body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/call", params: { name, arguments: args } }),
+    signal: AbortSignal.timeout(timeout),
+  });
+  if (!res.ok) throw new Error(await errorText(res, "/api/mcp"));
+  const text = await res.text();
+  const raw = text.trimStart().startsWith("{")
+    ? text
+    : text.split(/\r?\n/).filter((l) => l.startsWith("data: ")).pop()?.slice(6) ?? "{}";
+  const msg = JSON.parse(raw);
+  if (msg.error) throw new Error(`MCP ${name}: ${msg.error.message}`);
+  const out = (msg.result?.content ?? []).filter((c) => c.type === "text").map((c) => c.text).join("\n");
+  if (msg.result?.isError) throw new Error(`MCP ${name}: ${out}`);
+  return { text: out, structured: msg.result?.structuredContent };
 }
