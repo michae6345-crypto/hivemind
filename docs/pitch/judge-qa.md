@@ -38,23 +38,25 @@ which is the raw material for a company-specific eval set or rubric *(export: ro
 
 **How do you decide what counts as a failure?**
 Three signals, all defined by people and not by a model's opinion: a human correcting the agent, an edit that touches
-a file governed by a 🔒 locked rule, and two agents editing the same file within 10 minutes. In the eval, failure is a
+a file governed by a locked rule, and two agents editing the same file within 10 minutes. In the eval, failure is a
 deterministic grader firing on the diff, with no LLM judge.
 
 **How does your agent notice on its own when it's failing?**
 A PostToolUse hook runs after every edit. It tells the agent, inside its own loop, when another person's agent just
 edited the same file and which locked rules mention that file, so the agent can stop and check before the human has to.
-Corrections typed to the agent are classified as they arrive and become pending lessons *(capture: landing tonight)*.
+The engineer sees it too: `hivemind watch` re-checks each changed file and shows a broken rule as a code frame in the
+next pane. Corrections typed to the agent are classified as they arrive and become pending lessons.
 
 **Guardrails or retry loops?**
 The guardrails are structural. Agents can only write `pending`. Promotion needs a human with the right role, and a
-proposal that contradicts a locked rule is blocked *(auto-block: landing tonight)*. We don't auto-retry: the warning
+proposal that contradicts a locked rule is blocked, by two independent checks. `hivemind check --staged` exits
+non-zero while a locked rule is broken, so it works as a pre-commit hook. We don't auto-retry: the warning
 goes back to the agent, and the agent decides with that information.
 
 **How does it stay reliable as it runs longer?**
 The pack is capped at 6,000 characters and ranked by the Wilson lower bound of each lesson's Beta score, so a growing
 memory doesn't bloat context. Locked rules are always first. Lessons that get corrected against lose confidence and
-drop out *(session-end scoring: landing tonight; time decay: roadmap)*.
+drop out, scored at session end *(time decay: roadmap)*.
 
 **What happens when a lesson is wrong?**
 Its owner can reject or edit it. A correction against it lowers its score. Contradicted lessons are marked `invalid`
@@ -93,16 +95,20 @@ Plus vendor neutrality: no single agent vendor has a reason to make its memory w
 ## Best Visual Design (Figma, Michelle Liu)
 
 **What design decisions did you make?**
-One question per screen: Lessons shows what the team knows, Approvals asks one decision at a time with A / R keys,
-Results shows the eval. Light page, near-black text, one blue accent for interaction. Honey marks lessons only and
-red marks locked rules only, so color always means the same thing.
+We designed the terminal as the product. `hivemind watch` sits in a split pane next to the agent and uses the
+website Terminal's palette: no emoji, one honey ⬢ as the mark, and code frames (the line, the range underlined, the
+rule, who owns it, the fix) in place of popups. Approving a lesson is one key and plays one short celebration, and
+the status line gives the rule count without opening anything. Honey always means a lesson, rose a locked rule and
+blue the interface, in the terminal, the web app and the site.
 
 **What makes it distinct?**
-Lessons read as text with inline chips (`#repo/export-service`, `@jordan`, `[[lesson]]`) instead of forms. Hivemind
-also shows up where engineers already are, in the agent's terminal and the editor, so the web app stays small.
+Most agent tools add a dashboard. We put Hivemind in the terminal where the engineer is already watching the agent,
+so the web app can stay at one question per screen (Approvals, Results). Lessons read as text with `#scope` and
+`@handle` chips, and every rule shows who taught it.
 
 **Why a hive?**
-Each cell is a lesson, and the hive fills in as the team learns. It shows the three states (at rest, learning,
+Each cell is a lesson, and the hive fills in as the team learns. In the terminal it shrinks to the ⬢ mark and
+the three cells that fill when a lesson goes live. It shows the three states (at rest, learning,
 everyone knows) without a chart.
 
 ## Kaushal Patel (training data, ChatGPT infra, evals)
@@ -139,7 +145,7 @@ with one approval process across all of them.
 
 **Memory poisoning: can't an agent or attacker write a bad lesson that every agent trusts?**
 Agents can only propose. Every lesson needs a human with the right role for that scope to approve it, and anything
-that contradicts a locked rule is blocked *(auto-block: landing tonight)*. Lessons carry evidence and an author, so a
+that contradicts a locked rule is blocked. Lessons carry evidence and an author, so a
 bad one can be traced and rejected. This is the attack OWASP lists as ASI06, and it's the reason governance is in the
 data model and not in a prompt.
 
@@ -175,7 +181,7 @@ when someone corrects an agent. Cost grows with corrections, not with sessions.
 
 **Isn't this Mem0 / Zep / Letta?**
 Those are memory infrastructure for building agents. Hivemind is a product for engineering teams: scopes, roles,
-approvals, locked rules, collision warnings and editor and agent integrations. We borrowed Mem0's merge prompts and
+approvals, locked rules, collision warnings, a terminal app and hooks for six agents. We borrowed Mem0's merge prompts and
 Graphiti's invalidation idea.
 
 **Pricing?**
@@ -188,16 +194,22 @@ teaches. A PR-review-comment importer can backfill lessons from past reviews *(r
 
 **What if two lessons conflict?**
 Locked rules always win. Between unlocked lessons, the more specific scope ranks higher (repo over team over org)
-and then confidence decides. A lead can mark the loser invalid.
+and then confidence decides. A lead can reject the loser *(marking it `invalid` with a pointer: roadmap)*.
 
 **Doesn't more context make the agent worse?**
 The pack is capped at 6,000 characters and ranked. In the eval, the ON pack held 6 relevant lessons among 6
 distractors and still passed 36 of 36.
 
 **Does it work with tools other than Claude Code?**
-Today Claude Code works end to end through hooks, and any MCP client can use `search_memory` and `propose_memory`.
-Adapters for Cursor, Gemini CLI, Copilot, Codex and Claude chat, `hivemind init`, and a VS Code extension are being
-built tonight *(update this answer from the build status table before judging)*.
+Yes. `hivemind init` wires six agents through their own hooks and MCP: Claude Code, Cursor, Gemini CLI, Codex,
+GitHub Copilot and Windsurf. Clients without hooks (claude.ai, Claude Desktop) use `get_team_rules` and
+`propose_memory` over MCP. Gaps remain where vendors lack a hook: Windsurf can't inject context, so it gets a synced
+rules file, and Copilot in VS Code has no session-end event, so it doesn't update confidence yet.
+
+**Why a terminal app and not an IDE plugin?**
+Engineers using agents already have a terminal open next to the agent, whichever editor they use. One terminal pane
+works with every agent and every editor, and a single `hivemind watch` command needs no install per IDE. We built a
+VS Code extension and took it out of the pitch to keep one surface. Its code is still in the repo.
 
 **What did you build at the hackathon vs before?**
-All of it was built at the event: the first commit is Fri Oct 16, 7:23 PM PT, and the history is public.
+All of it was built at the event: the first commit is Fri Oct 16, 7:23 PM PT, and the commit history shows the rest.
