@@ -46,18 +46,18 @@ export function Logo({ className, intro = false }: { className?: string; intro?:
 
 const TITTLE = "M50 4L89.84 27L89.84 73L50 96L10.16 73L10.16 27Z";
 
-/** "hivemind" set in Anybody Black, expanded, with hexagon dots on the i's: one honey, one locked-rule rose. */
+/** "hivemind" set in Syne ExtraBold with hexagon dots on the i's: one honey, one locked-rule rose. */
 export function Wordmark({ className }: { className?: string }) {
   const i = (fill: string) => (
     <span className="relative inline-block" aria-hidden>
       ı
-      <svg viewBox="0 0 100 100" className="absolute top-[0.02em] left-1/2 size-[0.26em] -translate-x-1/2">
+      <svg viewBox="0 0 100 100" className="absolute top-[0.1em] left-1/2 size-[0.2em] -translate-x-1/2">
         <path d={TITTLE} fill={fill} />
       </svg>
     </span>
   );
   return (
-    <span className={cn("font-brand leading-none font-black tracking-[-0.03em] [font-stretch:150%]", className)}>
+    <span className={cn("font-brand leading-none font-extrabold tracking-[-0.02em]", className)}>
       <span className="sr-only">Hivemind</span>
       <span aria-hidden>
         h{i("var(--accent)")}vem{i("var(--chip-lock)")}nd

@@ -1,10 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
 import type { Memory } from "@/mocks/types";
 import { useHivemind } from "./store";
+import { useGo } from "./nav";
 import { cn, confidence, scopeLabel } from "./utils";
 
 /** Quiet honeycomb texture for empty states. */
@@ -81,7 +81,7 @@ function order(m: Memory) {
  */
 export function Hive({ className }: { className?: string }) {
   const { memories, recentlyChanged, openMemory } = useHivemind();
-  const router = useRouter();
+  const go = useGo();
   const [hover, setHover] = useState<Memory | null>(null);
 
   const cells = useMemo(() => {
@@ -153,12 +153,12 @@ export function Hive({ className }: { className?: string }) {
               onBlur={() => setHover(null)}
               onClick={() => {
                 openMemory(m.id);
-                router.push("/");
+                go("/");
               }}
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
                   openMemory(m.id);
-                  router.push("/");
+                  go("/");
                 }
               }}
             >

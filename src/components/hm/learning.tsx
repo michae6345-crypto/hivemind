@@ -36,7 +36,7 @@ export function Learning() {
       <div className="mx-auto max-w-6xl px-8 py-8">
         <div className="flex items-start justify-between gap-6">
           <div>
-            <h1 className="font-brand text-[34px] leading-none font-black tracking-[-0.035em] [font-stretch:125%]">
+            <h1 className="font-brand text-[32px] leading-none font-extrabold tracking-[-0.02em]">
               Every agent gets smarter
             </h1>
             <p className="mt-3 max-w-[60ch] text-[14px] text-muted">
@@ -68,11 +68,11 @@ export function Learning() {
           <div className="flex flex-col justify-center border-l border-line pl-6">
             <Label>Corrections per session</Label>
             <div className="flex items-baseline gap-3">
-              <span className="font-brand text-[56px] leading-none font-black tracking-[-0.02em] text-muted tabular-nums [font-stretch:75%]">
+              <span className="font-condensed text-[56px] leading-none font-black tracking-[-0.02em] text-muted tabular-nums [font-stretch:75%]">
                 {before.toFixed(1)}
               </span>
               <ArrowRight className="size-6 self-center text-muted" />
-              <span className="font-brand text-[56px] leading-none font-black tracking-[-0.02em] text-accent tabular-nums [font-stretch:75%]">
+              <span className="font-condensed text-[56px] leading-none font-black tracking-[-0.02em] text-accent tabular-nums [font-stretch:75%]">
                 {after.toFixed(1)}
               </span>
             </div>

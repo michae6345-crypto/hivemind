@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import { Ban, Bot, GitPullRequest, Inbox, MessageSquareQuote, PenLine } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import type { Memory } from "@/mocks/types";
 import { useHivemind } from "./store";
+import { useGo } from "./nav";
 import { useDecide } from "./decisions";
 import { DecisionButtons } from "./decision-buttons";
 import { Guardrail } from "./guardrail";
@@ -135,7 +135,7 @@ function Group({
 function Detail({ memory: m, onDone }: { memory: Memory; onDone: () => void }) {
   const { user, scopes, people, updateMemory, openMemory } = useHivemind();
   const { onApprove, onReject } = useDecide();
-  const router = useRouter();
+  const go = useGo();
   const allowed = canApprove(user, m, scopes);
   const approver = approverFor(m, scopes, people);
   const author = people.find((p) => p.id === m.author);
@@ -252,7 +252,7 @@ function Detail({ memory: m, onDone }: { memory: Memory; onDone: () => void }) {
           type="button"
           onClick={() => {
             openMemory(m.id);
-            router.push("/");
+            go("/");
           }}
           className="ml-auto text-[12px] text-muted underline-offset-4 hover:text-fg hover:underline"
         >

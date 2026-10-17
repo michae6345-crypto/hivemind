@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import { BookOpen, FileText, Inbox, LineChart, Lock, PenLine, Search, User, UserCog, Users } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { ROLE_USERS, useHivemind } from "./store";
+import { useGo, type Route } from "./nav";
 import { cn, scopeLabel } from "./utils";
 
 interface Item {
@@ -19,7 +19,7 @@ interface Item {
 /** ⌘K: jump to any lesson, person or scope, or run an action. */
 export function Palette() {
   const { paletteOpen, setPaletteOpen, memories, people, scopes, openMemory, select, setRole, setComposerOpen } = useHivemind();
-  const router = useRouter();
+  const navigate = useGo();
   const [q, setQ] = useState("");
   const [cursor, setCursor] = useState(0);
   const listRef = useRef<HTMLUListElement>(null);
@@ -32,7 +32,7 @@ export function Palette() {
 
   const items = useMemo<Item[]>(() => {
     const go = (path: string) => () => {
-      router.push(path);
+      navigate(path as Route);
       close();
     };
     const all: Item[] = [
@@ -60,7 +60,7 @@ export function Palette() {
           icon: m.locked ? Lock : FileText,
           run: () => {
             openMemory(m.id);
-            router.push("/");
+            navigate("/");
             close();
           },
         })),
@@ -72,7 +72,7 @@ export function Palette() {
         icon: User,
         run: () => {
           select({ kind: "person", id: p.id });
-          router.push("/");
+          navigate("/");
           close();
         },
       })),
@@ -86,7 +86,7 @@ export function Palette() {
           icon: Users,
           run: () => {
             select({ kind: "scope", id: s.id });
-            router.push("/");
+            navigate("/");
             close();
           },
         })),
@@ -94,7 +94,7 @@ export function Palette() {
     const needle = q.trim().toLowerCase();
     if (!needle) return all.filter((i) => i.group === "Actions" || i.group === "Lessons").slice(0, 14);
     return all.filter((i) => `${i.label} ${i.detail ?? ""}`.toLowerCase().includes(needle)).slice(0, 30);
-    // close/router are stable enough for a palette list
+    // close/navigate are stable enough for a palette list
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [q, memories, people, scopes]);
 

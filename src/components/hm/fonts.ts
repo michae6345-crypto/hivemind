@@ -1,14 +1,24 @@
 import localFont from "next/font/local";
 
-// Brand type (see the logo canvas): Anybody for display, Shantell Sans for hand-written notes.
+// Brand type (see the logo canvas): Syne for the wordmark and headlines, Anybody condensed for big numerals,
+// Shantell Sans for hand-written notes.
 // Both are variable fonts under the SIL OFL (fonts/OFL.txt), served locally so builds never fetch fonts.
 
-/** Anybody: variable weight and width, used expanded for the wordmark and headings. */
+/** Syne: the wordmark and headlines, set ExtraBold. */
+export const brandFont = localFont({
+  src: "./fonts/syne.woff2",
+  variable: "--font-syne",
+  weight: "400 800",
+  display: "swap",
+});
+
+/** Anybody: variable weight and width, used condensed for big numerals. */
 export const displayFont = localFont({
   src: "./fonts/anybody.woff2",
   variable: "--font-anybody",
   weight: "100 900",
   display: "swap",
+  preload: false,
   declarations: [{ prop: "font-stretch", value: "50% 150%" }],
 });
 

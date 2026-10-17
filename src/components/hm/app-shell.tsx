@@ -1,8 +1,6 @@
 "use client";
 
-import Link from "next/link";
 import dynamic from "next/dynamic";
-import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useSyncExternalStore, type ReactNode } from "react";
 import { BookOpen, Inbox, LineChart, PenLine, Search } from "lucide-react";
 import { Toaster } from "sonner";
@@ -11,6 +9,7 @@ import { ORG_NAME } from "@/mocks/data";
 import { HivemindProvider, ROLE_USERS, useHivemind } from "./store";
 import { Avatar, Kbd, Logo, Wordmark } from "./bits";
 import { Palette } from "./palette";
+import { NavLink, useRoute, type Route } from "./nav";
 import { useNow } from "./use-now";
 import { canApprove, cn } from "./utils";
 
@@ -72,7 +71,7 @@ function GlobalKeys() {
 }
 
 function Header() {
-  const pathname = usePathname();
+  const route = useRoute();
   const { memories, scopes, user, role, setRole, live, activity, people, setComposerOpen, setPaletteOpen } = useHivemind();
   const queue = memories.filter(
     (m) => (m.status === "pending" || m.status === "blocked") && canApprove(user, m, scopes),
@@ -89,7 +88,7 @@ function Header() {
     return Array.from(seen.entries());
   }, [activity, now]);
 
-  const nav = [
+  const nav: { href: Route; label: string; icon: typeof BookOpen; badge?: number }[] = [
     { href: "/", label: "Vault", icon: BookOpen },
     { href: "/approvals", label: "Approvals", icon: Inbox, badge: queue },
     { href: "/learning", label: "Learning", icon: LineChart },
@@ -104,17 +103,17 @@ function Header() {
 
   return (
     <header className="flex h-12 shrink-0 items-center gap-5 border-b border-line bg-panel px-4">
-      <Link href="/" className="flex items-center gap-2.5">
+      <NavLink href="/" className="flex items-center gap-2.5">
         <Logo className="size-[22px]" intro />
         <Wordmark className="text-[17px]/none" />
         <span className="hidden text-[13px] text-muted lg:inline">{ORG_NAME}</span>
-      </Link>
+      </NavLink>
 
       <nav className="flex items-center gap-0.5">
         {nav.map(({ href, label, icon: Icon, badge }) => {
-          const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
+          const active = route === href;
           return (
-            <Link
+            <NavLink
               key={href}
               href={href}
               className={cn(
@@ -142,7 +141,7 @@ function Header() {
                   transition={{ type: "spring", stiffness: 520, damping: 40 }}
                 />
               ) : null}
-            </Link>
+            </NavLink>
           );
         })}
       </nav>
