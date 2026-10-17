@@ -1,7 +1,7 @@
 # Deploying Hivemind to Vercel
 
-Status (Fri Oct 16, late): `pnpm build` passes on `origin/main`. The Vercel CLI on Michael's machine is **logged
-out**, so nothing has been deployed yet. Everything below is ready to go.
+Status (Fri Oct 16, ~11:30 PM): `pnpm build` passes on `origin/main`. The orchestrator is doing the Vercel deploy and
+GitHub connection.
 
 ## 1. Environment variables
 
