@@ -3,7 +3,9 @@
 // layer, metrics for "reached N agents"), fetched lazily and cached in state.view._rk.
 import { canApprove, chainOf, ownerOf } from "../data.mjs";
 
-export const PERSONAS = ["alex", "noor", "jordan", "maya"];
+// The video's cast. `p` starts from whoever --user / HIVEMIND_USER is (state.actor) and steps to the next one;
+// someone outside the cast goes to kevin first.
+export const PERSONAS = ["kevin", "emily", "ben", "greg"]; // engineer, engineer, lead, security
 export const ROLE = { security: "Security", lead: "Lead", engineer: "Engineer" };
 
 const isApproval = (e) => e?.type === "manual" && /^Approved by /.test(e.quote ?? "");
@@ -125,7 +127,7 @@ export function atoms(state, ctx) {
     const label = mine ? "#you" : id === "org" ? "#org" : `#${id}`;
     return chipBg(` ${th.fg(scopeDot(id))(id.startsWith("personal/") ? "○" : "●")} ${t.text(label)} `);
   };
-  /** ` ● @jordan ` with the person's layer dot; possessive inside the chip: ` ● @alex's `. Agents: plain "an agent". */
+  /** ` ● @ben ` with the person's layer dot; possessive inside the chip: ` ● @kevin's `. Agents: plain "an agent". */
   const handle = (id, { pos = false } = {}) => {
     const h = String(id ?? "").replace(/^@/, "");
     if (!h || isAgentActor(h)) return t.muted(pos ? "an agent's" : "an agent");

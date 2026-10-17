@@ -1,9 +1,9 @@
 // Queue (owner: I), role-aware, public/brand/terminal/terminal-spec.md "Queue (lead / engineer)".
-// Leads and security: WAITING ON YOU cards (title, quote, scope + age, "proposed by @alex's Claude Code agent", a
+// Leads and security: WAITING ON YOU cards (title, quote, scope + age, "proposed by @kevin's Claude Code agent", a
 // conflicts line, then `a approve   r reject`), WAITING ON SOMEONE ELSE, and STOPPED BY A LOCKED RULE. On approve the
 // card's wash goes green ("Approved · in every agent's next session") for ~600 ms, then it's removed; if the lesson was
 // yours the hex seal plays. Engineers: YOUR LESSONS with where each stands, then what's waiting on a lead.
-// 403s become plain sentences. j/k move · a/r decide · enter opens · p switches persona (alex, noor, jordan, maya).
+// 403s become plain sentences. j/k move · a/r decide · enter opens · p switches persona (kevin, emily, ben, greg).
 import { wrap } from "../term.mjs";
 import {
   age, agentOf, allMemories, approval, approverOf, atoms, C, canDecide, isMine, origin, ownerHandle, plain403,
@@ -40,7 +40,7 @@ function model(state, ctx) {
   return { sections, cards: sections.flatMap((s) => s.cards) };
 }
 
-/** "@alex's Claude Code agent" / "you" / "an agent"; the tool is plain faint text (spec §4). */
+/** "@kevin's Claude Code agent" / "you" / "an agent"; the tool is plain faint text (spec §4). */
 function proposer(m, state, ctx, a) {
   const { t } = ctx.theme;
   const tool = ctx.theme.toolName(agentOf(m, state));

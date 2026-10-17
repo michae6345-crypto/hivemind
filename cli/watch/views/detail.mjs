@@ -1,8 +1,8 @@
 // Rule detail (owner: I), public/brand/terminal/terminal-spec.md "Rule detail": replaces the hover card, esc goes
 // back. Kind label + scope chip, title, rule text, then the provenance timeline as the hero:
-//   ○ 14 Oct  @alex corrected Claude Code: "…"  →  ○ Hivemind proposed it as a lesson for #…  →  ● @jordan approved it
+//   ○ 14 Oct  @kevin corrected Claude Code: "…"  →  ○ Hivemind proposed it as a lesson for #…  →  ● @ben approved it
 //   →  ● now  in every agent's context · reached N agents
-// Locked rules: ○ Set by @maya → ● Locked → ● Blocked N lessons → ● now in every agent's context.
+// Locked rules: ○ Set by @greg → ● Locked → ● Blocked N lessons → ● now in every agent's context.
 // Then the facts (scope · owner · status · in context · related · broken right now).
 import { wrap } from "../term.mjs";
 import {
