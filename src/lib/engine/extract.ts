@@ -77,6 +77,19 @@ export function passesFilter(text: string, actor = ""): boolean {
   return true;
 }
 
+/**
+ * Raw chat prompts (UserPromptSubmit) only: false when the text has no word a correction or rule could hang on, so the
+ * hook can answer without an LLM call. Deliberately broad (a superset of CORRECTION_CUE / RULE_CUE / polarity): it only
+ * has to rule out plain task requests like "Add a CSV export: create src/csv-export.ts …". Those events were dropped
+ * after the LLM said "not a correction" anyway (dropIfNotCorrection), so skipping them changes no stored data.
+ */
+const MAYBE_RULE =
+  /\b(no|nope|not|never|always|every|instead|rather|wrong|incorrect|mistake|stop|wait|actually|must|should|avoid|prefer|require[sd]?|make sure|ensure|remember|careful|fine|ok|okay|acceptable|allowed|forbidden|policy|rule|convention|standard|forgot|again|revert|undo|use|using|only|we|our|team|need to|has to|have to|can|may|bother|skip)\b|n['’]t\b|\bdo not\b/i;
+const TASK_OPENER =
+  /^(please\s+)?(add|create|write|implement|build|make|generate|scaffold|refactor|update|change|rename|move|delete|remove|show|list|explain|describe|run|test|open|read|find|search|summari[sz]e|when|now|next|then|(can|could|would) you)\b|^(please\s+)?in\s+[^\s,]+,/i;
+/** Plain task request: opens like one ("Add …", "In src/x.ts, …") and has no cue word. Facts ("Money is in cents") still go to the LLM. */
+export const mayTeach = (text: string) => MAYBE_RULE.test(text) || !TASK_OPENER.test(text.trim());
+
 // ---------- ② extract ----------
 const ExtractSchema = z.object({
   is_correction: z.boolean(),

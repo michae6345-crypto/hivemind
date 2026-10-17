@@ -3,6 +3,7 @@ import { HDR_USER } from "@/contracts";
 import { err, json } from "@/lib/auth";
 import { hookMessage, ingestEvent, normalizeRepo, type Outcome } from "@/lib/engine/pipeline";
 import { agentFromRequest } from "@/lib/engine/pack";
+import { mayTeach, passesFilter } from "@/lib/engine/extract";
 
 export const maxDuration = 60;
 
@@ -22,6 +23,9 @@ export async function POST(req: Request) {
   const hook = (await req.json().catch(() => null)) as { prompt?: string; session_id?: string; cwd?: string; transcript_path?: string } | null;
   const prompt = hook?.prompt?.trim();
   if (!prompt) return json({});
+  // Fast path: a plain task request ("Add a CSV export …") can't teach anything, so answer at once instead of spending
+  // ~1s of the engineer's prompt on an LLM call whose event would be deleted anyway.
+  if (!mayTeach(prompt) || !passesFilter(prompt)) return json({});
 
   const actor = req.headers.get(HDR_USER) || "unknown";
   const repo = req.headers.get("x-hm-repo") || normalizeRepo(hook?.cwd) || undefined;
