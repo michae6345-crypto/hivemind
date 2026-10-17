@@ -14,6 +14,10 @@ import { HeroHive } from "./hero-hive";
 import { ScrollStory } from "./scroll-story";
 import { ChatMock, EditorMock } from "./editor-mocks";
 import { LESSON, LOCKED_RULE, PROMPTS } from "./demo-script";
+import { Note } from "./notes";
+import { Structure } from "./structure";
+import { CheckMock, InitMock, WhileWorking } from "./live-work";
+import { ResultsRuns } from "./results-runs";
 
 const EASE = [0.22, 1, 0.36, 1] as const;
 
@@ -38,6 +42,8 @@ export function Site() {
         <Nav />
         <Hero />
         <HowItWorks />
+        <Built />
+        <WhileTheyWork />
         <AnyAgent />
         <LockedRules />
         <Results />
@@ -71,6 +77,7 @@ function Nav() {
         <nav className="hm-glass hm-glass-strong hidden items-center gap-1 rounded-full p-1 text-[13.5px] md:flex">
           {[
             ["How it works", "#how"],
+            ["How it's built", "#built"],
             ["Any agent", "#agents"],
             ["Results", "#results"],
           ].map(([label, href]) => (
@@ -176,28 +183,6 @@ function Words({ text }: { text: string }) {
       {i < words.length - 1 ? " " : null}
     </Fragment>
   ));
-}
-
-/** A hand-drawn note with a little arrow. At most one per section. */
-function Note({ children, className, flip }: { children: ReactNode; className?: string; flip?: boolean }) {
-  return (
-    <span className={cn("pointer-events-none inline-flex items-end gap-1 text-fg/70", className)} aria-hidden>
-      {flip ? <NoteArrow flip /> : null}
-      <span className="font-note text-[15px] leading-tight" style={{ fontVariationSettings: "'INFM' 100, 'BNCE' 30" }}>
-        {children}
-      </span>
-      {flip ? null : <NoteArrow />}
-    </span>
-  );
-}
-
-function NoteArrow({ flip }: { flip?: boolean }) {
-  return (
-    <svg viewBox="0 0 40 30" className={cn("h-6 w-8 shrink-0", flip && "-scale-x-100")} fill="none">
-      <path d="M2 4c12 0 24 6 32 20" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-      <path d="M27 21l7 4 1-8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
 }
 
 // ── How it works ────────────────────────────────────────────────────────────
@@ -348,6 +333,37 @@ function HiveStates() {
   );
 }
 
+// ── How it's built ─────────────────────────────────────────────────────────
+
+function Built() {
+  return (
+    <section className="px-4 pt-32">
+      <SectionHead id="built" one="How it's built." two="From the company to one lesson.">
+        Lessons live at the level they apply to. An agent loads its whole chain, locked rules first.
+      </SectionHead>
+      <Reveal className="mt-12">
+        <Structure />
+      </Reveal>
+    </section>
+  );
+}
+
+// ── While they work ─────────────────────────────────────────────────────────
+
+function WhileTheyWork() {
+  return (
+    <section className="px-4 pt-32 pb-10">
+      <SectionHead id="live" one="It watches while agents work." two="Two agents, one file: they find out.">
+        Every edit is recorded. If another engineer&apos;s agent touched the same file in the last 10 minutes, the next
+        agent is told before it edits.
+      </SectionHead>
+      <Reveal className="mt-20">
+        <WhileWorking />
+      </Reveal>
+    </section>
+  );
+}
+
 // ── Any agent ───────────────────────────────────────────────────────────────
 
 function AnyAgent() {
@@ -365,10 +381,16 @@ function AnyAgent() {
         <Reveal delay={0.1}>
           <ChatMock />
         </Reveal>
-        <Note className="absolute -top-10 left-[30%] hidden lg:flex" flip>
-          ghost text, credited to Alex
+        <Note dir="down-left" className="absolute -top-11 left-[30%] hidden lg:flex" width={190}>
+          ghost text, credited to @alex
         </Note>
       </div>
+      <Reveal className="relative mx-auto mt-6 max-w-[1120px]">
+        <InitMock />
+        <Note dir="up-left" className="absolute -bottom-12 left-[26%] hidden lg:flex" width={260} delay={0.4}>
+          finds the agents a repo already uses, by their files
+        </Note>
+      </Reveal>
     </section>
   );
 }
@@ -387,7 +409,7 @@ function LockedRules() {
           <div className="flex items-center gap-2 border-b border-line px-6 py-3.5 text-[13.5px]">
             <ShieldX className="size-4 text-danger" />
             <span className="font-semibold text-danger">Blocked by a locked rule</span>
-            <span className="text-muted">· Noor&apos;s agent, just now</span>
+            <span className="text-muted">· @noor&apos;s agent, just now</span>
           </div>
           <div className="grid items-stretch gap-4 p-6 sm:grid-cols-[1fr_auto_1fr]">
             <motion.div
@@ -395,10 +417,21 @@ function LockedRules() {
               whileInView={{ x: [0, 34, -8, 0] }}
               viewport={{ once: true, amount: 0.6 }}
               transition={{ duration: 0.6, times: [0, 0.4, 0.75, 1], delay: 0.5, ease: "easeOut" }}
-              className="rounded-[12px] bg-elevated p-4"
+              className="relative rounded-[12px] bg-elevated p-4"
             >
-              <div className="text-[12px] text-muted">Noor tried to teach</div>
-              <p className="mt-1.5 text-[15px] leading-snug">“{PROMPTS.noorBad}”</p>
+              <div className="text-[12px] text-muted">@noor tried to teach</div>
+              <p className="mt-1.5 text-[15px] leading-snug text-fg/70 line-through decoration-lock/50">“{PROMPTS.noorBad}”</p>
+              <motion.span
+                initial={{ opacity: 0, scale: 1.8, rotate: -14 }}
+                whileInView={{ opacity: 1, scale: 1, rotate: -9 }}
+                viewport={{ once: true, amount: 0.6 }}
+                transition={{ delay: 1.0, type: "spring", stiffness: 420, damping: 16 }}
+                className="absolute -top-3 right-3 rounded-[6px] border-2 border-lock bg-white/80 px-2 py-0.5 text-[13px] font-bold tracking-[0.14em] text-lock"
+                style={{ fontFamily: "var(--font-geist-mono), monospace" }}
+                aria-hidden
+              >
+                BLOCKED
+              </motion.span>
             </motion.div>
             <div className="flex items-center justify-center">
               <span className="flex size-8 items-center justify-center rounded-full bg-danger/10 text-[11px] font-semibold text-danger">vs</span>
@@ -411,12 +444,30 @@ function LockedRules() {
               className="rounded-[12px] bg-lock/[0.07] p-4 shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--chip-lock)_35%,transparent)]"
             >
               <div className="flex items-center gap-1.5 text-[12px] text-muted">
-                <Lock className="size-3.5 text-lock" /> Locked by Maya, Head of Security
+                <Lock className="size-3.5 text-lock" /> Locked by @maya, Head of Security
               </div>
               <p className="mt-1.5 text-[15px] leading-snug font-semibold">{LOCKED_RULE}</p>
             </motion.div>
           </div>
         </div>
+        <div className="relative hidden h-16 lg:block">
+          <Note dir="up-left" className="absolute top-1 left-[8%]" width={250} tone="rose" delay={1.2}>
+            a model and a plain-code guard both check. either one can block it
+          </Note>
+          <Note dir="up-right" className="absolute top-1 right-[6%]" width={170} delay={1.5}>
+            only Security can change it
+          </Note>
+        </div>
+      </Reveal>
+      <Reveal className="relative mx-auto mt-10 max-w-[900px]">
+        <p className="mb-4 text-center text-[15px] text-muted">
+          In the code, too: as a pre-commit hook,{" "}
+          <code className="rounded bg-panel px-1 font-mono text-[14px] text-fg">hivemind check --staged</code> stops a commit that breaks a 🔒 rule.
+        </p>
+        <CheckMock />
+        <Note dir="up-left" className="absolute -bottom-12 left-[40%] hidden lg:flex" width={250} tone="rose" delay={1.4}>
+          exits 1 while a 🔒 rule is broken, so it works as a pre-commit hook
+        </Note>
       </Reveal>
     </section>
   );
@@ -425,62 +476,16 @@ function LockedRules() {
 // ── Results ─────────────────────────────────────────────────────────────────
 
 function Results() {
-  const d = evalDetail;
   return (
     <section className="px-4 pt-32">
       <SectionHead id="results" one="Without Hivemind, agents break the rules." two="With it, they don't.">
         We gave Claude 12 coding tasks, 3 runs each, and checked every run with code for the team convention the task
         was built to trip.
       </SectionHead>
-      <Reveal className="mx-auto mt-14 max-w-[900px]">
-        <div className="hm-card relative p-8 sm:p-10">
-          <div className="grid items-end gap-6 sm:grid-cols-[1fr_auto_1fr]">
-            <Big label="Without Hivemind" value={d.targetViolations.off} of={d.n.off} muted />
-            <ArrowRight className="mx-auto mb-6 hidden size-8 text-muted sm:block" strokeWidth={1.5} />
-            <Big label="With Hivemind" value={d.targetViolations.on} of={d.n.on} />
-          </div>
-          <p className="mt-3 text-[14px] text-muted">runs that broke the team&apos;s convention</p>
-          <Note className="absolute top-7 right-8 hidden sm:flex" flip>
-            zero, every run
-          </Note>
-          <div className="mt-8 grid gap-6 border-t border-line pt-6 sm:grid-cols-2">
-            <div>
-              <div className="text-[13px] text-muted">A same-size pack of unrelated lessons</div>
-              <div className="mt-1 text-[24px] font-semibold tabular-nums">
-                {d.targetViolations.placebo} of {d.n.placebo}
-              </div>
-              <div className="mt-1 text-[13px] text-muted">So it&apos;s the lessons that help, not extra text.</div>
-            </div>
-            {d.heldOut?.off && d.heldOut?.on ? (
-              <div>
-                <div className="text-[13px] text-muted">Lessons used on tasks they weren&apos;t learned from</div>
-                <div className="mt-1 text-[24px] font-semibold tabular-nums">
-                  {d.heldOut.off.targetViolations} of {d.heldOut.off.n} → {d.heldOut.on.targetViolations} of {d.heldOut.on.n}
-                </div>
-                <div className="mt-1 text-[13px] text-muted">The lesson carries over.</div>
-              </div>
-            ) : null}
-          </div>
-          <p className="mt-6 text-[12px] text-muted">
-            n = 12 tasks × 3 runs per arm · {d.model ?? "Claude"} · details in docs/eval.md
-          </p>
-        </div>
+      <Reveal className="mt-14">
+        <ResultsRuns />
       </Reveal>
     </section>
-  );
-}
-
-function Big({ label, value, of, muted }: { label: string; value: number; of: number; muted?: boolean }) {
-  return (
-    <div>
-      <div className="text-[14px] text-muted">{label}</div>
-      <div className="mt-2 flex items-baseline gap-2">
-        <span className={cn("font-brand text-[88px] leading-[0.9] font-medium tracking-[-0.045em] tabular-nums sm:text-[112px]", muted ? "text-muted" : "text-fg")}>
-          {value}
-        </span>
-        <span className="text-[22px] text-muted">of {of}</span>
-      </div>
-    </div>
   );
 }
 
@@ -490,6 +495,33 @@ function Closing() {
   return (
     <section className="px-4 pt-36 pb-28">
       <Reveal className="mx-auto flex max-w-[760px] flex-col items-center text-center">
+        <div className="relative mb-8">
+          <svg viewBox="-60 -50 120 100" className="h-28 w-36 overflow-visible" aria-hidden>
+            {CELLS.map(([q, r], k) => {
+              const x = W * (q + r / 2);
+              const y = H * r;
+              if (k === 6)
+                return <path key={k} d={hex(x, y, R)} fill="#fff" stroke="var(--honey)" strokeWidth={1.4} strokeDasharray="3 2.5" className="hm-cell-wait" />;
+              const locked = k === 0;
+              return (
+                <motion.g
+                  key={k}
+                  initial={{ opacity: 0, scale: 0.4 }}
+                  whileInView={{ opacity: 1, scale: 1 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: 0.1 + k * 0.08, type: "spring", stiffness: 420, damping: 18 }}
+                  style={{ transformOrigin: `${x}px ${y}px`, transformBox: "view-box" }}
+                >
+                  <path d={hex(x, y, R)} fill="#fff" stroke={locked ? "var(--chip-lock)" : "var(--honey)"} strokeOpacity={locked ? 0.9 : 0.5} />
+                  <path d={hex(x, y, R * 0.62)} fill={locked ? "var(--chip-lock)" : "var(--honey)"} />
+                </motion.g>
+              );
+            })}
+          </svg>
+          <Note dir="left" className="absolute top-0 left-[118px] w-max" width={170} delay={0.9}>
+            your team&apos;s first lesson goes here
+          </Note>
+        </div>
         <h2 className="hm-display text-[38px] sm:text-[56px]">
           Ready to teach
           <br />

@@ -253,3 +253,17 @@ body {
 .hm-sep[data-separator="active"] {
   background: var(--accent);
 }
+
+/* Website diagrams: dashes that flow along a path, and a dot that travels it (offset-path). */
+@keyframes hm-flow { to { stroke-dashoffset: -20; } }
+.hm-flow { stroke-dasharray: 6 4; animation: hm-flow 1.1s linear infinite; }
+@keyframes hm-travel {
+  0% { offset-distance: 0%; opacity: 0; }
+  8%, 92% { opacity: 1; }
+  100% { offset-distance: 100%; opacity: 0; }
+}
+.hm-travel { offset-rotate: 0deg; animation: hm-travel 2.2s cubic-bezier(0.45, 0, 0.55, 1) infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .hm-flow, .hm-travel { animation: none; }
+  .hm-travel { display: none; }
+}
