@@ -12,6 +12,8 @@ import { Dither } from "./dither";
 import { HeroHive } from "./hero-hive";
 import { HowItWorksPinned, HowItWorksSteps } from "./how-it-works";
 import { UnderTheHood } from "./under-the-hood";
+import { Structure } from "./structure";
+import { InitMock } from "./live-work";
 import { LOCKED_RULE, PROMPTS } from "./demo-script";
 import { Note } from "./notes";
 
@@ -40,7 +42,9 @@ export function Site() {
         <HowItWorks />
         <LockedRules />
         <UnderHood />
+        <Built />
         <Results />
+        <GetStarted />
         <Closing />
         <Footer />
       </div>
@@ -73,6 +77,7 @@ function Nav() {
           {[
             ["How it works", "#how"],
             ["While you work", "#hood"],
+            ["How it's built", "#built"],
             ["Results", "#results"],
           ].map(([label, href]) => (
             <a
@@ -269,6 +274,22 @@ function UnderHood() {
   );
 }
 
+// ── How it's built ─────────────────────────────────────────────────────────
+
+// Back by request (17 Oct): where lessons live and who controls them, at three zoom levels.
+function Built() {
+  return (
+    <section className="px-4 pt-32">
+      <SectionHead id="built" title="Lessons live where they apply.">
+        Company rules reach everyone, team lessons reach the team, and your own stay yours. Zoom from the company to one lesson.
+      </SectionHead>
+      <Reveal className="mt-12">
+        <Structure />
+      </Reveal>
+    </section>
+  );
+}
+
 // ── Results ─────────────────────────────────────────────────────────────────
 
 function Results() {
@@ -317,6 +338,26 @@ function Compare({ label, broke, of, tone }: { label: string; broke: number; of:
         />
       </div>
     </div>
+  );
+}
+
+// ── Get started ─────────────────────────────────────────────────────────────
+
+function GetStarted() {
+  return (
+    <section className="px-4 pt-32">
+      <SectionHead id="start" title="Set up in one command.">
+        <code className="rounded bg-panel px-1 font-mono text-[15px] text-fg">hivemind init</code> finds the agents a repo already uses and
+        connects each one. Then type <code className="rounded bg-panel px-1 font-mono text-[15px] text-fg">!hivemind</code> in Claude Code to
+        open watch next to it.
+      </SectionHead>
+      <Reveal className="relative mx-auto mt-12 max-w-[1120px]">
+        <InitMock />
+        <Note dir="up-left" className="absolute -bottom-12 left-[24%] hidden lg:flex" width={260} delay={0.4}>
+          it finds them by the files already in the repo
+        </Note>
+      </Reveal>
+    </section>
   );
 }
 

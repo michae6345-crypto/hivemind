@@ -168,12 +168,12 @@ export function InitMock() {
           <span className="text-[var(--win-honey)]">⬢</span> <span className="font-semibold">hivemind</span>{" "}
           <span className="text-[var(--win-muted)]">init</span>
         </Line>
-        <table className="mt-1 w-full min-w-[720px] text-left">
+        <table className="mt-1 w-full text-left sm:min-w-[720px]">
           <thead className="text-[var(--win-muted)]">
             <tr>
               <th className="pr-6 font-normal">Agent</th>
               <th className="pr-6 font-normal">Detected via</th>
-              <th className="pr-6 font-normal">MCP / hooks config</th>
+              <th className="hidden pr-6 font-normal sm:table-cell">MCP / hooks config</th>
               <th className="font-normal">Rules file</th>
             </tr>
           </thead>
@@ -189,7 +189,7 @@ export function InitMock() {
                   <span className="text-[#4ade80]">✓</span> <span className="font-semibold">{a}</span>
                 </td>
                 <td className="pr-6 text-[var(--win-muted)]">{via}</td>
-                <td className="pr-6">
+                <td className="hidden pr-6 sm:table-cell">
                   <span className="text-[#4ade80]">created</span> {cfg}
                 </td>
                 <td>{rules}</td>

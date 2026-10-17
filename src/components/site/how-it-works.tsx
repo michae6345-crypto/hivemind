@@ -36,8 +36,8 @@ const STEPS: { title: string; body: string; focus: "left" | "right" }[] = [
 // Scroll budget: each frame gets scroll in proportion to how long it is held, so reading time stays the same.
 const CUM = story.frames.reduce<number[]>((acc, f, i) => [...acc, (acc[i - 1] ?? 0) + f.ms], []);
 const TOTAL = CUM[CUM.length - 1];
-const P0 = 0.14; // story starts once the headline has gone
-const P1 = 0.97;
+const P0 = 0.06; // story starts once the headline has gone (the section is 1000vh, so this is ~60vh of scroll)
+const P1 = 0.985;
 
 function frameAt(p: number) {
   const t = Math.min(1, Math.max(0, (p - P0) / (P1 - P0))) * TOTAL;
@@ -61,12 +61,12 @@ export function HowItWorksPinned() {
     setI((prev) => (prev === next ? prev : next));
   });
 
-  const headOpacity = useTransform(p, [0.03, 0.11], [1, 0]);
-  const headY = useTransform(p, [0.03, 0.11], [0, -48]);
-  const headBlur = useTransform(p, [0.03, 0.11], ["blur(0px)", "blur(10px)"]);
-  const stageY = useTransform(p, [0, 0.12], ["26vh", "0vh"], { ease: (t) => 1 - Math.pow(1 - t, 3) });
-  const stageScale = useTransform(p, [0, 0.12], [0.9, 1], { ease: (t) => 1 - Math.pow(1 - t, 3) });
-  const listOpacity = useTransform(p, [0.08, 0.14], [0, 1]);
+  const headOpacity = useTransform(p, [0.012, 0.045], [1, 0]);
+  const headY = useTransform(p, [0.012, 0.045], [0, -48]);
+  const headBlur = useTransform(p, [0.012, 0.045], ["blur(0px)", "blur(10px)"]);
+  const stageY = useTransform(p, [0, 0.05], ["26vh", "0vh"], { ease: (t) => 1 - Math.pow(1 - t, 3) });
+  const stageScale = useTransform(p, [0, 0.05], [0.9, 1], { ease: (t) => 1 - Math.pow(1 - t, 3) });
+  const listOpacity = useTransform(p, [0.03, 0.06], [0, 1]);
 
   const f = story.frames[i];
   const scene = story.scenes[f.b];
@@ -77,7 +77,7 @@ export function HowItWorksPinned() {
   const right = story.right[f.r];
 
   return (
-    <div ref={ref} className="relative hidden h-[420vh] lg:block">
+    <div ref={ref} className="relative hidden h-[1000vh] lg:block">
       <div className="sticky top-0 flex h-svh flex-col overflow-hidden px-4 pt-[92px] pb-8">
         <motion.div style={{ opacity: headOpacity, y: headY, filter: headBlur }} className="absolute inset-x-0 top-[128px] px-4 text-center">
           <h2 className="hm-display text-[48px]">One correction reaches every agent.</h2>
