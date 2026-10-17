@@ -28,6 +28,8 @@ export const scopes: Scope[] = [
   { id: "repo/expert-portal", level: "repo", name: "expert-portal", parentId: "team/expert-platform", owner: "sam" },
   { id: "personal/alex", level: "personal", name: "alex", parentId: "team/data-pipelines", owner: "alex" },
   { id: "personal/noor", level: "personal", name: "noor", parentId: "team/data-pipelines", owner: "noor" },
+  { id: "personal/adrian", level: "personal", name: "adrian", parentId: "team/data-pipelines", owner: "adrian" },
+  { id: "personal/michael", level: "personal", name: "michael", parentId: "team/data-pipelines", owner: "michael" },
 ];
 
 export const people: Person[] = [
@@ -38,6 +40,9 @@ export const people: Person[] = [
   { id: "alex", name: "Alex Kim", role: "engineer", scopeId: "team/data-pipelines", title: "Engineer, Data Pipelines" },
   { id: "noor", name: "Noor Haddad", role: "engineer", scopeId: "team/data-pipelines", title: "Engineer, Data Pipelines" },
   { id: "riley", name: "Riley Brooks", role: "engineer", scopeId: "team/evals", title: "Engineer, Evals" },
+  // The two of us, for the live demo (HIVEMIND_USER=adrian / michael on our own Claude Code sessions).
+  { id: "adrian", name: "Adrian Erlikhman", role: "engineer", scopeId: "team/data-pipelines", title: "Engineer, Data Pipelines" },
+  { id: "michael", name: "Michael Tarekegn", role: "engineer", scopeId: "team/data-pipelines", title: "Engineer, Data Pipelines" },
 ];
 
 type Seed = Omit<Memory, "createdAt" | "updatedAt" | "id"> & { id?: string; ageDays: number };
