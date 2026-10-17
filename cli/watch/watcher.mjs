@@ -12,7 +12,8 @@ import { plain, toolName } from "./theme.mjs";
 import { detect } from "./vendor/detectors.mjs";
 
 const CODE = /\.(m?[jt]sx?|cjs|cts|py|go|rb|java|kt|rs|sql|cs|php|swift|scala|sh)$/i;
-const SKIP = /(^|[\\/])(node_modules|\.git|\.next|dist|build|out|coverage|\.vscode-test)([\\/]|$)/;
+// Tool/agent state dirs too (.paseo worktrees, .claude, caches): a watch started too high must never flag those.
+const SKIP = /(^|[\\/])(node_modules|\.git|\.next|dist|build|out|coverage|\.vscode-test|\.paseo|\.claude|\.cache|\.turbo|\.vercel|AppData)([\\/]|$)/;
 const DEBOUNCE_MS = 500;
 const NOTICE_GAP_MS = 60 * 1000;
 const AGENT_WINDOW_MS = 3 * 60 * 1000;
