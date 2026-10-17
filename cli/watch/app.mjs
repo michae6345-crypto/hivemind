@@ -55,6 +55,7 @@ export async function cmdWatch(cfg) {
   const recordFile = typeof cfg.flags.record === "string" ? cfg.flags.record : null;
 
   // ---------- actions (ctx.actions) ----------
+  const celebrated = new Set();
   let animUntil = 0;
   let timer = null;
   const actions = {
@@ -76,6 +77,10 @@ export async function cmdWatch(cfg) {
       actions.animate(ms + 50);
     },
     celebrate: (lesson) => {
+      // Once per lesson: approving in Queue celebrates, and the feed's approval card for it arrives a poll later.
+      const id = lesson?.id ?? lesson?.slug ?? lesson?.title;
+      if (id && celebrated.has(id)) return;
+      if (id) celebrated.add(id);
       // lesson.approver = who approved it (the approved card's actor); rules = the count that ticks 10 → 11.
       state.celebration = celebration(lesson, { now: Date.now(), reduced: REDUCED, me: state.actor, rules: state.rules.length });
       actions.animate(1700); // the motion is 1.6s; the card then holds until a key (or its duration) without redraws
