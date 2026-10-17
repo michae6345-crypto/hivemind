@@ -1,0 +1,24 @@
+<!doctype html>
+<!-- Gallery of the Hivemind sidebar states, for screenshots. Open via a local static server rooted at vscode-extension/. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Hivemind sidebar preview</title>
+<style>
+  body { margin: 0; padding: 28px; background: #0e0f12; font: 12px -apple-system, "Segoe UI", sans-serif; color: #a1a1aa; }
+  .grid { display: flex; gap: 20px; }
+  figure { margin: 0; }
+  figcaption { margin-bottom: 8px; }
+  iframe { width: 320px; height: 760px; border: 1px solid #2b2b2b; border-radius: 8px; background: #181818; display: block; }
+</style>
+</head>
+<body>
+<div class="grid">
+  <figure><figcaption>Rules by layer · @jordan (Lead)</figcaption><iframe src="panel.html?tab=rules&as=jordan"></iframe></figure>
+  <figure><figcaption>Rule card · provenance</figcaption><iframe src="panel.html?tab=rules&as=jordan&detail=export-assert-single-customer"></iframe></figure>
+  <figure><figcaption>Your queue · @jordan (Lead)</figcaption><iframe src="panel.html?tab=queue&as=jordan&teach=Write%20exports%20to%20a%20temp%20file%2C%20then%20rename"></iframe></figure>
+  <figure><figcaption>Your queue · @maya (Security)</figcaption><iframe src="panel.html?tab=queue&as=maya"></iframe></figure>
+  <figure><figcaption>Live feed · @alex (Engineer)</figcaption><iframe src="panel.html?tab=live&as=alex"></iframe></figure>
+</div>
+</body>
+</html>

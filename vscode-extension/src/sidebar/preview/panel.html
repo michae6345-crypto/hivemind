@@ -1,0 +1,68 @@
+<!doctype html>
+<!-- One sidebar instance with mock data. Query: ?tab=rules|here|queue|live&as=<person>&detail=<slug>&teach=<text> -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../../../media/sidebar/sidebar.css">
+<style>
+  :root {
+    --vscode-font-family: -apple-system, "Segoe UI", system-ui, sans-serif;
+    --vscode-editor-font-family: "Cascadia Code", Consolas, monospace;
+    --vscode-foreground: #cccccc;
+    --vscode-descriptionForeground: #9d9d9d;
+    --vscode-sideBar-background: #181818;
+    --vscode-sideBarSectionHeader-border: #2b2b2b;
+    --vscode-list-hoverBackground: #2a2d2e;
+    --vscode-input-background: #313131;
+    --vscode-input-border: #3c3c3c;
+    --vscode-input-foreground: #cccccc;
+    --vscode-textLink-foreground: #4daafc;
+    --vscode-button-secondaryBackground: #313131;
+    --vscode-button-secondaryForeground: #cccccc;
+  }
+</style>
+<script src="mock-data.js"></script>
+<script>
+  const P = new URLSearchParams(location.search);
+  const D = window.HM_MOCK;
+  const now = Date.now();
+  const iso = (minAgo) => new Date(now - minAgo * 60000).toISOString();
+  if (!D.live.items.length)
+    D.live.items = [
+      { id: "a2", sessionId: "s-noor", actor: "noor", repo: "export-service", file: "src/export.ts", createdAt: iso(0.3), agent: "claude-code", warning: "Alex's Cursor agent edited this file 2 min earlier" },
+      { id: "a1", sessionId: "s-alex", actor: "alex", repo: "export-service", file: "src/export.ts", createdAt: iso(2), agent: "cursor" },
+      { id: "a0", sessionId: "s-riley", actor: "riley", repo: "eval-harness", file: "graders/rubric.py", createdAt: iso(6), agent: "gemini-cli" },
+    ];
+  D.live.feed.forEach((f, i) => { if (!f.agent && i % 3 === 0) f.agent = ["claude-code", "codex", "copilot"][i % 3]; });
+  const ctx = { type: "ctx", me: P.get("as") || "jordan", repo: "repo/export-service", workspaceName: "Meridian Data", dashboardUrl: "#", hasToken: true };
+  window.acquireVsCodeApi = () => ({
+    getState: () => ({ tab: P.get("tab") || "rules" }),
+    setState() {},
+    postMessage(m) {
+      const reply = (x) => setTimeout(() => window.postMessage(x, "*"), 10);
+      if (m.type === "ready") {
+        reply(ctx);
+        reply({ type: "here", file: "src/export.ts", data: D.here });
+        reply({ type: "live", ok: true, data: D.live });
+        if (P.get("detail")) reply({ type: "detail", id: P.get("detail") });
+      }
+      if (m.type === "rpc") {
+        if (m.op === "load") reply({ type: "rpc", id: m.id, ok: true, status: 200, data: { scopes: D.scopes, people: D.people, chain: D.chain, all: D.all, transfer: D.transfer } });
+        else if (m.op === "approve" && ctx.me !== "jordan" && ctx.me !== "maya")
+          reply({ type: "rpc", id: m.id, ok: false, status: 403, error: `engineer ${ctx.me} cannot approve memories in repo/export-service` });
+        else if (m.op === "teach")
+          setTimeout(() => window.postMessage({ type: "rpc", id: m.id, ok: true, status: 201, data: { id: "e1", lessons: [{ id: "x", title: "Write exports to a temp file, then rename", status: "pending", scopeId: "repo/export-service" }] } }, "*"), 600);
+        else reply({ type: "rpc", id: m.id, ok: true, status: 200, data: {} });
+      }
+    },
+  });
+</script>
+</head>
+<body>
+<div id="app"></div>
+<script src="../../../media/sidebar/sidebar.js"></script>
+<script>
+  if (P.get("teach")) setTimeout(() => { const f = document.querySelector("[data-form=teach]"); f.teach.value = P.get("teach"); f.requestSubmit(); }, 300);
+</script>
+</body>
+</html>
