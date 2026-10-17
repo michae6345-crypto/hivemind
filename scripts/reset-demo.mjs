@@ -6,7 +6,7 @@
 //   node scripts/reset-demo.mjs --drop export-assert-single-customer
 //                                                  # …and remove these seed memories so a live correction creates them fresh
 //
-// Deletes: memories whose slug is not in the seed (smoke tests, live/e2e proposals) plus any 'api-test-%' /
+// Deletes (incl. pack_log rows with an empty or 'preview…' session from UI/curl checks): memories whose slug is not in the seed (smoke tests, live/e2e proposals) plus any 'api-test-%' /
 //          'Smoke test lesson…' memory, every non-synthetic event (and any event with payload.slug 'api-test-%'),
 // all activity rows, and every pack_log row that is not synthetic history (session_id 'hist-*').
 // Keeps:   synthetic history from scripts/seed-history.mjs (events.payload.synthetic = true, pack_log 'hist-*');
@@ -44,13 +44,17 @@ const mems = must("memories", await sb.from("memories").select("id,slug,title,st
 // Known test leftovers are always removed (A's API tests, smoke runs), even if a seed slug ever collides.
 const TEST_SLUG = /^(api-test-|smoke-test-)/i;
 const TEST_TITLE = /^(smoke test lesson|api test:)/i;
+// UI preview / curl checks: empty session or 'preview…' sessions (pack.ts no longer logs these, older rows may remain)
+const isPreview = (sid) => !sid || !String(sid).trim() || /^preview/i.test(String(sid));
 const isTestMem = (m) => TEST_SLUG.test(m.slug ?? "") || TEST_TITLE.test(m.title ?? "");
 const extraMems = mems.filter((m) => !seedSlugs.has(m.slug) || isTestMem(m));
 const events = must("events", await sb.from("events").select("id,type,actor,session_id,payload").limit(10000));
-const liveEvents = events.filter((e) => e.payload?.synthetic !== true || TEST_SLUG.test(String(e.payload?.slug ?? "")));
+const liveEvents = events.filter(
+  (e) => e.payload?.synthetic !== true || TEST_SLUG.test(String(e.payload?.slug ?? "")) || (e.type === "session_start" && isPreview(e.session_id)),
+);
 const activity = must("activity", await sb.from("activity").select("id,session_id,actor,file").limit(10000));
 const packs = must("pack_log", await sb.from("pack_log").select("id,session_id,actor").limit(10000));
-const livePacks = packs.filter((p) => !String(p.session_id).startsWith("hist-"));
+const livePacks = packs.filter((p) => isPreview(p.session_id) || !String(p.session_id).startsWith("hist-"));
 const histCount = packs.length - livePacks.length;
 
 const summarize = (rows, f) => {
@@ -64,7 +68,7 @@ console.log(`  memories not in seed (${extraMems.length}):`);
 for (const m of extraMems) console.log(`    - ${m.status.padEnd(8)} ${m.source.padEnd(10)} ${m.slug}  "${m.title}"${isTestMem(m) ? "  [test leftover]" : ""}`);
 console.log(`  non-synthetic events (${liveEvents.length}): ${summarize(liveEvents, (e) => `${e.type}[${sess(e.session_id)}]`)}`);
 console.log(`  activity (${activity.length}): ${summarize(activity, (a) => `${a.actor}:${sess(a.session_id)}`)}`);
-console.log(`  non-synthetic pack_log (${livePacks.length}): ${summarize(livePacks, (p) => `${p.actor}:${sess(p.session_id)}`)}`);
+console.log(`  non-synthetic pack_log (${livePacks.length}, ${livePacks.filter((p) => isPreview(p.session_id)).length} preview/empty-session): ${summarize(livePacks, (p) => `${p.actor}:${sess(p.session_id)}`)}`);
 if (DROP.length) console.log(`  seed memories to drop after seeding: ${DROP.join(", ")}`);
 console.log(`keeping: ${histCount} synthetic sessions, ${events.length - liveEvents.length} synthetic events${histCount ? "" : " (none → will re-run seed-history)"}`);
 if (DRY) process.exit(0);
