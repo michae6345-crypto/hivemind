@@ -7,6 +7,8 @@
 **Tagline (≤200 chars):** Correct one AI coding agent and every agent at your company learns it. Lessons are approved
 by a lead, locked rules can't be overridden, and an eval shows the difference: 39% → 100% pass.
 
+**Try it out:** https://hivemind-beta-virid.vercel.app · GitHub: https://github.com/michae6345-crypto/hivemind
+
 **Tracks:** Grand Tech: Continual Learning · Agent Behavior Monitoring (Lemma) · Most Scalable to $1B (Outcast) ·
 Best Visual Design (Figma)
 
@@ -165,9 +167,9 @@ per-task table and reproduction commands: `docs/eval.md`.
 
 ## Build status (internal, delete before submitting)
 
-Checked against `origin/main` at **09e2156, Fri Oct 16, 11:00 PM**. Only ✅ rows may be described as working in
-the video or on Devpost. ⏳ rows are roadmap until they land. ✅ means the code is on main; the full run sheet has not
-been rehearsed end to end yet.
+Checked against `origin/main` at **673658d, Fri Oct 16, 11:20 PM**. Only ✅ rows may be described as working in
+the video or on Devpost. ⏳ rows are roadmap until they land. ✅ means the code is on main and deployed; the full run sheet
+(`scripts/e2e-demo.mjs`) has not been rehearsed end to end against the deployment yet.
 
 | Feature | Status | Where |
 |---|---|---|
@@ -185,8 +187,8 @@ been rehearsed end to end yet.
 | Claude chat (claude.ai, Claude Desktop) and VS Code Copilot through MCP | ✅ | `docs/integrations/` |
 | Demo reset + rehearsal scripts | ✅ | `scripts/reset-demo.mjs`, `scripts/e2e-demo.mjs` |
 | Approve / reject (role-checked, 🔒 blocks only security can clear), `POST /api/memories` | ✅ | `src/app/api/memories/` |
-| Visible "⬢ Hivemind loaded N team rules" line at session start | ⏳ not on main (assigned) | `hooks/session-start.mjs` |
-| VS Code overlay (agent H) | ⏳ source on main; `.vsix` + README not yet | `vscode-extension/` |
-| MCP chat card (real MCP App) | ⏳ in progress; mockups are the fallback | `src/components/site/editor-mocks.tsx` |
-| Vercel deploy (live link) | ⏳ Michael deploying now, auto-deploy from main | `docs/deploy.md` |
+| Visible "⬢ Hivemind loaded N team rules" line at session start | ✅ | `hooks/session-start.mjs` |
+| VS Code overlay (agent H) | ✅ `.vsix` packaged | `vscode-extension/dist/hivemind-vscode.vsix` |
+| MCP chat cards for `get_team_rules` / `propose_memory` (MCP Apps) | ✅ | `src/app/api/mcp/` |
+| Vercel deploy (live link): https://hivemind-beta-virid.vercel.app | ✅ auto-deploys from main | `docs/deploy.md` |
 | Decay, invalidation, PR-comment importer | roadmap | |

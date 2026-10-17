@@ -1,7 +1,7 @@
 # Deploying Hivemind to Vercel
 
-Status (Fri Oct 16, ~11:30 PM): `pnpm build` passes on `origin/main`. The orchestrator is doing the Vercel deploy and
-GitHub connection.
+Status (Fri Oct 16, ~11:00 PM): **deployed** at https://hivemind-beta-virid.vercel.app, connected to GitHub, so every push to `main` deploys.
+The Vercel project is on Michael's Hobby account, so only he can change its settings or env vars.
 
 ## 1. Environment variables
 
