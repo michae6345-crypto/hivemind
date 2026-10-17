@@ -40,7 +40,7 @@ export function table(headers, rows) {
   return [line("╭", "┬", "╮"), row(headers, true), line("├", "┼", "┤"), ...rows.map((r) => row(r)), line("╰", "┴", "╯")].join("\n");
 }
 
-export const banner = (cmd) => `${brand()} ${c.gray(`· ${cmd}`)}`;
+export const banner = (cmd) => `${brand()} ${c.gray("·")} ${c.bold(cmd)}`; // same shape as ui.header()
 
 /**
  * House style: no emojis in UI. Server text (packs, block reasons, LLM explanations) still carries 🔒/⚠️, so CLI output
