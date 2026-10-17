@@ -82,12 +82,14 @@ export const END = "<!-- hivemind:end -->";
 
 /** Insert or replace the hivemind block. Returns the new file text. Idempotent. */
 export function upsertBlock(existing, block, frontmatter = "") {
-  const body = `${START}\n${block.trim()}\n${END}`;
+  // Keep the file's line endings (git autocrlf checks files out with CRLF on Windows) so re-syncs stay no-ops.
+  const eol = existing?.includes("\r\n") ? "\r\n" : "\n";
+  const body = `${START}\n${block.trim()}\n${END}`.replace(/\r?\n/g, eol);
   if (existing === null) return `${frontmatter}${body}\n`;
   const s = existing.indexOf(START);
   const e = existing.indexOf(END);
   if (s !== -1 && e > s) return existing.slice(0, s) + body + existing.slice(e + END.length);
-  return `${existing.replace(/\s*$/, "")}\n\n${body}\n`;
+  return `${existing.replace(/\s*$/, "")}${eol}${eol}${body}${eol}`;
 }
 
 // ---------- Environment ----------
