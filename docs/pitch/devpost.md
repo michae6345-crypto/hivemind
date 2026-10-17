@@ -110,8 +110,8 @@ What that means in practice:
   Cursor. Teams run several agents at once, and no single vendor has a reason to share its memory with competitors.
 - **Governed.** A memory every agent trusts is an attack surface (OWASP lists memory poisoning as ASI06). Agents can
   only propose, a person approves, and locked rules block contradicting lessons with two independent checks.
-- **It works alongside a review bot.** Keep Greptile or CodeRabbit for review. Their comments are exactly the kind of
-  input Hivemind turns into lessons (a PR-comment importer is on the roadmap).
+- **It works alongside a review bot.** Greptile catches it after the PR is opened; Hivemind teaches the agent before it
+  writes the code. Use both: Greptile's findings become Hivemind lessons (a PR-comment importer is on the roadmap).
 
 ## Built to scale: cost, tokens, setup
 
@@ -237,7 +237,10 @@ per-task table and reproduction commands: `docs/eval.md`.
 - **Closing the gaps between tools:** Windsurf's hooks can't inject context and VS Code has no session-end event,
   so Windsurf briefs from a rules file and MCP, and Copilot in VS Code doesn't update confidence yet. Each gap closes when
   the vendor adds the hook.
-- **Learning from PR review comments,** not only chat corrections (a `gh api` importer).
+- **Learning from PR review comments,** not only chat corrections: a `gh api` importer that turns review-bot findings
+  (Greptile's `greptile-apps[bot]` comments, CodeRabbit's) into pending lessons a lead approves.
+- **Hivemind → Greptile:** `hivemind sync` writes `.greptile/rules.md`, so the reviewer enforces the same rules the
+  agents were taught, with locked rules as high-severity.
 - **Measuring retrieval:** run the eval against the live ranked pack instead of the curated one, on more tasks and
   more models.
 - **Decay and invalidation:** halve the evidence weight every 60 days and mark contradicted lessons `invalid`
