@@ -9,8 +9,8 @@ Everything runs against **production** (`https://hivemind-beta-virid.vercel.app`
 (`demo/export-service/.claude/settings.json`) and `.hivemind.json` already point there.
 
 > Status (Sat Oct 17, ~3 AM, main `4a50d1f`): rehearsed against prod with `node scripts/e2e-rehearse.mjs`. Every
-> right-pane block below was **observed** via `hivemind watch --snapshot` as that beat's persona. Exceptions are beats
-> 2-terminal (keys) and 8 (not live yet). `node scripts/e2e-terminal.mjs` asserts the Here view catches a locked
+> right-pane block below was **observed** via `hivemind watch --snapshot` as that beat's persona. Exceptions are beat
+> 2-terminal (the approve key). `node scripts/e2e-terminal.mjs` asserts the Here view catches a locked
 > violation after a file write.
 
 **What the right pane looks like** (`emily`, after her agent writes a file that logs an email):
@@ -244,22 +244,63 @@ The Here view doesn't show hook-only edits; it reacts to files changing on disk.
 Cut to `https://hivemind-beta-virid.vercel.app/app/results`. It shows the eval: without Hivemind 22/36 runs broke a
 team rule, with Hivemind 0/36, placebo 21/36.
 
-### Beat 8 (new, when live): fix it once, every agent learns it
+### Beat 8 (1:30): fix it once, every agent learns it
 
-> **Half live** (rehearsed ~3:30 AM). Capture is on main: J `1667966`. When a human rewrites lines an agent just
-> wrote, `hivemind watch` sends `POST /api/events {type:"fix", payload:{file, diff, before, after, previousAuthor, line,
-> url}}` and shows `Learning from your fix…`. **Fix → lesson isn't on main yet (owner B).** On prod the engine treats
-> `fix` as a non-correction: `200 {"lessons":[], "enginePath":"heuristic"}`. B's local build already produces it.
-> The shared DB holds `Log expert ids, never emails` (evidence type `fix`, `- console.log(user.email);` /
-> `+ logger.info({ expertId: user.id });`, by @kevin, pending). Once B pushes, re-run
-> `node scripts/e2e-rehearse.mjs --beats 8` and confirm the line below.
+> **Live on prod** (B `806df7b`, rehearsed ~3:40 AM with `node scripts/e2e-rehearse.mjs --beats 8`). Watch captures the
+> fix (J `1667966`), the engine turns the diff into a pending lesson, Ben approves, and Emily's next pack carries it.
+> Run `reset-demo` before the take. If an older "log ids, not emails" lesson is still around, the fix gets
+> *reinforced* instead of *captured*.
 
-1. Left, as `emily`: `Add a welcome hook: when a user signs up, log it.` The agent writes `console.log(user.email)`.
-2. Kevin fixes the line in his editor (`logger.info("welcome sent", { userId: user.id })`) and saves.
-3. Right (`kevin` · Here), expected per `cli/watch/fixes.mjs`: `Learning from your fix…`, then `Hivemind · Lesson captured from @kevin's fix: Log expert ids, never emails. Waiting on @ben.` Ben's Queue lists it with `proposed by @kevin`.
-4. Ben approves (`p` to ben, `3`, `a`), as in beat 2.
-5. Emily starts a fresh `claude` and asks for another log line. Her agent uses `logger` with ids, not `console.log`
-   with emails. The Here view shows `This file follows every team rule`.
+Both panes start as `kevin`, with the right pane on **Here** (`1`).
+
+1. Left (Kevin's Claude):
+   `Add src/welcome.ts with welcome(user: { id: string; email: string }) that logs when a user signs up.` If the agent
+   writes `console.log(user.email);`, that's the line to fix. If it already writes `logger` with ids, paste
+   `console.log(user.email);` yourself and save.
+2. Kevin fixes the line in his editor and saves: `logger.info("welcome sent", { userId: user.id });`.
+
+Right (`kevin` · Here): `Learning from your fix…`, then the engine's answer (wording from `cli/watch/fixes.mjs`, built
+from the observed API response):
+
+```text
+Hivemind · Lesson captured from @kevin's fix: "Log user ids, never emails". Waiting on @ben.
+```
+
+Observed API response: `POST /api/events {type:"fix"}` → `200`, lesson
+`Log user ids, never emails` · `#team/data-pipelines` · pending. Evidence is `type: fix`, `file: src/welcome.ts`,
+`line: 2`, actor `kevin`, and the diff as the quote.
+
+3. `p` to `ben`, `3` (Queue). It's at the top:
+
+```text
+WAITING ON YOU · 6
+▎ Log user ids, never emails
+  "- console.log(user.email);
++ logger.info("welcome sent", { userId: user.id });"
+   ● #team/data-pipelines   now
+  proposed by  ● @kevin
+  no conflict with the 2 locked rules
+  a approve   r reject
+```
+
+   Press `a`. Observed via the same API: `ben approve → 200 active`.
+
+4. Switch both panes to `emily` and start a fresh `claude`. Her pack now contains (observed, `/api/context-pack` for
+   emily):
+
+```text
+team/data-pipelines
+Log user ids, never emails
+Learned from @kevin's correction · just now · approved by @ben
+Log identifiers such as user.id through the structured logger instead of logging personal data like email addresses. …
+```
+
+   Ask: `Add a log line when a user changes their email address.` Her agent logs `userId` through `logger`, and the Here
+   view shows `This file follows every team rule`.
+
+Known nits (not blocking):
+- The pack provenance says "@kevin's **correction**" for a lesson learned from a fix (owner B, `pack.ts`).
+- The Feed has no entry for the fix event itself; the lesson only shows in Queue and Here (owner K).
 
 ## 4. Rehearse before recording (5 min)
 

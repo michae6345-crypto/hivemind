@@ -1,6 +1,6 @@
 # QA status (agent D)
 
-_Last updated: Sat Oct 17, ~3:15 AM PT. Terminal pivot: `hivemind watch` is the hero (runbook: `docs/demo-terminal.md`, rehearsed against prod)._
+_Last updated: Sat Oct 17, ~3:45 AM PT. All 8 runbook beats rehearsed against prod (`docs/demo-terminal.md`)._
 Re-run after each big merge: `pnpm typecheck` · `pnpm build` · `node cli/hivemind.mjs watch --help` · `node scripts/e2e-terminal.mjs` · `node scripts/e2e-demo.mjs --base https://hivemind-beta-virid.vercel.app` (then `reset-demo`)
 
 ## Build
@@ -45,9 +45,9 @@ build OOMed, which points to machine memory pressure with 12 Claude sessions ope
   (`react/no-unescaped-entities`, an unescaped `'`). It does **not** break `pnpm build` (Next 16 doesn't lint during
   build; the local build passes) or Vercel (every deploy after `0fd4bbf` is green). Fix: replace `'` with `&apos;` (or
   `’`) on that line. I left Adrian's file untouched.
-- **Beat 8 "fix it once" is half live** (owner **B**). J's capture is on main (`1667966`), and watch sends `fix` events. But the engine on
-  main ignores them (`pipeline.ts:178`, non-correction → `lessons:[]`). B's local version works: a `fix`-evidence lesson
-  "Log expert ids, never emails" is in the shared DB. Needs B's push, then `node scripts/e2e-rehearse.mjs --beats 8`.
+- ~~Beat 8 "fix it once"~~ **live on prod** (B `806df7b`): a fix event becomes the pending lesson "Log user ids, never emails" (proposed by
+  @kevin, `fix` evidence with file:line). Ben approves (200 active), and Emily's next pack carries it. Nits: the pack provenance
+  says "@kevin's correction" for a fix (B, `pack.ts`); the Feed shows no entry for the fix event (K).
 - **reset-demo regex bug, fixed:** the engine-suffix check matched the letter `d` instead of a digit (`\d`; heredoc ate the backslash), so
   some engine-made leftovers survived a reset. Fixed and verified: the dry-run lists exactly the 3 suffixed slugs, and keeps
   playground (8) + 26 scenario lessons.
