@@ -13,12 +13,12 @@ import {
   TriangleAlert,
   X,
 } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
 import type { Evidence, FeedEvent } from "@/mocks/types";
 import { useHivemind } from "./store";
 import { Avatar, ConfidenceBar, Label, SectionHeader, StatusPill } from "./bits";
 import { RichText } from "./rich-text";
 import { ContextPackPreview } from "./context-pack";
-import { useNow } from "./use-now";
 import { cn, confidence, scopeChain, scopeLabel, timeAgo } from "./utils";
 
 const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? "" : "s"}`;
@@ -217,8 +217,13 @@ const FEED_ICON: Record<FeedEvent["type"], { icon: typeof Check; className: stri
 function LiveFeed() {
   const { feed, activity, people, live } = useHivemind();
   const warnings = activity.filter((a) => a.warning);
-  const now = useNow();
-  const fresh = (iso: string) => now - new Date(iso).getTime() < 8000;
+  // Items already on screen at mount stay put; anything that arrives afterwards slides in at the top.
+  const enter = {
+    layout: "position" as const,
+    initial: { opacity: 0, y: -8 },
+    animate: { opacity: 1, y: 0 },
+    exit: { opacity: 0, transition: { duration: 0.12 } },
+  };
   return (
     <div className="flex max-h-[46%] min-h-40 shrink-0 flex-col border-t border-line">
       <SectionHeader
@@ -232,15 +237,14 @@ function LiveFeed() {
         Activity
       </SectionHeader>
       <ul className="min-h-0 flex-1 overflow-y-auto px-3 py-2">
+        <AnimatePresence initial={false}>
         {warnings.map((a) => {
           const who = people.find((p) => p.id === a.actor);
           return (
-            <li
+            <motion.li
               key={a.id}
-              className={cn(
-                "mb-2 flex gap-2 rounded-md border border-accent/30 bg-accent/10 px-2.5 py-2 text-[12px] leading-snug",
-                fresh(a.createdAt) && "hm-enter",
-              )}
+              {...enter}
+              className="mb-2 flex gap-2 rounded-md border border-accent/30 bg-accent/10 px-2.5 py-2 text-[12px] leading-snug"
             >
               <TriangleAlert className="mt-0.5 size-3.5 shrink-0 text-accent" />
               <span>
@@ -250,7 +254,7 @@ function LiveFeed() {
                 </span>
                 . {a.warning}
               </span>
-            </li>
+            </motion.li>
           );
         })}
         {feed.map((e) => {
@@ -258,12 +262,12 @@ function LiveFeed() {
           const Icon = meta.icon;
           const who = people.find((p) => p.id === e.actor);
           return (
-            <li
+            <motion.li
               key={e.id}
+              {...enter}
               className={cn(
                 "flex gap-2 rounded-md px-1 py-1.5 text-[12px] leading-snug",
                 (e.type === "blocked" || e.type === "deny") && "bg-danger/[0.06]",
-                fresh(e.at) && "hm-enter",
               )}
             >
               <Icon className={`mt-0.5 size-3.5 shrink-0 ${meta.className}`} />
@@ -272,9 +276,10 @@ function LiveFeed() {
                 <RichText text={e.text} className="text-fg/80" />
               </span>
               <span className="shrink-0 text-[11px] text-muted">{timeAgo(e.at)}</span>
-            </li>
+            </motion.li>
           );
         })}
+        </AnimatePresence>
       </ul>
     </div>
   );

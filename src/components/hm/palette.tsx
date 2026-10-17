@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BookOpen, FileText, Inbox, LineChart, Lock, PenLine, Search, User, UserCog, Users } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
 import { ROLE_USERS, useHivemind } from "./store";
 import { cn, scopeLabel } from "./utils";
 
@@ -101,15 +102,30 @@ export function Palette() {
     listRef.current?.querySelector<HTMLElement>(`[data-index="${cursor}"]`)?.scrollIntoView({ block: "nearest" });
   }, [cursor]);
 
-  if (!paletteOpen) return null;
-
   let index = -1;
   const groups = Array.from(new Set(items.map((i) => i.group)));
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-[16vh]" role="dialog" aria-modal="true" aria-label="Search">
-      <button type="button" aria-label="Close" className="absolute inset-0 bg-black/55" onClick={close} />
-      <div className="relative w-[min(580px,92vw)] overflow-hidden rounded-xl border border-line bg-panel">
+    <AnimatePresence>
+    {paletteOpen ? (
+    <div key="palette" className="fixed inset-0 z-50 flex items-start justify-center pt-[16vh]" role="dialog" aria-modal="true" aria-label="Search">
+      <motion.button
+        type="button"
+        aria-label="Close"
+        className="absolute inset-0 bg-black/55"
+        onClick={close}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.15 }}
+      />
+      <motion.div
+        className="relative w-[min(580px,92vw)] overflow-hidden rounded-xl border border-line bg-panel"
+        initial={{ opacity: 0, scale: 0.97, y: -8 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.98, y: -4, transition: { duration: 0.12 } }}
+        transition={{ type: "spring", stiffness: 520, damping: 36 }}
+      >
         <div className="flex items-center gap-2 border-b border-line px-3">
           <Search className="size-4 text-muted" />
           <input
@@ -155,13 +171,20 @@ export function Palette() {
                           onMouseMove={() => setCursor(my)}
                           onClick={i.run}
                           className={cn(
-                            "flex w-full items-center gap-2.5 px-4 py-2 text-left text-[13px]",
-                            my === cursor ? "bg-accent/12 text-fg" : "text-fg/85",
+                            "relative flex w-full items-center gap-2.5 px-4 py-2 text-left text-[13px]",
+                            my === cursor ? "text-fg" : "text-fg/85",
                           )}
                         >
-                          <Icon className={cn("size-4 shrink-0", my === cursor ? "text-accent" : "text-muted")} />
-                          <span className="truncate">{i.label}</span>
-                          {i.detail ? <span className="ml-auto shrink-0 truncate text-[12px] text-muted">{i.detail}</span> : null}
+                          {my === cursor ? (
+                            <motion.span
+                              layoutId="hm-palette-cursor"
+                              className="absolute inset-0 bg-accent/12"
+                              transition={{ type: "spring", stiffness: 700, damping: 48 }}
+                            />
+                          ) : null}
+                          <Icon className={cn("relative size-4 shrink-0", my === cursor ? "text-accent" : "text-muted")} />
+                          <span className="relative truncate">{i.label}</span>
+                          {i.detail ? <span className="relative ml-auto shrink-0 truncate text-[12px] text-muted">{i.detail}</span> : null}
                         </button>
                       </li>
                     );
@@ -170,7 +193,9 @@ export function Palette() {
             </li>
           ))}
         </ul>
-      </div>
+      </motion.div>
     </div>
+    ) : null}
+    </AnimatePresence>
   );
 }

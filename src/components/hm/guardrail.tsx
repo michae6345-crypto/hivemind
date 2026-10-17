@@ -1,6 +1,7 @@
 "use client";
 
 import { Lock, ShieldX } from "lucide-react";
+import { motion } from "motion/react";
 import type { Memory } from "@/mocks/types";
 import { useHivemind } from "./store";
 import { Avatar } from "./bits";
@@ -38,7 +39,12 @@ export function Guardrail({ memory: m, compact }: { memory: Memory; compact?: bo
         <span className="text-[12px] text-muted">It never reaches an agent, and nobody below Security can override it.</span>
       </div>
       <div className={cn("grid gap-3 p-4", compact ? "grid-cols-1" : "grid-cols-[1fr_auto_1fr] items-stretch")}>
-        <div className="rounded-md border border-line bg-bg/60 p-3">
+        {/* The proposal runs into the locked rule and is pushed back: plays once, when the block is shown. */}
+        <motion.div
+          className="rounded-md border border-line bg-bg/60 p-3"
+          animate={compact ? { y: [0, 10, -3, 0] } : { x: [0, 18, -6, 0] }}
+          transition={{ duration: 0.55, times: [0, 0.35, 0.7, 1], delay: 0.25, ease: "easeOut" }}
+        >
           <div className="mb-2 flex items-center gap-2 text-[12px] text-muted">
             <Avatar person={proposer} id={proposal?.actor ?? m.author} className="size-4 text-[9px]" />
             <span>
@@ -46,7 +52,7 @@ export function Guardrail({ memory: m, compact }: { memory: Memory; compact?: bo
             </span>
           </div>
           <p className="text-[14px] leading-snug">“{proposal?.quote ?? m.body}”</p>
-        </div>
+        </motion.div>
         {!compact ? (
           <div className="flex items-center">
             <span className="flex size-7 items-center justify-center rounded-full border border-danger/40 bg-danger/15 text-[11px] font-semibold text-danger">
@@ -55,9 +61,11 @@ export function Guardrail({ memory: m, compact }: { memory: Memory; compact?: bo
           </div>
         ) : null}
         {rule ? (
-          <button
+          <motion.button
             type="button"
             onClick={() => openMemory(rule.id)}
+            animate={{ scale: [1, 1.035, 1] }}
+            transition={{ duration: 0.35, delay: 0.42, ease: "easeOut" }}
             className="rounded-md border border-lock/40 bg-lock/[0.07] p-3 text-left transition-colors duration-150 hover:bg-lock/[0.12]"
           >
             <div className="mb-2 flex items-center gap-2 text-[12px] text-muted">
@@ -68,7 +76,7 @@ export function Guardrail({ memory: m, compact }: { memory: Memory; compact?: bo
               </span>
             </div>
             <p className="text-[14px] leading-snug font-medium">{rule.title}</p>
-          </button>
+          </motion.button>
         ) : null}
       </div>
       {reason ? (

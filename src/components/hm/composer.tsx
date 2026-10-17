@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import CodeMirror from "@uiw/react-codemirror";
 import { Lock, X } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
 import { toast } from "sonner";
 import type { Memory } from "@/mocks/types";
 import { useHivemind } from "./store";
@@ -52,8 +53,6 @@ export function Composer() {
     return () => window.removeEventListener("keydown", onKey);
   }, [composerOpen, setComposerOpen]);
 
-  if (!composerOpen) return null;
-
   const reach = chosenScope ? reachFor(chosenScope, scopes, people) : 0;
   const canSave = title.trim().length > 2 && body.trim().length > 2 && !!chosenScope && !saving;
 
@@ -85,14 +84,26 @@ export function Composer() {
   };
 
   return (
-    <div className="fixed inset-0 z-40 flex justify-end" role="dialog" aria-modal="true" aria-label="Write a rule">
-      <button
+    <AnimatePresence>
+    {composerOpen ? (
+    <div key="composer" className="fixed inset-0 z-40 flex justify-end" role="dialog" aria-modal="true" aria-label="Write a rule">
+      <motion.button
         type="button"
         aria-label="Close"
         className="absolute inset-0 bg-black/55 backdrop-blur-[1px]"
         onClick={() => setComposerOpen(false)}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.18 }}
       />
-      <div className="hm-drawer relative flex h-full w-[min(520px,100vw)] flex-col border-l border-line bg-panel">
+      <motion.div
+        className="relative flex h-full w-[min(520px,100vw)] flex-col border-l border-line bg-panel"
+        initial={{ x: "100%" }}
+        animate={{ x: 0 }}
+        exit={{ x: "100%", transition: { type: "spring", stiffness: 520, damping: 48 } }}
+        transition={{ type: "spring", stiffness: 420, damping: 40 }}
+      >
         <div className="flex h-11 shrink-0 items-center justify-between border-b border-line px-4">
           <span className="font-semibold">Write a rule</span>
           <button
@@ -228,7 +239,9 @@ export function Composer() {
             {saving ? "Saving…" : locked && lockAllowed ? "Save locked rule" : "Save rule"}
           </button>
         </div>
-      </div>
+      </motion.div>
     </div>
+    ) : null}
+    </AnimatePresence>
   );
 }

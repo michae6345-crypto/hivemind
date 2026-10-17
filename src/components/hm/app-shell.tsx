@@ -6,9 +6,10 @@ import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useSyncExternalStore, type ReactNode } from "react";
 import { BookOpen, Inbox, LineChart, PenLine, Search } from "lucide-react";
 import { Toaster } from "sonner";
+import { MotionConfig, motion } from "motion/react";
 import { ORG_NAME } from "@/mocks/data";
 import { HivemindProvider, ROLE_USERS, useHivemind } from "./store";
-import { Avatar, Kbd, Logo } from "./bits";
+import { Avatar, Kbd, Logo, Wordmark } from "./bits";
 import { Palette } from "./palette";
 import { useNow } from "./use-now";
 import { canApprove, cn } from "./utils";
@@ -25,6 +26,7 @@ function useMounted() {
 export function AppShell({ children }: { children: ReactNode }) {
   const mounted = useMounted();
   return (
+    <MotionConfig reducedMotion="user" transition={{ type: "spring", stiffness: 420, damping: 36 }}>
     <HivemindProvider>
       <div className="flex h-full flex-col">
         <Header />
@@ -50,6 +52,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         }}
       />
     </HivemindProvider>
+    </MotionConfig>
   );
 }
 
@@ -102,8 +105,8 @@ function Header() {
   return (
     <header className="flex h-12 shrink-0 items-center gap-5 border-b border-line bg-panel px-4">
       <Link href="/" className="flex items-center gap-2.5">
-        <Logo className="size-[22px]" />
-        <span className="text-[15px] font-semibold tracking-[-0.01em]">Hivemind</span>
+        <Logo className="size-[22px]" intro />
+        <Wordmark className="text-[17px]/none" />
         <span className="hidden text-[13px] text-muted lg:inline">{ORG_NAME}</span>
       </Link>
 
@@ -122,11 +125,23 @@ function Header() {
               <Icon className="size-3.5" />
               {label}
               {badge ? (
-                <span className="ml-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-semibold text-black">
+                <motion.span
+                  key={badge}
+                  initial={{ scale: 0.5 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: "spring", stiffness: 700, damping: 18 }}
+                  className="ml-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-semibold text-black"
+                >
                   {badge}
-                </span>
+                </motion.span>
               ) : null}
-              {active ? <span className="absolute inset-x-2.5 -bottom-[9px] h-[2px] rounded-full bg-accent" /> : null}
+              {active ? (
+                <motion.span
+                  layoutId="hm-nav-underline"
+                  className="absolute inset-x-2.5 -bottom-[9px] h-[2px] rounded-full bg-accent"
+                  transition={{ type: "spring", stiffness: 520, damping: 40 }}
+                />
+              ) : null}
             </Link>
           );
         })}

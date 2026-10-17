@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Ban, Bot, GitPullRequest, Inbox, MessageSquareQuote, PenLine } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
 import type { Memory } from "@/mocks/types";
 import { useHivemind } from "./store";
 import { useDecide } from "./decisions";
@@ -56,7 +57,14 @@ export function Approvals() {
       </div>
       <div className="relative min-w-0 flex-1 overflow-y-auto bg-bg">
         {selected ? (
-          <Detail key={selected.id} memory={selected} onDone={() => pick(selected)} />
+          <motion.div
+            key={selected.id}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ type: "spring", stiffness: 380, damping: 34 }}
+          >
+            <Detail memory={selected} onDone={() => pick(selected)} />
+          </motion.div>
         ) : (
           <div className="relative flex h-full flex-col items-center justify-center gap-2 text-muted">
             <HexField className="absolute inset-0 opacity-40" />
@@ -83,16 +91,22 @@ function Group({
   const { people, recentlyChanged } = useHivemind();
   if (!items.length) return null;
   return (
-    <div className="pt-3">
+    <div className="relative pt-3">
       <div className="px-3 pb-1.5 text-[12px] font-semibold text-fg/60">
         {title} <span className="font-normal text-muted">{items.length}</span>
       </div>
+      <AnimatePresence mode="popLayout" initial={false}>
       {items.map((m) => {
         const Icon = m.status === "blocked" ? Ban : SOURCE_ICON[m.source];
         const author = people.find((p) => p.id === m.author);
         return (
-          <button
+          <motion.button
             key={m.id}
+            layout="position"
+            // New lessons slide in from the top; a decided one leaves to the right as the rest close the gap.
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0, x: 0 }}
+            exit={{ opacity: 0, x: 48, transition: { duration: 0.18, ease: "easeIn" } }}
             type="button"
             onClick={() => onSelect(m.id)}
             className={cn(
@@ -110,9 +124,10 @@ function Group({
               <RichText text={scopeLabel(m.scopeId)} inert />
               <span className="truncate">{author?.name ?? (m.author.startsWith("agent:") ? "Agent" : m.author)}</span>
             </div>
-          </button>
+          </motion.button>
         );
       })}
+      </AnimatePresence>
     </div>
   );
 }

@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { AnimatePresence, motion } from "motion/react";
 import type { Memory } from "@/mocks/types";
 import { useHivemind } from "./store";
 import { cn, confidence, scopeLabel } from "./utils";
@@ -109,13 +110,15 @@ export function Hive({ className }: { className?: string }) {
     <div className={cn("relative", className)}>
       <svg
         viewBox={`${minX} ${minY} ${width} ${height}`}
-        className="h-full w-full"
+        className="h-full w-full overflow-visible"
         role="img"
         aria-label={`${cells.length} lessons in the hive`}
       >
+        <AnimatePresence initial={false}>
         {cells.map(({ m, x, y }) => {
           const c = confidence(m);
           const hovered = hover?.id === m.id;
+          const changed = recentlyChanged.has(m.id);
           // Each cell is a comb (outline) holding honey (solid core): the core grows with confidence.
           const ring =
             m.locked || m.status === "blocked"
@@ -127,15 +130,20 @@ export function Hive({ className }: { className?: string }) {
               : m.status === "active"
                 ? { r: RADIUS * (0.3 + 0.6 * c), fill: "var(--accent)", opacity: 0.95 }
                 : null;
+          // Cells are drawn at the origin and moved with transforms, so when a lesson is approved and the hive
+          // re-sorts, every cell glides to its new place; a new lesson grows in where it lands.
           return (
-            <g
+            <motion.g
               key={m.id}
-              className={cn(
-                "cursor-pointer outline-none",
-                m.status === "pending" && "hm-cell-wait",
-                recentlyChanged.has(m.id) && "hm-cell-pop",
-              )}
-              style={{ transformOrigin: `${x}px ${y}px` }}
+              initial={{ x, y, scale: 0, opacity: 0 }}
+              animate={{ x, y, scale: changed ? [null, 1.28, 1] : 1, opacity: 1 }}
+              exit={{ scale: 0, opacity: 0, transition: { duration: 0.2 } }}
+              transition={{
+                x: { type: "spring", stiffness: 170, damping: 22 },
+                y: { type: "spring", stiffness: 170, damping: 22 },
+                scale: changed ? { duration: 0.55, times: [0, 0.4, 1], ease: "easeOut" } : { type: "spring", stiffness: 420, damping: 22 },
+              }}
+              className={cn("cursor-pointer outline-none", m.status === "pending" && "hm-cell-wait")}
               tabIndex={0}
               role="button"
               aria-label={`${m.title}, ${m.status}`}
@@ -154,26 +162,37 @@ export function Hive({ className }: { className?: string }) {
                 }
               }}
             >
+              {changed && m.status === "active" ? <Ripple /> : null}
               <path
-                d={hexPath(x, y, RADIUS)}
+                d={hexPath(0, 0, RADIUS)}
                 fill={hovered ? "var(--elevated)" : "var(--panel)"}
                 {...ring}
                 strokeWidth={hovered ? 1.8 : 1.1}
                 strokeDasharray={m.status === "pending" ? "3 2.5" : undefined}
                 className="transition-[stroke-width] duration-150"
               />
-              {core ? <path d={hexPath(x, y, core.r)} fill={core.fill} fillOpacity={core.opacity} /> : null}
+              {core ? (
+                <motion.path
+                  d={hexPath(0, 0, core.r)}
+                  fill={core.fill}
+                  fillOpacity={core.opacity}
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: "spring", stiffness: 300, damping: 18 }}
+                />
+              ) : null}
               {m.status === "blocked" ? (
                 <path
-                  d={`M${x - 4.5} ${y - 4.5}L${x + 4.5} ${y + 4.5}M${x + 4.5} ${y - 4.5}L${x - 4.5} ${y + 4.5}`}
+                  d="M-4.5 -4.5L4.5 4.5M4.5 -4.5L-4.5 4.5"
                   stroke="var(--danger)"
                   strokeWidth="1.6"
                   strokeLinecap="round"
                 />
               ) : null}
-            </g>
+            </motion.g>
           );
         })}
+        </AnimatePresence>
       </svg>
       <div className="pointer-events-none absolute inset-x-0 bottom-0 min-h-10 text-center">
         {hover ? (
@@ -186,6 +205,27 @@ export function Hive({ className }: { className?: string }) {
         ) : null}
       </div>
     </div>
+  );
+}
+
+/** "It ripples out": two honey rings spread from a cell the moment its lesson is approved. */
+function Ripple() {
+  return (
+    <>
+      {[0, 0.16].map((delay) => (
+        <motion.path
+          key={delay}
+          d={hexPath(0, 0, RADIUS)}
+          fill="none"
+          stroke="var(--accent)"
+          strokeWidth={1.4}
+          initial={{ scale: 1, opacity: 0.8 }}
+          animate={{ scale: 3.2, opacity: 0 }}
+          transition={{ duration: 1.1, delay, ease: [0.2, 0.7, 0.3, 1] }}
+          style={{ pointerEvents: "none" }}
+        />
+      ))}
+    </>
   );
 }
 
