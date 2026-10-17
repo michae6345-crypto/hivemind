@@ -10,7 +10,7 @@
 //   3. write src/payout-report.ts that logs an expert's email
 //   4. hivemind check src/payout-report.ts → "locked rule: Never log expert personal info", exit 1 (same API as watch)
 //   5. watch --snapshot --view here --file AFTER the write: the locked rule + owner are listed
-//   6. real watcher path: watch --snapshot --wait 5000 is already running when the file is written (no --file)
+//   6. real watcher path: watch --snapshot --wait 8000 is already running when the file is written (no --file)
 // Steps 2, 5, 6 SKIP (not FAIL) until `watch --snapshot` is on main. Exit 1 only on a FAIL.
 import { spawn } from "node:child_process";
 import fs from "node:fs";
@@ -105,7 +105,7 @@ if (snapshotFlag) {
 // 6. file watcher: the snapshot is already watching --dir when the agent writes the file
 if (snapshotFlag) {
   const fresh = path.join(work, "src", "expert-notify.ts");
-  const pending = cli(["watch", snapshotFlag, "--view", "here", "--dir", work, "--wait", "5000"], work, 45000);
+  const pending = cli(["watch", snapshotFlag, "--view", "here", "--dir", work, "--wait", "8000"], work, 45000);
   setTimeout(
     () =>
       fs.writeFileSync(

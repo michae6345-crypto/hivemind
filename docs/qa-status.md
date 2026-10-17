@@ -1,6 +1,6 @@
 # QA status (agent D)
 
-_Last updated: Sat Oct 17, ~2:15 AM PT. Terminal pivot: `hivemind watch` is the hero (runbook: `docs/demo-terminal.md`)._
+_Last updated: Sat Oct 17, ~3:15 AM PT. Terminal pivot: `hivemind watch` is the hero (runbook: `docs/demo-terminal.md`, rehearsed against prod)._
 Re-run after each big merge: `pnpm typecheck` · `pnpm build` · `node cli/hivemind.mjs watch --help` · `node scripts/e2e-terminal.mjs` · `node scripts/e2e-demo.mjs --base https://hivemind-beta-virid.vercel.app` (then `reset-demo`)
 
 ## Build
@@ -41,6 +41,18 @@ build OOMed, which points to machine memory pressure with 12 Claude sessions ope
 
 ## Open issues
 
+- **For Adrian (not blocking):** `pnpm lint` fails on `src/app/(ui)/opengraph-image.tsx:46:45`
+  (`react/no-unescaped-entities`, an unescaped `'`). It does **not** break `pnpm build` (Next 16 doesn't lint during
+  build; the local build passes) or Vercel (every deploy after `0fd4bbf` is green). Fix: replace `'` with `&apos;` (or
+  `’`) on that line. I left Adrian's file untouched.
+- **Beat 8 "fix it once" isn't live** (owners **J** + **B**). `POST /api/events {type:"fix"}` → `200 {"lessons":[],
+  "enginePath":"heuristic"}`, so no lesson comes from a fix yet. Re-check with `node scripts/e2e-rehearse.mjs --beats 8`.
+- **Shared prod DB noise during takes** (everyone). Right after a reset, other agents' tests wrote
+  `@kevin edited src/experts.ts` / `@emily blocked by a locked rule` into the Feed. Before recording, stop all
+  smoke/e2e runs, then reset.
+- **Rule count mismatch** (owner **K**/**C**, cosmetic). The watch header says `Rules 9` while the SessionStart banner
+  says `Loaded 11 team rules` for the same persona and repo. A viewer may notice.
+
 0. **Local `pnpm build` can OOM** (`FATAL ERROR … JavaScript heap out of memory`, exit 134) while many Claude sessions
    run on this machine. Re-running alone passes (23 pages). Vercel builds of main are green. Not a code issue.
 
@@ -55,11 +67,13 @@ build OOMed, which points to machine memory pressure with 12 Claude sessions ope
 
 ## DB state
 
-- Reset after the prod e2e run. The dry run now shows 0 leftovers: 22 seed memories, 30 synthetic sessions /
-  134 synthetic events. `reset-demo.mjs` also removes empty/`preview…` session pack_log rows, `api-test-%` /
-  `smoke-test-%` memories and their events.
-- **Before recording:** `node scripts/reset-demo.mjs --dry-run`, then `node scripts/reset-demo.mjs`. It's the same
-  Supabase for local and prod.
+- `reset-demo.mjs` (latest):
+  - never touches `repo/playground` (memories by scope; events/activity/pack_log by repo);
+  - keeps hand-written non-seed memories (A's 18 scenario lessons) unless `--all-extra`;
+  - deletes engine-made leftovers (random 4-char slug suffix with a digit) and test rows;
+  - runs `scripts/seed-scenarios.mjs` after `seed.mjs` once A pushes it.
+- Reset ~3 AM: seed + scenarios = 40 memories, 30 synthetic sessions.
+- **Before recording:** `node scripts/reset-demo.mjs --dry-run`, then `node scripts/reset-demo.mjs`.
 
 ## Deploy
 

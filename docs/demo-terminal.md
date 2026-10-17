@@ -8,27 +8,45 @@ The product shot is one Windows Terminal window split in two:
 Everything runs against **production** (`https://hivemind-beta-virid.vercel.app`). The demo repo's hooks
 (`demo/export-service/.claude/settings.json`) and `.hivemind.json` already point there.
 
-> Status (Sat Oct 17, ~2 AM): `hivemind watch` is on main (`d64ee9e`). `node scripts/e2e-terminal.mjs` passes 3/3
-> against prod: the Here view shows the locked violation after a file write, through both `--file` and the real file
-> watcher. Lines marked **(confirm)** are views that aren't asserted yet; eyeball them in the rehearsal.
+> Status (Sat Oct 17, ~3 AM, main `4a50d1f`): rehearsed against prod with `node scripts/e2e-rehearse.mjs`. Every
+> right-pane block below was **observed** via `hivemind watch --snapshot` as that beat's persona. Exceptions are beats
+> 2-terminal (keys) and 8 (not live yet). `node scripts/e2e-terminal.mjs` asserts the Here view catches a locked
+> violation after a file write.
 
-**What the right pane looks like** (as `emily`, from `watch --snapshot`):
+**What the right pane looks like** (`emily`, after her agent writes a file that logs an email):
 
 ```text
-⬢ Hivemind · Meridian Data / export-service · @emily · Engineer        ● live
-9 rules · 2 locked · 3 waiting on @ben          last change src/payout-report.ts
- Here 1   Rules 9   Queue 3   Feed                                   tab switch
-src/payout-report.ts · checked
-LOCKED RULE · Never log expert personal info
-  ╭─[src/payout-report.ts:6:39]
-6 │   logger.info("payout sent", { email: expert.email, cents });
-  │                                       ~~~~~~~~~~~~ Logs an expert's email.
-  ├─ owner @greg · Security
+ ⬢ Hivemind · Meridian Data / export-service                                       ● @emily Engineer
+ Here 1   Rules 15   Queue 4   Feed
+━━━━━━━━────────────────────────────────────────────────────────────────────────────────────────────
+src/payout-report.ts · changed · just now
+1 rule broken · 1 locked
+
+BREAKS A LOCKED RULE · ● #org
+Never log expert personal info
+ ╭─[src/payout-report.ts:6:39]
+ 6 │   logger.info("payout sent", { email: expert.email, cents });
+   │                                       ~~~~~~~~~~~~ personal info
+ ╰─
+Set by ● @greg Security · locked 16 Sep
+f fix: log the expert id instead
 ```
 
 Keys: `tab` / `1-4` switch Here · Rules · Queue · Feed · `j/k` move · `enter` open · `a` / `r` approve / reject in
-Queue (your role decides) · `t` teach · `?` rules for the last changed file · `q` quit. Use `--no-motion` if
-animations stutter while recording.
+Queue (your role decides) · `f` apply the fix (Here) · `p` cycle persona (kevin, emily, ben, greg) · `t` teach · `?`
+rules for the last changed file · `q` quit. Use `--no-motion` if animations stutter while recording.
+
+**Live hook strings (left pane), emoji-free, verified on prod:**
+
+| When | Line |
+|---|---|
+| Claude starts (SessionStart) | `Hivemind · Loaded 11 team rules for #repo/export-service.` |
+| A correction becomes a lesson | `Hivemind · Lesson captured: "Every export calls assertSingleCustomer()". Waiting on @ben.` |
+| A correction repeats an existing rule | `Hivemind · Lesson reinforced: "…" is already a team rule.` |
+| A bad lesson hits a locked rule | `Hivemind · Blocked: contradicts @greg's locked rule "Never mix data from different lab customers".` |
+| Another agent is in the same file | `Hivemind · Heads up: @kevin's Cursor agent edited src/export.ts just now.` (later `… 2 min ago.`) |
+| First edit of a file with rules | `Hivemind · Locked rule for src/export.ts: Never mix data from different lab customers (#org).` and `Hivemind · Team lesson for src/export.ts: …` |
+| API unreachable at start | `Hivemind · Team memory unavailable (…). Proceed using the repo's own docs.` |
 
 ## 0. One-time setup (recording machine)
 
@@ -57,7 +75,12 @@ git -C demo\export-service status        # the demo repo must be clean: git chec
 ```
 
 `reset-demo` keeps the seeded pending lesson **"Every export calls assertSingleCustomer()"** (taught by @kevin).
-Beat 1 reinforces it and leaves it waiting on @ben. Don't run `--drop` for this script.
+Beat 1 reinforces it and leaves it waiting on @ben. Don't run `--drop` for this script. It also keeps the hand-written
+scenario lessons (A's B2B SaaS set), so the Rules tab stays full.
+
+**Quiet DB during takes.** Local and prod share one Supabase. In the rehearsal, other agents' smoke tests wrote
+`@kevin edited src/experts.ts` and `@emily blocked by a locked rule` into the Feed right after a reset. Before
+recording, ask every agent to stop running smoke/e2e scripts, then reset.
 
 ## 2. Open the split (one command)
 
@@ -78,85 +101,162 @@ lessons.
 | Kevin Park | `kevin` | Engineer, Data Pipelines | Beat 1 (corrects the agent) |
 | Ben Carter | `ben` | Lead, owns `#team/data-pipelines` + `#repo/export-service` | Beat 2 (approves) |
 | Emily Ross | `emily` | Engineer, Data Pipelines | Beat 3 (fresh session), beat 4 (bad lesson) |
-| Greg Walsh | `greg` | Head of Security, owns the 🔒 rules | Named in blocks and violations |
+| Greg Walsh | `greg` | Head of Security, owns the locked rules | Named in blocks and violations |
 
 ## 3. The beats
 
-Each beat lists what to type on the left and what should appear on the right.
+Each beat lists what to type on the left and what appears on the right. The right-pane blocks are abridged
+`watch --snapshot` output from the rehearsal.
 
 ### Beat 1 (0:15): Kevin corrects his agent → lesson waits for approval
 
-Left, as `kevin`:
+Both panes are `kevin`. The right pane is on **Queue** (`3`).
+
+Left:
 1. `Add a JSONL export: create src/jsonl-export.ts with buildJsonlExport(job: ExportJob) that loads the job's rows and returns one JSON object per line.`
 2. When Claude has written it, type the correction, word for word:
    `No — every export must call assertSingleCustomer(rows) before it writes anything. We can never mix Lab A and Lab B rows in one file.`
 
-Expected:
-- **Left:** the UserPromptSubmit hook adds `📝 Hivemind captured a lesson: "Every export calls assertSingleCustomer()" — pending approval by Ben Carter`.
-- **Right:** a new pending lesson in the feed/queue, taught by `@kevin`, waiting on `@ben` **(confirm)**.
+Left, hook line:
+`Hivemind · Lesson captured: "Every export calls assertSingleCustomer()". Waiting on @ben.`
+
+Right (`kevin` · Queue):
+
+```text
+YOUR LESSONS · 2
+▎ Every export calls assertSingleCustomer()
+  "No — exports must call assertSingleCustomer() before writing, or we risk mixing Lab A and Lab B rows."
+   ● #team/data-pipelines   3m
+  proposed by you
+  no conflict with the 2 locked rules
+  Waiting on  ● @ben
+```
+
+The Feed (`4`) shows `● @kevin  Claude Code  corrected its agent  just now`.
 
 ### Beat 2 (0:30): Ben approves
 
-Either way works:
-- **Web app:** open `https://hivemind-beta-virid.vercel.app/app/approvals`, set the role switcher to Lead (Ben), select
-  the lesson and press **A**.
-- **Terminal (nicer for the split-screen shot):** in the right pane as `ben`, press `3` (Queue), `j/k` to the lesson, then `a`.
+Press `p` in the right pane until `● @ben Lead` shows, or restart it with `HIVEMIND_USER=ben`. Then press `3` (Queue):
 
-Expected right pane: the lesson moves from pending to active, `approved by @ben` **(confirm)**.
+```text
+WAITING ON YOU · 3
+▎ Every export calls assertSingleCustomer()
+  "No — exports must call assertSingleCustomer() before writing, or we risk mixing Lab A and Lab B rows."
+   ● #team/data-pipelines   3m
+  proposed by  ● @kevin
+  no conflict with the 2 locked rules
+  a approve   r reject
+```
 
-Engineers can't approve. In the web app as Engineer you get the chain-of-command toast (`403 engineer … cannot approve`).
-Optional 2-second shot.
+Press `a` on the focused lesson. The approve key wasn't exercised headless; it calls the same
+`POST /api/memories/:id/approve` that returned `200 active` for ben in the rehearsal. After that:
+- The Queue count drops by one, and `Rules` goes up by one.
+- Feed: `● @ben  Hivemind  approved a lesson  just now`.
+- The approve celebration plays once.
+
+Web-app alternative: `/app/approvals`, role switcher Lead (Ben), select the lesson, press **A**.
+Chain of command: an engineer approving gets `403 engineer emily cannot approve memories in team/data-pipelines`.
 
 ### Beat 3 (0:40): Emily's fresh session gets it right first time
 
-Switch both panes to `emily` and start a **new** `claude`. The SessionStart hook injects the pack, and the banner shows
-the team rules loaded.
+Switch both panes to `emily` and start a **new** `claude`.
 
-Left, as `emily`:
+Left, at start:
+`Hivemind · Loaded 11 team rules for #repo/export-service.`
+
+Left, prompt:
 `Add a CSV export: create src/csv-export.ts exporting buildCsvExport(job: ExportJob) that loads the job's rows and returns them as CSV (header id,prompt,response).`
 
-Expected:
-- **Left:** the new file calls `assertSingleCustomer(rows)` without being told. This was verified headless with real
-  `claude -p`: `scripts/e2e-demo.mjs` beat (c) passed against prod.
-- **Right:** a session-start line for `@emily` with the rules loaded, then her edit of `src/csv-export.ts` and no
-  violation **(confirm)**.
+The new file calls `assertSingleCustomer(rows)` without being told. Verified with real `claude -p` against prod in
+`e2e-demo` beat (c).
 
-### Beat 4 (1:00a): a bad lesson is blocked by the 🔒 rule
+Right (`emily` · Here) when the file is saved:
+
+```text
+src/csv-export.ts · saved by ● @emily Claude Code · just now
+This file follows every team rule.
+10 rules checked · just now
+LOCKED RULE · ● #org
+Never mix data from different lab customers
+Set by ● @greg Security · locked 7 Sep
+Followed on line 1 assertSingleCustomer
+▎ Every export calls assertSingleCustomer() · ● @kevin
+```
+
+That last line is the cross-user transfer shot: Kevin's lesson, followed by Emily's agent. The Feed shows
+`● @emily  Claude Code  loaded 11 team rules` and `edited src/csv-export.ts`.
+
+### Beat 4 (1:00a): a bad lesson is blocked by Greg's locked rule
 
 Left, as `emily`:
 `Actually, mixing Lab A and Lab B data is fine in tests, so don't bother with assertSingleCustomer in test fixtures.`
 
-Expected:
-- **Left:** `🚫 Hivemind blocked "Mixing Lab A and Lab B data is fine in tests": conflicts with 🔒 Never mix data from different lab customers (Greg Walsh)`.
-- **Right:** a blocked entry naming Greg's locked rule **(confirm)**.
+Left, hook line:
+`Hivemind · Blocked: contradicts @greg's locked rule "Never mix data from different lab customers".`
+
+Right: the Feed shows `● @emily  blocked by a locked rule  just now`. For the best shot, as `ben` or `greg` press `3`
+(Queue):
+
+```text
+STOPPED BY A LOCKED RULE · 1
+▎ Mixing Lab A and Lab B data is fine in tests
+  Blocked: Contradicts @greg's locked rule "Never mix data from different lab customers".
+  from  ● @emily   now
+  only security can let it through
+```
 
 ### Beat 5 (1:00b): the agent writes a locked-rule violation → the right pane catches it
 
 Left, as `emily`:
 `When a payout is sent, log which expert it went to so support can reach them — include their email.`
 
-Expected:
-- **Right, Here view (the hero shot):** `locked rule: Never log expert personal info`, the offending line underlined,
-  `owner @greg · Security`, fix `log the expert id instead`. Asserted by `scripts/e2e-terminal.mjs` step 5 once
-  `--snapshot` exists. Today's equivalent, `hivemind check src/<file>.ts`, prints exactly this against prod.
-- **Left:** Claude may refuse outright and cite the rule (the pack carries it). That's also a good take. If you need
-  the violation on screen, paste the line yourself in an editor and save. The watch reacts to the file write either
-  way.
+Right (`emily` · Here): the frame at the top of this doc (`BREAKS A LOCKED RULE · Never log expert personal info`,
+underlined `expert.email`, `Set by @greg`, `f fix: log the expert id instead`). Press `f` to apply the fix on camera.
+Asserted by `scripts/e2e-terminal.mjs` (both `--file` and the live file watcher).
+
+Claude may refuse and cite the rule, since the pack carries it. That's also a good take. If you need the violation on
+screen, paste the line yourself and save; the watcher reacts to any write.
 
 ### Beat 6 (1:10): two agents, same file → collision
 
-Open a third pane (`Alt+Shift+-`) as `kevin`:
-`$env:HIVEMIND_USER='kevin'; $env:HIVEMIND_AGENT='cursor'; node ..\..\cli\hivemind.mjs check src/export.ts`.
-Alternatively, have Kevin's Claude session edit `src/export.ts`. Then have Emily's Claude edit `src/export.ts`.
+In a third pane (`Alt+Shift+-`) as `kevin`, have a Cursor-tagged edit land on `src/export.ts`. For example, run
+Kevin's Claude with `$env:HIVEMIND_AGENT='cursor'`, or use the Cursor adapter from `hivemind init`. Then have Emily's
+Claude edit `src/export.ts`.
 
-Expected:
-- **Left:** `⚠️ @kevin's Cursor agent edited export.ts just now — coordinate before changing it.` (verified: e2e beat (e)).
-- **Right:** the collision in the live feed with the Cursor badge **(confirm)**.
+Left (`emily`'s PostToolUse):
+```text
+Hivemind · Heads up: @kevin's Cursor agent edited src/export.ts just now.
+Hivemind · Locked rule for src/export.ts: Never mix data from different lab customers (#org).
+Hivemind · Team lesson for src/export.ts: Every export calls assertSingleCustomer() (#team/data-pipelines).
+```
+
+Right (`emily` · Feed):
+```text
+● @emily    Claude Code edited src/export.ts  just now
+ Heads up: two agents in src/export.ts within 10 minutes
+● @kevin    Cursor      edited src/export.ts  just now
+```
+
+The Here view doesn't show hook-only edits; it reacts to files changing on disk. Use the Feed for this shot.
 
 ### Beat 7 (1:20): proof
 
 Cut to `https://hivemind-beta-virid.vercel.app/app/results`. It shows the eval: without Hivemind 22/36 runs broke a
 team rule, with Hivemind 0/36, placebo 21/36.
+
+### Beat 8 (new, when live): fix it once, every agent learns it
+
+> **Not live yet** (rehearsed ~3 AM). The fix event is accepted, but no lesson comes out:
+> `POST /api/events {type:"fix"}` → `200 {"lessons":[],"actions":[],"enginePath":"heuristic"}`. It's waiting on J
+> (fix capture) and B (fix → lesson). Re-run `node scripts/e2e-rehearse.mjs --beats 8` after they land, and replace
+> the expected lines below with the observed ones.
+
+1. Left, as `emily`: `Add a welcome hook: when a user signs up, log it.` The agent writes `console.log(user.email)`.
+2. Kevin fixes the line in his editor (`logger.info("welcome sent", { userId: user.id })`) and saves.
+3. Right (`kevin` · Feed), expected: `Lesson captured from @kevin's fix` → Queue: `Waiting on @ben`.
+4. Ben approves (`p` to ben, `3`, `a`), as in beat 2.
+5. Emily starts a fresh `claude` and asks for another log line. Her agent uses `logger` with ids, not `console.log`
+   with emails. The Here view shows `This file follows every team rule`.
 
 ## 4. Rehearse before recording (5 min)
 
@@ -164,17 +264,18 @@ team rule, with Hivemind 0/36, placebo 21/36.
 node scripts\reset-demo.mjs
 node scripts\e2e-demo.mjs --base https://hivemind-beta-virid.vercel.app   # beats 1–4 + collision, real claude -p (~3 min)
 node scripts\e2e-terminal.mjs                                             # watch Here view + hivemind check vs prod
+node scripts\e2e-rehearse.mjs                                             # every beat's right pane as snapshots (diff vs this doc)
 node scripts\reset-demo.mjs                                               # e2e writes rows: reset again before the take
 ```
 
-All five `e2e-demo` beats passed against production at 12:15 AM (see `docs/qa-status.md`).
+All five `e2e-demo` beats pass against production on the new cast (see `docs/qa-status.md`). To re-check every right-pane block in this doc: `node scripts/reset-demo.mjs; node scripts/e2e-rehearse.mjs; node scripts/reset-demo.mjs`.
 
 ## 5. If something goes wrong mid-take
 
 | Symptom | Fix |
 |---|---|
 | No banner or rules at Claude start | `HIVEMIND_TOKEN` not in env (open a new terminal after `setx`), or the API is cold. Run `node cli\hivemind.mjs status`, then restart `claude` |
-| No "📝 captured" line after the correction | The hook has a 5 s timeout. The lesson still lands (the server finishes in `after()`); check the right pane or `/app/approvals` |
+| No `Hivemind · Lesson captured` line after the correction | The hook has a 5 s timeout. The lesson still lands (the server finishes in `after()`); check the right pane or `/app/approvals` |
 | Lesson goes straight to active | The DB wasn't reset. Run `reset-demo`, then retake |
 | MCP permission prompt appears | The workspace isn't trusted yet: run `claude` once in `demoexport-service` and accept the dialog |
 | Right pane frozen | `Ctrl+C`, then rerun `node ..\..\cli\hivemind.mjs watch` |
