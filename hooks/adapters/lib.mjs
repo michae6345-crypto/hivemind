@@ -6,6 +6,8 @@
 //      local server), HIVEMIND_TOKEN, HIVEMIND_USER (default sam), HIVEMIND_REPO (default repo/<basename of workspace>).
 //      A missing HIVEMIND_TOKEN is read from <hivemind>/.env.local (only the token: that file's HIVEMIND_API_URL is the
 //      server's local setting and must not pull hooks off production). Same rules as hooks/session-start.mjs.
+//      HIVEMIND_PACK_LOG=0 fetches the briefing without logging it to pack_log, so nothing in the session is rated or
+//      scored against the served lessons (used by scripts/smoke-adapters.mjs to keep seed lessons untouched).
 // Never breaks the host session: every failure path prints the tool's no-op output and exits 0.
 import { readFileSync } from "node:fs";
 import { basename, dirname, isAbsolute, join } from "node:path";
@@ -85,6 +87,7 @@ export function absPath(c, file) {
 /** Session briefing: 🔒 team rules, ranked lessons, owners, live activity. */
 export async function briefing(c) {
   const qs = new URLSearchParams({ repo: c.repo, user: c.user, session: c.session });
+  if (process.env.HIVEMIND_PACK_LOG === "0") qs.set("log", "0");
   const pack = await call(c, `/api/context-pack?${qs}`, {}, BRIEFING_TIMEOUT_MS);
   if (!pack?.markdown) throw new Error("empty pack");
   return String(pack.markdown).slice(0, PACK_CAP);
