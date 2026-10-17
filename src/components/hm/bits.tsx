@@ -11,7 +11,8 @@ const CELL_LESSON = "M38 51.1L62.25 65.1L62.25 93.1L38 107.1L13.75 93.1L13.75 65
 const CELL_NEXT = "M82 52.7L104.86 65.9L104.86 92.3L82 105.5L59.14 92.3L59.14 65.9Z";
 
 /** The mark. `intro` plays the one-time assembly: the rule lands, the lesson joins it, the next cell appears. */
-export function Logo({ className, intro = false }: { className?: string; intro?: boolean }) {
+export function Logo({ className, intro = false, onDark = false }: { className?: string; intro?: boolean; onDark?: boolean }) {
+  const blend = onDark ? "screen" : "multiply";
   const pop = (delay: number) =>
     intro
       ? {
@@ -22,12 +23,12 @@ export function Logo({ className, intro = false }: { className?: string; intro?:
       : {};
   return (
     <svg viewBox="0 0 120 120" className={cn("size-5 overflow-visible", className)} aria-hidden>
-      <motion.path d={CELL_LOCK} fill="var(--chip-lock)" style={{ mixBlendMode: "multiply" }} {...pop(0.1)} />
-      <motion.path d={CELL_LESSON} fill="var(--honey)" style={{ mixBlendMode: "multiply" }} {...pop(0.28)} />
+      <motion.path d={CELL_LOCK} fill={onDark ? "var(--win-rose)" : "var(--chip-lock)"} style={{ mixBlendMode: blend }} {...pop(0.1)} />
+      <motion.path d={CELL_LESSON} fill={onDark ? "var(--win-honey)" : "var(--honey)"} style={{ mixBlendMode: blend }} {...pop(0.28)} />
       <motion.path
         d={CELL_NEXT}
         fill="none"
-        stroke="var(--honey)"
+        stroke={onDark ? "var(--win-honey)" : "var(--honey)"}
         strokeWidth="7.5"
         strokeDasharray="13 8"
         strokeLinejoin="round"

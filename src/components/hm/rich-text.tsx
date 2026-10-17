@@ -26,7 +26,7 @@ export function RichText({
     const m = memoryBySlug(t.id);
     if (!m) return;
     openMemory(m.id);
-    go("/");
+    go("/app");
   };
 
   const parts: React.ReactNode[] = [];

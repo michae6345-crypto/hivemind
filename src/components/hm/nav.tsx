@@ -11,10 +11,11 @@ import { useCallback, useSyncExternalStore, type ComponentProps } from "react";
  */
 export const PREVIEW = process.env.NEXT_PUBLIC_HM_PREVIEW === "1";
 
-export type Route = "/" | "/approvals" | "/learning";
+/** The app lives under /app; the website is /. */
+export type Route = "/app" | "/app/approvals" | "/app/results";
 
 const toRoute = (path: string): Route =>
-  path.startsWith("/approvals") ? "/approvals" : path.startsWith("/learning") ? "/learning" : "/";
+  path.includes("/approvals") ? "/app/approvals" : path.includes("/results") ? "/app/results" : "/app";
 
 const subscribeHash = (cb: () => void) => {
   window.addEventListener("hashchange", cb);
@@ -32,14 +33,14 @@ function useHash() {
 export function useRoute(): Route {
   const pathname = usePathname();
   const hash = useHash();
-  return PREVIEW ? toRoute(hash.replace(/^#/, "") || "/") : toRoute(pathname);
+  return PREVIEW ? toRoute(hash.replace(/^#/, "")) : toRoute(pathname);
 }
 
 export function useGo() {
   const router = useRouter();
   return useCallback(
     (to: Route) => {
-      if (PREVIEW) window.location.hash = to === "/" ? "" : to;
+      if (PREVIEW) window.location.hash = to === "/app" ? "" : to;
       else router.push(to);
     },
     [router],
@@ -47,6 +48,6 @@ export function useGo() {
 }
 
 export function NavLink({ href, ...rest }: Omit<ComponentProps<typeof Link>, "href"> & { href: Route }) {
-  if (PREVIEW) return <a href={href === "/" ? "#" : `#${href}`} {...(rest as ComponentProps<"a">)} />;
+  if (PREVIEW) return <a href={href === "/app" ? "#" : `#${href}`} {...(rest as ComponentProps<"a">)} />;
   return <Link href={href} {...rest} />;
 }

@@ -210,7 +210,7 @@ function LessonCard({ memory: m }: { memory: Memory }) {
           <DecisionButtons memory={m} />
           <button
             type="button"
-            onClick={() => go("/approvals")}
+            onClick={() => go("/app/approvals")}
             className="ml-auto text-[13px] text-muted underline-offset-4 transition-colors duration-150 hover:text-fg hover:underline"
           >
             Open in Approvals

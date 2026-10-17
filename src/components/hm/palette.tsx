@@ -37,9 +37,9 @@ export function Palette() {
     };
     const all: Item[] = [
       { id: "a-rule", group: "Actions", label: "Write a rule", icon: PenLine, run: () => { setComposerOpen(true); close(); } },
-      { id: "a-vault", group: "Actions", label: "Open Lessons", icon: BookOpen, run: go("/") },
-      { id: "a-review", group: "Actions", label: "Open Approvals", icon: Inbox, run: go("/approvals") },
-      { id: "a-learning", group: "Actions", label: "Open Results", icon: LineChart, run: go("/learning") },
+      { id: "a-vault", group: "Actions", label: "Open Lessons", icon: BookOpen, run: go("/app") },
+      { id: "a-review", group: "Actions", label: "Open Approvals", icon: Inbox, run: go("/app/approvals") },
+      { id: "a-learning", group: "Actions", label: "Open Results", icon: LineChart, run: go("/app/results") },
       ...ROLE_USERS.map((r) => ({
         id: `role-${r.role}`,
         group: "Actions",
@@ -60,7 +60,7 @@ export function Palette() {
           icon: m.locked ? Lock : FileText,
           run: () => {
             openMemory(m.id);
-            navigate("/");
+            navigate("/app");
             close();
           },
         })),

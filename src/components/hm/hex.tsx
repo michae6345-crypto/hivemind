@@ -153,12 +153,12 @@ export function Hive({ className }: { className?: string }) {
               onBlur={() => setHover(null)}
               onClick={() => {
                 openMemory(m.id);
-                go("/");
+                go("/app");
               }}
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
                   openMemory(m.id);
-                  go("/");
+                  go("/app");
                 }
               }}
             >

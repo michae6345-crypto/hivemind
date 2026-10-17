@@ -8,7 +8,7 @@ import { Results } from "./results";
 /** Hosted preview only: one static page that shows the view named in the URL hash. */
 export function PreviewRoot() {
   const route = useRoute();
-  if (route === "/approvals") return <Approvals />;
-  if (route === "/learning") return <Results />;
+  if (route === "/app/approvals") return <Approvals />;
+  if (route === "/app/results") return <Results />;
   return <Lessons />;
 }

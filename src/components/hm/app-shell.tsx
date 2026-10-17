@@ -26,7 +26,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <MotionConfig reducedMotion="user" transition={{ type: "spring", stiffness: 420, damping: 36 }}>
     <HivemindProvider>
-      <div className="flex h-full flex-col">
+      <div className="flex h-full flex-col overflow-hidden">
         <Header />
         <main className="min-h-0 flex-1">{mounted ? children : null}</main>
         <Footer />
@@ -78,14 +78,14 @@ function Header() {
   const queue = memories.filter((m) => m.status === "pending" && canApprove(user, m, scopes)).length;
 
   const nav: { href: Route; label: string; badge?: number }[] = [
-    { href: "/", label: "Lessons" },
-    { href: "/approvals", label: "Approvals", badge: queue },
-    { href: "/learning", label: "Results" },
+    { href: "/app", label: "Lessons" },
+    { href: "/app/approvals", label: "Approvals", badge: queue },
+    { href: "/app/results", label: "Results" },
   ];
 
   return (
     <header className="flex h-14 shrink-0 items-center gap-8 border-b border-line bg-panel px-5">
-      <NavLink href="/" className="flex items-center gap-2.5">
+      <NavLink href="/app" className="flex items-center gap-2.5">
         <Logo className="size-[22px]" intro />
         <Wordmark className="text-[19px]/none" />
       </NavLink>
