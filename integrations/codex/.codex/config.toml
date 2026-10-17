@@ -1,0 +1,6 @@
+# Hivemind MCP for OpenAI Codex CLI. Project config is only read in trusted projects; otherwise copy into ~/.codex/config.toml.
+[mcp_servers.hivemind]
+url = "{{HIVEMIND_API_URL}}/api/mcp"
+bearer_token_env_var = "HIVEMIND_TOKEN"
+http_headers = { "x-hm-repo" = "{{HIVEMIND_REPO}}", "x-hm-agent" = "codex" }
+env_http_headers = { "x-hm-user" = "HIVEMIND_USER" }

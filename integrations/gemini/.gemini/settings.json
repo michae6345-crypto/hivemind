@@ -1,0 +1,39 @@
+{
+  "context": { "fileName": ["GEMINI.md", "AGENTS.md"] },
+  "mcpServers": {
+    "hivemind": {
+      "httpUrl": "{{HIVEMIND_API_URL}}/api/mcp",
+      "headers": {
+        "Authorization": "Bearer $HIVEMIND_TOKEN",
+        "x-hm-user": "${HIVEMIND_USER:-sam}",
+        "x-hm-repo": "{{HIVEMIND_REPO}}",
+        "x-hm-agent": "gemini-cli"
+      },
+      "timeout": 15000
+    }
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear",
+        "hooks": [{ "type": "command", "name": "hivemind-briefing", "command": "node \"{{HIVEMIND_DIR}}/hooks/adapters/gemini.mjs\" SessionStart", "timeout": 15000 }]
+      }
+    ],
+    "BeforeAgent": [
+      {
+        "hooks": [{ "type": "command", "name": "hivemind-corrections", "command": "node \"{{HIVEMIND_DIR}}/hooks/adapters/gemini.mjs\" BeforeAgent", "timeout": 10000 }]
+      }
+    ],
+    "AfterTool": [
+      {
+        "matcher": "write_file|replace",
+        "hooks": [{ "type": "command", "name": "hivemind-edits", "command": "node \"{{HIVEMIND_DIR}}/hooks/adapters/gemini.mjs\" AfterTool", "timeout": 10000 }]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [{ "type": "command", "name": "hivemind-session-end", "command": "node \"{{HIVEMIND_DIR}}/hooks/adapters/gemini.mjs\" SessionEnd", "timeout": 10000 }]
+      }
+    ]
+  }
+}

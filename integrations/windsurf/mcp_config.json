@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "hivemind": {
+      "serverUrl": "{{HIVEMIND_API_URL}}/api/mcp",
+      "headers": {
+        "Authorization": "Bearer ${env:HIVEMIND_TOKEN}",
+        "x-hm-user": "${env:HIVEMIND_USER}",
+        "x-hm-repo": "{{HIVEMIND_REPO}}",
+        "x-hm-agent": "windsurf"
+      }
+    }
+  }
+}

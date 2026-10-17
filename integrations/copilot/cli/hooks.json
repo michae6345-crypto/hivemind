@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "hooks": {
+    "sessionStart": [
+      {
+        "type": "command",
+        "bash": "node \"{{HIVEMIND_DIR}}/hooks/adapters/copilot.mjs\" sessionStart",
+        "powershell": "node \"{{HIVEMIND_DIR}}/hooks/adapters/copilot.mjs\" sessionStart",
+        "timeoutSec": 15
+      }
+    ],
+    "userPromptSubmitted": [
+      {
+        "type": "command",
+        "bash": "node \"{{HIVEMIND_DIR}}/hooks/adapters/copilot.mjs\" userPromptSubmitted",
+        "powershell": "node \"{{HIVEMIND_DIR}}/hooks/adapters/copilot.mjs\" userPromptSubmitted",
+        "timeoutSec": 10
+      }
+    ],
+    "postToolUse": [
+      {
+        "type": "command",
+        "bash": "node \"{{HIVEMIND_DIR}}/hooks/adapters/copilot.mjs\" postToolUse",
+        "powershell": "node \"{{HIVEMIND_DIR}}/hooks/adapters/copilot.mjs\" postToolUse",
+        "timeoutSec": 10
+      }
+    ],
+    "sessionEnd": [
+      {
+        "type": "command",
+        "bash": "node \"{{HIVEMIND_DIR}}/hooks/adapters/copilot.mjs\" sessionEnd",
+        "powershell": "node \"{{HIVEMIND_DIR}}/hooks/adapters/copilot.mjs\" sessionEnd",
+        "timeoutSec": 10
+      }
+    ]
+  }
+}

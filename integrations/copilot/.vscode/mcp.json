@@ -1,0 +1,18 @@
+{
+  "inputs": [
+    { "type": "promptString", "id": "hivemind-token", "description": "Hivemind token (HIVEMIND_TOKEN)", "password": true },
+    { "type": "promptString", "id": "hivemind-user", "description": "Your Hivemind user id (e.g. michael)" }
+  ],
+  "servers": {
+    "hivemind": {
+      "type": "http",
+      "url": "{{HIVEMIND_API_URL}}/api/mcp",
+      "headers": {
+        "Authorization": "Bearer ${input:hivemind-token}",
+        "x-hm-user": "${input:hivemind-user}",
+        "x-hm-repo": "{{HIVEMIND_REPO}}",
+        "x-hm-agent": "copilot"
+      }
+    }
+  }
+}

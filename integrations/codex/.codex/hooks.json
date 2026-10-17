@@ -1,0 +1,22 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume",
+        "hooks": [{ "type": "command", "command": "node \"{{HIVEMIND_DIR}}/hooks/adapters/codex.mjs\" SessionStart", "timeout": 15, "statusMessage": "Loading Hivemind team memory" }]
+      }
+    ],
+    "UserPromptSubmit": [
+      { "hooks": [{ "type": "command", "command": "node \"{{HIVEMIND_DIR}}/hooks/adapters/codex.mjs\" UserPromptSubmit", "timeout": 10 }] }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "apply_patch|Edit|Write",
+        "hooks": [{ "type": "command", "command": "node \"{{HIVEMIND_DIR}}/hooks/adapters/codex.mjs\" PostToolUse", "timeout": 10 }]
+      }
+    ],
+    "SessionEnd": [
+      { "hooks": [{ "type": "command", "command": "node \"{{HIVEMIND_DIR}}/hooks/adapters/codex.mjs\" SessionEnd", "timeout": 10 }] }
+    ]
+  }
+}

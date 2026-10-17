@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "hooks": {
+    "sessionStart": [{ "command": "node \"{{HIVEMIND_DIR}}/hooks/adapters/cursor.mjs\" sessionStart", "timeout": 15 }],
+    "beforeSubmitPrompt": [{ "command": "node \"{{HIVEMIND_DIR}}/hooks/adapters/cursor.mjs\" beforeSubmitPrompt", "timeout": 10 }],
+    "afterFileEdit": [{ "command": "node \"{{HIVEMIND_DIR}}/hooks/adapters/cursor.mjs\" afterFileEdit", "timeout": 10 }],
+    "sessionEnd": [{ "command": "node \"{{HIVEMIND_DIR}}/hooks/adapters/cursor.mjs\" sessionEnd", "timeout": 10 }]
+  }
+}

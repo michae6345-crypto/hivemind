@@ -1,0 +1,6 @@
+{
+  "hooks": {
+    "pre_user_prompt": [{ "command": "node \"{{HIVEMIND_DIR}}/hooks/adapters/windsurf.mjs\" pre_user_prompt", "show_output": false }],
+    "post_write_code": [{ "command": "node \"{{HIVEMIND_DIR}}/hooks/adapters/windsurf.mjs\" post_write_code", "show_output": true }]
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "hooks": {
+    "SessionStart": [{ "type": "command", "command": "node \"{{HIVEMIND_DIR}}/hooks/adapters/copilot.mjs\" SessionStart", "timeout": 15 }],
+    "UserPromptSubmit": [{ "type": "command", "command": "node \"{{HIVEMIND_DIR}}/hooks/adapters/copilot.mjs\" UserPromptSubmit", "timeout": 10 }],
+    "PostToolUse": [{ "type": "command", "command": "node \"{{HIVEMIND_DIR}}/hooks/adapters/copilot.mjs\" PostToolUse", "timeout": 10 }]
+  }
+}
