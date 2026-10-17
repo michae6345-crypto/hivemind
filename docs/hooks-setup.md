@@ -20,27 +20,27 @@ Hook commands and http hook headers read these from the environment Claude Code 
 |---|---|---|---|
 | `HIVEMIND_USER` | `michael` | `adrian` | Shown as "@michael's agent" in collision warnings and the live feed |
 | `HIVEMIND_TOKEN` | from `.env.local` | from `.env.local` | Must match the server's `HIVEMIND_TOKEN` |
-| `HIVEMIND_API_URL` | `http://localhost:3000` | `http://localhost:3000` | Later: the Vercel URL. Used by the SessionStart script and `.mcp.json` |
+| `HIVEMIND_API_URL` | leave unset | leave unset | Defaults to production (`https://hivemind-beta-virid.vercel.app`). Set `http://localhost:3000` only to use a local server (see §4). Used by the SessionStart script and `.mcp.json` |
 | `HIVEMIND_REPO` | optional | optional | Defaults to `repo/<folder name>`; set it if the folder name ≠ scope (e.g. `repo/export-service`) |
 
 PowerShell (persists for new terminals):
 ```powershell
 setx HIVEMIND_USER michael        # Adrian: adrian
 setx HIVEMIND_TOKEN "<token from .env.local>"
-setx HIVEMIND_API_URL http://localhost:3000
 ```
 macOS/Linux (`~/.zshrc`):
 ```bash
-export HIVEMIND_USER=adrian HIVEMIND_TOKEN='<token>' HIVEMIND_API_URL=http://localhost:3000
+export HIVEMIND_USER=adrian HIVEMIND_TOKEN='<token>'
 ```
-Open a new terminal after `setx`. The SessionStart script also falls back to the hivemind repo's `.env.local` for missing
-`HIVEMIND_TOKEN`/`HIVEMIND_API_URL`, but the http hooks only see real environment variables.
+Open a new terminal after `setx`. If you previously ran `setx HIVEMIND_API_URL http://localhost:3000`, remove it
+(`reg delete HKCUEnvironment /v HIVEMIND_API_URL /f`) or production won't be used. The SessionStart script falls back to
+the hivemind repo's `.env.local` for a missing `HIVEMIND_TOKEN` (only the token). The http hooks and `.mcp.json` only see real
+environment variables, so `HIVEMIND_TOKEN` must be set.
 
 ## 2. Try it on the demo repo
 
 ```bash
-pnpm dev                                   # hivemind server on :3000
-cd demo/export-service
+cd demo/export-service                     # hooks + MCP point at production; no local server needed
 claude                                     # or: claude -p "Before doing anything, list the rules you must follow in this repo."
 ```
 The first answer should list the 🔒 *Never mix data from different lab customers* rule. Ask the agent to edit
@@ -60,13 +60,19 @@ On Windows, Claude Code runs command hooks in Git Bash (PowerShell if Git Bash i
 keep the quotes. Copy `demo/export-service/.mcp.json` next to it (or run
 `claude mcp add --transport http hivemind "$HIVEMIND_API_URL/api/mcp" --header "Authorization: Bearer $HIVEMIND_TOKEN"`).
 
-## 4. Point at Vercel later
+## 4. Production vs a local server
 
-1. In every `.claude/settings.json`, replace `http://localhost:3000` in the three http hook `url`s with the Vercel URL.
-   Http hook URLs don't expand env vars, so they have to be hardcoded.
-2. `setx HIVEMIND_API_URL https://<app>.vercel.app` (the SessionStart script and `.mcp.json` pick it up).
-3. Make sure the Vercel project has the same `HIVEMIND_TOKEN` env var.
-4. If you use the `allowedHttpHookUrls` setting, add the Vercel URL to it.
+The demo configs point at **production, `https://hivemind-beta-virid.vercel.app`** (auto-deploys from `main`):
+`.claude/settings.json` (three http hook URLs), `.mcp.json`, `.vscode/mcp.json`, and the SessionStart script's default.
+The server needs the same `HIVEMIND_TOKEN` you use locally.
+
+To work against a **local server** instead (`pnpm dev`, port 3000):
+1. `setx HIVEMIND_API_URL http://localhost:3000` (or `export …`). The SessionStart script and `.mcp.json` follow it.
+2. Http hook URLs don't expand env vars. In `.claude/settings.local.json` (git-ignored), copy the three http hooks
+   with `http://localhost:3000/...` URLs. Note: hooks from settings files *merge*, so to stop them firing on
+   production too, edit the URLs in `.claude/settings.json` locally and don't commit that change.
+3. In `.vscode/mcp.json`, change `url` to `http://localhost:3000/api/mcp`.
+4. If you use the `allowedHttpHookUrls` setting, it must allow the URL you use.
 
 ## Troubleshooting
 
@@ -75,4 +81,4 @@ keep the quotes. Copy `demo/export-service/.mcp.json` next to it (or run
   If it prints "Hivemind team memory unavailable…", the server is down or the URL is wrong. The hook always exits 0, so it never blocks a session.
 - **Http hooks return 401:** `HIVEMIND_TOKEN` isn't in the environment Claude Code was launched from.
 - **`HTTP 404` from `/api/hooks/prompt` or `/api/hooks/session-end`:** those routes haven't been deployed yet. `onFailure: "continue"` keeps the session running.
-- **Smoke test:** `node scripts/smoke-hooks.mjs http://localhost:3000` (add `--propose` to also create a pending test lesson).
+- **Smoke test:** `node scripts/smoke-hooks.mjs https://hivemind-beta-virid.vercel.app` (or `http://localhost:3000`) (add `--propose` to also create a pending test lesson).

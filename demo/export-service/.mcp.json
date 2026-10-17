@@ -2,7 +2,7 @@
   "mcpServers": {
     "hivemind": {
       "type": "http",
-      "url": "${HIVEMIND_API_URL:-http://localhost:3000}/api/mcp",
+      "url": "${HIVEMIND_API_URL:-https://hivemind-beta-virid.vercel.app}/api/mcp",
       "headers": {
         "Authorization": "Bearer ${HIVEMIND_TOKEN}",
         "x-hm-user": "${HIVEMIND_USER:-sam}",

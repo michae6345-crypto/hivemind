@@ -2,19 +2,23 @@
 // Claude Code SessionStart hook (type "command"): fetch the Hivemind context pack and inject it as additionalContext.
 // Never breaks the session: any failure prints a short fallback and exits 0.
 //
-// Env: HIVEMIND_API_URL (default http://localhost:3000), HIVEMIND_TOKEN, HIVEMIND_USER (default sam),
-//      HIVEMIND_REPO (default repo/<basename of cwd>). Missing vars are read from <hivemind>/.env.local.
+// Env: HIVEMIND_API_URL (default: production, https://hivemind-beta-virid.vercel.app; set http://localhost:3000 for a
+//      local server), HIVEMIND_TOKEN, HIVEMIND_USER (default sam), HIVEMIND_REPO (default repo/<basename of cwd>).
+//      A missing HIVEMIND_TOKEN is read from <hivemind>/.env.local (only the token: that file's HIVEMIND_API_URL is the
+//      server's local setting and must not pull hooks off production).
 import { readFileSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
+const DEFAULT_API = "https://hivemind-beta-virid.vercel.app";
+const FROM_ENV_FILE = new Set(["HIVEMIND_TOKEN"]);
 const TIMEOUT_MS = 12000; // settings.json gives the hook 15s; a cold dev server can take ~10s
 
 function loadEnvFile(path) {
   try {
     for (const line of readFileSync(path, "utf8").split(/\r?\n/)) {
       const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*?)\s*$/i);
-      if (!m || line.trimStart().startsWith("#")) continue;
+      if (!m || line.trimStart().startsWith("#") || !FROM_ENV_FILE.has(m[1])) continue;
       const val = m[2].replace(/^(['"])(.*)\1$/, "$2");
       if (!process.env[m[1]] && val) process.env[m[1]] = val;
     }
@@ -47,7 +51,7 @@ async function main() {
   loadEnvFile(join(dirname(fileURLToPath(import.meta.url)), "..", ".env.local"));
   const input = await readStdin();
   const cwd = input.cwd || process.env.CLAUDE_PROJECT_DIR || process.cwd();
-  const api = (process.env.HIVEMIND_API_URL || "http://localhost:3000").replace(/\/+$/, "");
+  const api = (process.env.HIVEMIND_API_URL || DEFAULT_API).replace(/\/+$/, "");
   const user = process.env.HIVEMIND_USER || "sam";
   const repo = process.env.HIVEMIND_REPO || `repo/${basename(cwd)}`;
   const session = input.session_id || `cli-${Date.now()}`;

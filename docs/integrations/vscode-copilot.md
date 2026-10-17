@@ -1,6 +1,7 @@
 # Hivemind in VS Code (GitHub Copilot agent mode)
 
-Copilot agent mode talks to Hivemind through MCP. VS Code connects from your machine, so `localhost` works.
+Copilot agent mode talks to Hivemind through MCP. The demo config points at production; VS Code connects from your
+machine, so `http://localhost:3000/api/mcp` works too.
 The demo repo already has the config: `demo/export-service/.vscode/mcp.json`.
 
 ```json
@@ -12,7 +13,7 @@ The demo repo already has the config: `demo/export-service/.vscode/mcp.json`.
   "servers": {
     "hivemind": {
       "type": "http",
-      "url": "http://localhost:3000/api/mcp",
+      "url": "https://hivemind-beta-virid.vercel.app/api/mcp",
       "headers": {
         "Authorization": "Bearer ${input:hivemind-token}",
         "x-hm-user": "${input:hivemind-user}",
@@ -30,7 +31,7 @@ securely, so no secret is committed. `x-hm-agent: copilot` makes edits and packs
 
 ## Steps
 
-1. `pnpm dev` in the hivemind repo (server on :3000). For the deployed app, change `url` to `https://<app>.vercel.app/api/mcp`.
+1. Nothing to run: the config uses production. For a local server, run `pnpm dev` and change `url` to `http://localhost:3000/api/mcp`.
 2. In VS Code: **File → Open Folder… → `demo/export-service`**. For your own repo, copy `.vscode/mcp.json` and change `x-hm-repo`.
 3. Start the server: open `.vscode/mcp.json` and click the **Start** code lens above `"hivemind"`, or run
    **MCP: List Servers → hivemind → Start Server**. Enter the token and your user id when asked.

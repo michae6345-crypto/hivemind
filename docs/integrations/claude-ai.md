@@ -12,7 +12,7 @@ Activity is attributed as `claude-ai`: from `?agent=claude-ai`, or else from Ant
 ## 1. The URL must be public
 
 claude.ai connects to connectors **from Anthropic's cloud**, so `localhost` won't work. That's documented. Use either:
-- the Vercel deployment: `https://<app>.vercel.app/api/mcp`
+- production: `https://hivemind-beta-virid.vercel.app/api/mcp`
 - a tunnel to your dev server, e.g. `cloudflared tunnel --url http://localhost:3000`, which gives
   `https://<random>.trycloudflare.com`. Some networks block trycloudflare; see "Tunnels" below.
 
@@ -30,7 +30,7 @@ Fill in the dialog:
 | Field | Value |
 |---|---|
 | Name | `Hivemind` |
-| MCP server URL | `https://<host>/api/mcp?token=<CONNECTOR_TOKEN>&user=<your id>&repo=export-service&agent=claude-ai` |
+| MCP server URL | `https://hivemind-beta-virid.vercel.app/api/mcp?token=<CONNECTOR_TOKEN>&user=<your id>&repo=export-service&agent=claude-ai` |
 | Authentication | **No sign-in** |
 | Request headers *(only if your org has this beta)* | `Authorization: Bearer <HIVEMIND_TOKEN>`. Then leave `token=` out of the URL. |
 

@@ -14,7 +14,7 @@
         "hooks": [
           {
             "type": "http",
-            "url": "http://localhost:3000/api/hooks/prompt",
+            "url": "https://hivemind-beta-virid.vercel.app/api/hooks/prompt",
             "headers": { "Authorization": "Bearer $HIVEMIND_TOKEN", "x-hm-user": "$HIVEMIND_USER", "x-hm-repo": "$HIVEMIND_REPO" },
             "allowedEnvVars": ["HIVEMIND_TOKEN", "HIVEMIND_USER", "HIVEMIND_REPO"],
             "timeout": 10,
@@ -29,7 +29,7 @@
         "hooks": [
           {
             "type": "http",
-            "url": "http://localhost:3000/api/hooks/tool",
+            "url": "https://hivemind-beta-virid.vercel.app/api/hooks/tool",
             "headers": { "Authorization": "Bearer $HIVEMIND_TOKEN", "x-hm-user": "$HIVEMIND_USER", "x-hm-repo": "$HIVEMIND_REPO" },
             "allowedEnvVars": ["HIVEMIND_TOKEN", "HIVEMIND_USER", "HIVEMIND_REPO"],
             "timeout": 5,
@@ -43,7 +43,7 @@
         "hooks": [
           {
             "type": "http",
-            "url": "http://localhost:3000/api/hooks/session-end",
+            "url": "https://hivemind-beta-virid.vercel.app/api/hooks/session-end",
             "headers": { "Authorization": "Bearer $HIVEMIND_TOKEN", "x-hm-user": "$HIVEMIND_USER", "x-hm-repo": "$HIVEMIND_REPO" },
             "allowedEnvVars": ["HIVEMIND_TOKEN", "HIVEMIND_USER", "HIVEMIND_REPO"],
             "timeout": 5,
