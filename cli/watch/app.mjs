@@ -269,7 +269,12 @@ export async function cmdWatch(cfg) {
       ? [KEY("enter", "send"), KEY("esc", "cancel")]
       : [...own, KEY("t", "teach"), KEY("?", "rules here"), KEY("tab", "switch"), KEY("q", "quit")];
     if (state.busy && now - state.busy.since > 400) hints = [t.muted(`${state.busy.label}…`)]; // a word, not a spinner
-    return [hairline(w), clip(" " + hints.join("   "), w)];
+    // Fit whole pairs, never a cut "t…": drop from the end, but `q quit` always stays last.
+    const quit = hints.at(-1);
+    const keep = [];
+    for (const h of [...new Set(hints.slice(0, -1))]) if (width(" " + [...keep, h, quit].join("   ")) <= w) keep.push(h);
+    if (quit) keep.push(quit);
+    return [hairline(w), clip(" " + keep.join("   "), w)];
   }
 
   /** One line above the footer for errors and confirmations (403s in plain words, approvals). */
