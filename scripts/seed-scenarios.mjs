@@ -18,6 +18,8 @@ const daysAgo = (d) => minutesAgo(d * 24 * 60);
 export const scenarioScopes = [
   { id: "repo/labeling-api", level: "repo", name: "labeling-api", parentId: "team/expert-platform", owner: "tom" },
   { id: "personal/omar", level: "personal", name: "omar", parentId: "team/expert-platform", owner: "omar" },
+  // Sandbox repo for live experiments (agent G's playground/). reset-demo leaves its activity/events/memories alone.
+  { id: "repo/playground", level: "repo", name: "playground", parentId: "team/data-pipelines", owner: "ben" },
 ];
 
 export const scenarioPeople = [
@@ -340,6 +342,147 @@ export const scenarioMemories = [
       ev("review_comment", "lauren", 7, "meridian/eval-harness#261", "contam check missing from the CI step — add it"),
     ],
     alpha: 5,
+    beta: 1,
+  },
+
+  // ── #repo/playground (sandbox; each lesson is easy to trip from sandbox code) ──
+  {
+    slug: "playground-tenant-filter",
+    scopeId: "repo/playground",
+    kind: "lesson",
+    title: "Tenant tables are only read through forTenant(tenantId)",
+    body:
+      "Any query touching `tasks`, `exports` or `payouts` goes through `db.forTenant(tenantId)`, never a bare `db.query()` or a " +
+      "`WHERE` without `tenant_id`. Repo copy of [[tenant-id-every-query]]; enforces 🔒 [[sec-lab-isolation]].",
+    status: "active",
+    source: "review",
+    author: "ben",
+    evidence: [
+      ev("review_comment", "ben", 6, "meridian/playground#14", "listExports() selects from exports with no tenant_id — that's exactly INC-2291. forTenant()."),
+      ev("correction", "kevin", 2, "session s-121", "no, don't query exports directly, go through db.forTenant(tenantId)"),
+    ],
+    alpha: 7,
+    beta: 1,
+  },
+  {
+    slug: "playground-stripe-idempotent",
+    scopeId: "repo/playground",
+    kind: "lesson",
+    title: "Stripe webhook handler dedupes on event.id before paying out",
+    body:
+      "The `payout.paid` / `transfer.created` handler inserts `event.id` into `processed_webhooks` in the same transaction as the payout row " +
+      "and returns 200 on conflict. Stripe redelivers. See [[stripe-webhook-idempotent]].",
+    status: "active",
+    source: "review",
+    author: "ben",
+    evidence: [
+      ev("review_comment", "ben", 5, "meridian/playground#17", "replaying the same Stripe event pays twice here — insert event.id into processed_webhooks first (INC-2264)"),
+    ],
+    alpha: 6,
+    beta: 1,
+  },
+  {
+    slug: "playground-retry-jitter",
+    scopeId: "repo/playground",
+    kind: "lesson",
+    title: "Labeler client retries 429/503 with full jitter, max 5, honors Retry-After",
+    body:
+      "`fetchWithRetry` retries only 429 and 503, sleeping `random(0, min(30s, 500ms·2^attempt))`, max 5 attempts, and uses `Retry-After` when sent. " +
+      "No fixed `sleep(1000)` loops. See [[labeler-api-backoff]].",
+    status: "active",
+    source: "correction",
+    author: "emily",
+    evidence: [
+      ev("correction", "emily", 3, "session s-124", "that while(true) sleep(1000) loop is how we got rate-limited for 25 min — full jitter, 5 tries, read Retry-After"),
+      ev("review_comment", "ben", 3, "DATA-1287", "also don't retry 400s, they'll never succeed"),
+    ],
+    alpha: 6,
+    beta: 1,
+  },
+  {
+    slug: "playground-presign-15min",
+    scopeId: "repo/playground",
+    kind: "lesson",
+    title: "presignExport() caps expiresIn at 900 seconds, one key per URL",
+    body:
+      "Presigned export links are per object key with `expiresIn` ≤ 900. Never presign a prefix or hand out multi-day links. " +
+      "See [[presigned-url-15min]]. Owner: @greg.",
+    status: "active",
+    source: "review",
+    author: "greg",
+    evidence: [
+      ev("review_comment", "greg", 4, "meridian/playground#19", "expiresIn: 86400 → 900. Pentest PT-2026-04 M-3 was exactly this."),
+    ],
+    alpha: 6,
+    beta: 1,
+  },
+  {
+    slug: "playground-log-trace-id",
+    scopeId: "repo/playground",
+    kind: "lesson",
+    title: "Use logger with trace_id, tenant_id, job_id; never console.log",
+    body:
+      "Log through `logger.info(msg, { trace_id, tenant_id, job_id })`. No `console.log`, and expert ids only as `hmacExpertId(id)`. " +
+      "See [[structured-log-fields]], [[use-logger]], 🔒 [[sec-no-pii-logs]].",
+    status: "active",
+    source: "correction",
+    author: "kevin",
+    evidence: [
+      ev("correction", "kevin", 2, "session s-122", "use logger, and pass trace_id/tenant_id/job_id — console.log skips the PII scrubber"),
+      ev("manual", "dana", 9, "Datadog incident DD-4471", "Half the export logs had no trace_id; we couldn't follow one job across services."),
+    ],
+    alpha: 6,
+    beta: 1,
+  },
+  {
+    slug: "playground-zod-strict",
+    scopeId: "repo/playground",
+    kind: "lesson",
+    title: "Route handlers parse bodies with a .strict() zod schema",
+    body:
+      "Every handler starts with `Schema.strict().parse(await req.json())` and passes only the parsed value on. " +
+      "No `{ ...body }` spreads into inserts. See [[zod-strict-boundaries]].",
+    status: "active",
+    source: "review",
+    author: "ben",
+    evidence: [
+      ev("review_comment", "ben", 4, "meridian/playground#21", "a client can send tenant_id in this body and it lands in the insert — .strict() schema, then pick fields"),
+    ],
+    alpha: 5,
+    beta: 1,
+  },
+  {
+    slug: "playground-amount-cents",
+    scopeId: "repo/playground",
+    kind: "lesson",
+    title: "Payout amounts are integer amount_cents end to end",
+    body:
+      "Payout and invoice math uses integer `amount_cents`; format to dollars only in the UI. No `parseFloat`, no `/ 100` in services. " +
+      "See [[money-integer-cents]].",
+    status: "active",
+    source: "correction",
+    author: "emily",
+    evidence: [
+      ev("correction", "emily", 3, "session s-123", "amounts are cents ints — don't divide by 100 in the payout service"),
+    ],
+    alpha: 5,
+    beta: 1,
+  },
+  {
+    slug: "playground-skip-locked",
+    scopeId: "repo/playground",
+    kind: "lesson",
+    title: "Job claims use FOR UPDATE SKIP LOCKED",
+    body:
+      "`claimJobs(n)` selects queued rows with `FOR UPDATE SKIP LOCKED LIMIT n` and marks them running in the same transaction. " +
+      "See [[skip-locked-job-queue]].",
+    status: "active",
+    source: "review",
+    author: "ben",
+    evidence: [
+      ev("review_comment", "ben", 5, "meridian/playground#16", "two workers will grab the same job with select-then-update — SKIP LOCKED"),
+    ],
+    alpha: 4,
     beta: 1,
   },
 ];
