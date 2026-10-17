@@ -467,7 +467,7 @@ function help() {
   const sep = c.faint(" · ");
   out.push(
     "",
-    `  ${c.faint("Install")} ${c.cyan(INSTALL)}${sep}${c.cyan("hm c")} ${c.faint("(Claude Code + watch, side by side)")}`,
+    `  ${c.faint("Setup")}  ${c.cyan(INSTALL)}${sep}${c.cyan("hm c")} ${c.faint("(Claude Code + watch, side by side)")}`,
     `  ${c.faint("Try")}    ${["hivemind", "hivemind check --staged", "hivemind why --last"].map((x) => c.cyan(x)).join(sep)}`,
     `  ${c.faint("Flags")}  ${c.faint(["--repo", "--user", "--agent", "--url", "--dir", "--dry-run", "--json"].join("  "))}`,
     `  ${c.faint("Env")}    ${c.faint("HIVEMIND_TOKEN  HIVEMIND_USER  HIVEMIND_REPO  HIVEMIND_API_URL  HIVEMIND_NO_UPDATE=1")}`,
