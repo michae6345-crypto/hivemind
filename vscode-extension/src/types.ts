@@ -27,6 +27,10 @@ export type VsRule = {
   /** Where it was learned, one line: `Alex corrected an agent: "exports must call assertSingleCustomer"`. Null for hand-written rules. */
   learnedFrom: string | null;
   /** Structured provenance for hovers: "Learned from @alex's correction · 3h ago". Null for hand-written rules. */
+  /** people.title: "Head of Security", "Data Pipelines Lead" ("" for agents). */
+  ownerTitle: string;
+  /** The evidence verbatim (first correction / review comment), emoji-free, max ~220 chars. Null for hand-written rules. */
+  quote: string | null;
   learnedVia: { kind: "correction" | "review" | "manual" | "agent"; by: string; at: string } | null;
   evidenceCount: number;
   /** Wilson lower bound 0..1 (locked rules = 1). */

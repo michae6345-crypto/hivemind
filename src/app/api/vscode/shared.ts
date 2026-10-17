@@ -99,6 +99,8 @@ function toVsRule(m: Memory, people: Map<string, Person>, matches: (t: string) =
     ownerId: m.author,
     ownerFirst: agent ? "An agent" : p.name.split(" ")[0],
     ownerRole: agent ? "Agent" : (ROLE_WORD[p.role] ?? "Engineer"),
+    ownerTitle: agent ? "" : p.title || ROLE_WORD[p.role] || "",
+    quote: ev?.quote ? clip(ev.quote, 220) : null,
     taughtAt: ev?.at || m.createdAt,
     learnedFrom,
     learnedVia: ev ? { kind: VIA[ev.type] ?? "manual", by: at(ev.actor), at: ev.at || m.createdAt } : null,

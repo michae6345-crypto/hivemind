@@ -54,7 +54,7 @@ exports.run = async function run() {
   });
 
   await step("statusBar", async () => {
-    await until(() => / rules?$/.test(api.testing.statusText()), 10000);
+    await until(() => /d+ rules?/.test(api.testing.statusText()), 10000);
     return api.testing.statusText();
   });
 
@@ -67,7 +67,7 @@ exports.run = async function run() {
     const line = doc.getText().split("\n").findIndex((l) => /^\s+assertSingleCustomer\(rows\)/.test(l));
     const col = doc.lineAt(line).text.indexOf("assertSingleCustomer") + 3;
     const hovers = await vscode.commands.executeCommand("vscode.executeHoverProvider", uri, new vscode.Position(line, col));
-    return { line: line + 1, cards: hovers.map(md).filter((s) => s.includes("View source")) };
+    return { line: line + 1, cards: hovers.map(md).filter((s) => s.includes("Show in sidebar")) };
   });
 
   await step("hoverConsoleLog", async () => {
@@ -75,7 +75,7 @@ exports.run = async function run() {
     const p = new vscode.Position(pos.line, 3);
     const hovers = await vscode.commands.executeCommand("vscode.executeHoverProvider", uri, p);
     await vscode.commands.executeCommand("undo");
-    return hovers.map(md).filter((s) => s.includes("View source"));
+    return hovers.map(md).filter((s) => s.includes("Show in sidebar"));
   });
 
   // Ghost text, provider level: case A (cursor after `{` with auto-closed `}`) and case B (blank first body line).
@@ -128,6 +128,17 @@ exports.run = async function run() {
     }, 25000);
     return { ms: Date.now() - t0, items: (diags || hmDiags(uri)).map((d) => ({ line: d.range.start.line + 1, severity: d.severity === 0 ? "error" : "warning", code: editor.document.getText(d.range), message: d.message })) };
   });
+
+  await step("decorations", async () => api.testing.painted(uri));
+
+  await step("hoverOnViolation", async () => {
+    const d = hmDiags(uri).find((x) => x.severity === vscode.DiagnosticSeverity.Error);
+    if (!d) return null;
+    const hovers = await vscode.commands.executeCommand("vscode.executeHoverProvider", uri, d.range.start.translate(0, 1));
+    return hovers.map(md).filter((s) => s.includes("Show in sidebar"));
+  });
+
+  await step("statusBarBroken", async () => api.testing.statusText());
 
   await step("quickFix", async () => {
     const res = { actions: [] };

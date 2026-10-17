@@ -8,7 +8,7 @@ import { at } from "./wording";
 
 // Ghost text that follows the team's lessons (POST /api/vscode/complete), offered when you open a new function in a
 // file that has rules, or on demand (Alt+\ / "Trigger inline suggestion"). The lesson it follows is shown as a faint
-// end-of-line label: `Hivemind · from @alex's lesson` (Hivemind blue, no emoji).
+// end-of-line note, same as decorations.ts' shaped-by note: `from @alex's lesson` (honey) / `locked rule · @maya` (rose).
 
 const DEBOUNCE_MS = 120;
 const SIGNATURE = [
@@ -21,17 +21,18 @@ const SIGNATURE = [
 const isSignature = (line: string) => SIGNATURE.some((re) => re.test(line)) && !/^\s*(if|for|while|switch|catch)\b/.test(line);
 
 const label = vscode.window.createTextEditorDecorationType({
-  after: { color: "#4C6EF5", fontStyle: "italic", margin: "0 0 0 3em" },
+  after: { fontStyle: "italic", margin: "0 0 0 2.5em", textDecoration: "none; font-size: 12px" },
 });
 
 const labelText = (r: CompleteResponse) =>
-  r.lesson ? `Hivemind · from ${at(r.lesson.authorName || r.lesson.author)}'s ${r.lesson.locked ? "locked rule" : "lesson"}` : "Hivemind";
+  !r.lesson ? "" : r.lesson.locked ? `locked rule · ${at(r.lesson.authorName || r.lesson.author)}` : `from ${at(r.lesson.authorName || r.lesson.author)}'s lesson`;
+const labelColor = (text: string) => (text.startsWith("locked") ? "rgba(251,113,133,.6)" : "rgba(245,165,36,.6)");
 
 let shown: { uri: string; line: number; char: number; anchor: number } | null = null;
 
 function showLabel(editor: vscode.TextEditor, line: number, text: string) {
   const l = editor.document.lineAt(Math.min(line, editor.document.lineCount - 1));
-  editor.setDecorations(label, [{ range: l.range, renderOptions: { after: { contentText: text } } }]);
+  editor.setDecorations(label, [{ range: l.range, renderOptions: { after: { contentText: text, color: labelColor(text) } } }]);
 }
 function clearLabel() {
   shown = null;

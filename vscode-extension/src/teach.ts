@@ -1,11 +1,13 @@
 import * as vscode from "vscode";
 import { api } from "./api";
 import { config, relPath, repoFor } from "./config";
-import { openDashboard } from "./picker";
 import { peekRules } from "./rules";
 import { plain } from "./wording";
 
 // "Teach Hivemind?" lightbulb on a selection → one-line rule → POST /api/events (type correction, x-hm-agent: vscode).
+
+/** Toast #3 (the buddy's hmToast gate replaces this once src/buddy/toast.ts lands). */
+const captured = (text: string) => void vscode.window.showInformationMessage(text);
 
 const sessionId = () => `vscode-${vscode.env.sessionId.slice(0, 8)}`;
 
@@ -51,24 +53,23 @@ export async function teach(uri?: vscode.Uri, range?: vscode.Range) {
         payload: { text: rule.trim(), context: doc.getText(sel).slice(0, 4000), file: relPath(doc.uri), source: "vscode" },
       }),
   );
+  // Only four Hivemind toasts exist (editor-spec.md §2f); this is #3, "correction captured". Every other outcome
+  // is a short status-bar message, so explicit actions still get feedback without a fifth toast.
+  const note = (text: string) => vscode.window.setStatusBarMessage(`Hivemind: ${text}`, 6000);
   if (!res) {
-    void vscode.window.showErrorMessage("Hivemind couldn't save the lesson. See Hivemind: Show log.");
+    note("couldn't save the lesson (see Hivemind: Show log).");
     return;
   }
   const lesson = res.lessons[0];
   const approver = peekRules(doc)?.approver?.id;
   if (lesson?.status === "blocked") {
-    void vscode.window.showWarningMessage(
-      `Blocked by a locked rule: ${plain(lesson.title)}.${lesson.blockedReason ? ` ${plain(lesson.blockedReason)}` : ""}`,
-    );
+    note(`blocked by a locked rule: ${plain(lesson.title)}.${lesson.blockedReason ? ` ${plain(lesson.blockedReason)}` : ""}`);
   } else if (lesson?.status === "active") {
-    void vscode.window.showInformationMessage(`Lesson added: ${plain(lesson.title)}.`);
+    note(`lesson added: ${plain(lesson.title)}.`);
   } else if (lesson) {
-    const open = "Open approvals";
-    const pick = await vscode.window.showInformationMessage(`Lesson proposed. Waiting on @${approver ?? "your lead"}.`, open);
-    if (pick === open) openDashboard("/approvals");
+    captured(`Your correction is now a lesson. Waiting on @${approver ?? "your lead"}.`);
   } else {
-    void vscode.window.showInformationMessage("Hivemind saved your correction. It matches a lesson the team already has.");
+    note("saved. It matches a lesson the team already has.");
   }
 }
 
