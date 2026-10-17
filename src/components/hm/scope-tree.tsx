@@ -67,7 +67,7 @@ export function ScopeTree() {
 
   return (
     <div className="flex h-full flex-col bg-panel">
-      <SectionHeader>Vault</SectionHeader>
+      <SectionHeader>Company memory</SectionHeader>
       <div className="border-b border-line p-2">
         <label className="flex h-7 items-center gap-2 rounded-md border border-line bg-bg px-2 text-muted focus-within:border-accent/60">
           <Search className="size-3.5" />
@@ -129,6 +129,7 @@ function ScopeNode({
   const pending = all.filter((m) => m.status === "pending").length;
   const blocked = all.filter((m) => m.status === "blocked").length;
   if (filtering && all.length === 0) return null;
+  if (scope.level === "personal" && all.length === 0) return null;
 
   const isOpen = filtering || !collapsed.has(scope.id);
   const isSelected = selection?.kind === "scope" && selection.id === scope.id;
@@ -196,7 +197,7 @@ function ScopeNode({
 }
 
 function MemoryRow({ memory: m, depth }: { memory: Memory; depth: number }) {
-  const { openMemory, activeTab } = useHivemind();
+  const { openMemory, activeTab, recentlyChanged } = useHivemind();
   const Icon = m.locked
     ? Lock
     : m.status === "pending"
@@ -222,12 +223,21 @@ function MemoryRow({ memory: m, depth }: { memory: Memory; depth: number }) {
       className={cn(
         "flex h-7 w-full items-center gap-1.5 pr-2 text-left text-[13px] transition-colors duration-150 hover:bg-elevated",
         activeTab === m.id ? "bg-accent/10 text-fg" : "text-fg/85",
+        recentlyChanged.has(m.id) && "hm-flash",
       )}
       style={{ paddingLeft: 8 + depth * 14 + 12 }}
       title={m.title}
     >
       <Icon className={cn("size-3.5 shrink-0", iconColor)} />
-      <span className={cn("truncate", m.status === "invalid" && "text-muted line-through")}>{m.title}</span>
+      <span
+        className={cn(
+          "truncate",
+          m.status === "invalid" && "text-muted line-through",
+          m.status === "blocked" && "text-danger",
+        )}
+      >
+        {m.title}
+      </span>
     </button>
   );
 }

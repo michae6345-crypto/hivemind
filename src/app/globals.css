@@ -82,6 +82,53 @@ body {
 .hm-chip[data-kind="lock"] { color: var(--chip-lock); background: color-mix(in srgb, var(--chip-lock) 14%, transparent); }
 .hm-chip:hover { filter: brightness(1.15); }
 
+/* Motion: only when state changes (approve, new activity, a new cell in the hive). */
+@keyframes hm-flash {
+  0% { background-color: color-mix(in srgb, var(--accent) 16%, transparent); }
+  100% { background-color: transparent; }
+}
+.hm-flash { animation: hm-flash 1.6s ease-out; }
+
+@keyframes hm-enter {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: none; }
+}
+.hm-enter { animation: hm-enter 260ms ease-out both; }
+
+@keyframes hm-cell-pop {
+  0% { transform: scale(0.6); opacity: 0.3; }
+  60% { transform: scale(1.18); opacity: 1; }
+  100% { transform: scale(1); }
+}
+.hm-cell-pop { animation: hm-cell-pop 700ms cubic-bezier(.2,.8,.2,1); }
+
+@keyframes hm-cell-wait {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+.hm-cell-wait { animation: hm-cell-wait 2.4s ease-in-out infinite; }
+
+@keyframes hm-drawer {
+  from { transform: translateX(24px); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+.hm-drawer { animation: hm-drawer 200ms ease-out both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .hm-flash, .hm-enter, .hm-cell-pop, .hm-cell-wait, .hm-drawer { animation: none; }
+}
+
+/* CodeMirror placeholder in the composer */
+.cm-placeholder { color: color-mix(in srgb, var(--muted) 75%, transparent); }
+
+:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent) 70%, transparent);
+  outline-offset: 1px;
+}
+
+/* Sonner: the chain-of-command refusal reads as a policy, not a crash. */
+.hm-toast-forbidden [data-icon] { color: var(--chip-lock); }
+
 /* Resizable panel separators */
 .hm-sep {
   width: 1px;

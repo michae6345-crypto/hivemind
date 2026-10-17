@@ -92,8 +92,13 @@ export function Kbd({ children }: { children: React.ReactNode }) {
 export function SectionHeader({ children, right }: { children: React.ReactNode; right?: React.ReactNode }) {
   return (
     <div className="flex h-9 shrink-0 items-center justify-between border-b border-line px-3">
-      <span className="text-[11px] font-semibold tracking-wide text-muted uppercase">{children}</span>
+      <span className="text-[12px] font-semibold text-fg/70">{children}</span>
       {right}
     </div>
   );
+}
+
+/** Small heading inside a panel. Sentence case on purpose; no all-caps eyebrows. */
+export function Label({ children, className }: { children: React.ReactNode; className?: string }) {
+  return <h3 className={cn("mb-2 text-[12px] font-semibold text-fg/60", className)}>{children}</h3>;
 }

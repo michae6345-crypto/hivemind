@@ -1,23 +1,27 @@
 "use client";
 
 import {
+  ArrowRightLeft,
   Ban,
   Bot,
   Check,
+  FileText,
   GitPullRequest,
   MessageSquareQuote,
   PlayCircle,
   ShieldX,
   TriangleAlert,
-  ArrowRightLeft,
   X,
-  FileText,
 } from "lucide-react";
 import type { Evidence, FeedEvent } from "@/mocks/types";
 import { useHivemind } from "./store";
-import { Avatar, ConfidenceBar, SectionHeader, StatusPill } from "./bits";
+import { Avatar, ConfidenceBar, Label, SectionHeader, StatusPill } from "./bits";
 import { RichText } from "./rich-text";
-import { confidence, scopeChain, scopeLabel, timeAgo } from "./utils";
+import { ContextPackPreview } from "./context-pack";
+import { useNow } from "./use-now";
+import { cn, confidence, scopeChain, scopeLabel, timeAgo } from "./utils";
+
+const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? "" : "s"}`;
 
 export function Inspector() {
   const { selection, activeTab } = useHivemind();
@@ -25,7 +29,7 @@ export function Inspector() {
 
   return (
     <div className="flex h-full flex-col bg-panel">
-      <SectionHeader>Inspector</SectionHeader>
+      <SectionHeader>Details</SectionHeader>
       <div className="min-h-0 flex-1 overflow-y-auto">
         {sel?.kind === "memory" ? <MemoryInspector id={sel.id} /> : null}
         {sel?.kind === "person" ? <PersonInspector id={sel.id} /> : null}
@@ -37,12 +41,10 @@ export function Inspector() {
   );
 }
 
-const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? "" : "s"}`;
-
 function Block({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="border-b border-line px-3 py-3">
-      <h3 className="mb-2 text-[11px] font-semibold tracking-wide text-muted uppercase">{title}</h3>
+      <Label>{title}</Label>
       {children}
     </section>
   );
@@ -60,16 +62,16 @@ function MemoryInspector({ id }: { id: string }) {
     <>
       <Block title="Confidence">
         <ConfidenceBar memory={m} />
-        <p className="mt-2 text-[12px] text-muted">
+        <p className="mt-2 text-[12px] leading-relaxed text-muted">
           {m.locked
-            ? "Locked rules bypass scoring and never decay."
-            : `${plural(Math.round(m.alpha - 1), "confirmation")}, ${plural(Math.round(m.beta - 1), "contradiction")}. Ranked by the lower bound of its 95% interval: ${(c * 100).toFixed(0)}%.`}
+            ? "Locked rules skip scoring and never fade."
+            : `${plural(Math.round(m.alpha - 1), "confirmation")} and ${plural(Math.round(m.beta - 1), "contradiction")} so far. Ranked by the low end of its 95% interval, ${(c * 100).toFixed(0)}%.`}
         </p>
       </Block>
 
-      <Block title={`Receipt · ${m.evidence.length} source${m.evidence.length === 1 ? "" : "s"}`}>
+      <Block title={m.evidence.length ? `Where it came from` : "Source"}>
         {m.evidence.length === 0 ? (
-          <p className="text-[12px] text-muted">Written directly by a person; no correction behind it.</p>
+          <p className="text-[12px] text-muted">Written directly by a person.</p>
         ) : (
           <ul className="space-y-2">
             {m.evidence.map((e, i) => (
@@ -79,7 +81,7 @@ function MemoryInspector({ id }: { id: string }) {
         )}
       </Block>
 
-      <Block title="Applies to">
+      <Block title="Who gets it">
         <div className="flex flex-wrap items-center gap-1 text-[12px]">
           {chain.map((s, i) => (
             <span key={s.id} className="flex items-center gap-1">
@@ -88,13 +90,11 @@ function MemoryInspector({ id }: { id: string }) {
             </span>
           ))}
         </div>
-        <p className="mt-2 text-[12px] text-muted">
-          Every agent working in this scope or below loads it in its context pack.
-        </p>
+        <p className="mt-2 text-[12px] text-muted">Every agent working here or below loads it when a session starts.</p>
       </Block>
 
       {backlinks.length ? (
-        <Block title={`Backlinks · ${backlinks.length}`}>
+        <Block title={`Referenced by ${backlinks.length}`}>
           <ul className="space-y-1">
             {backlinks.map((b) => (
               <li key={b.id}>
@@ -114,21 +114,21 @@ function EvidenceCard({ e }: { e: Evidence }) {
   const Icon =
     e.type === "review_comment" ? GitPullRequest : e.type === "agent" ? Bot : e.type === "correction" ? MessageSquareQuote : FileText;
   const label =
-    e.type === "review_comment" ? "PR review" : e.type === "agent" ? "Agent proposal" : e.type === "correction" ? "Correction" : "Written";
+    e.type === "review_comment" ? "PR review" : e.type === "agent" ? "Agent proposal" : e.type === "correction" ? "Correction" : "Note";
   return (
     <li className="rounded-md border border-line bg-bg p-2.5">
-      <div className="mb-1.5 flex items-center gap-1.5 text-[11px] text-muted">
-        <Icon className="size-3" />
-        <span>{label}</span>
-        {e.ref ? <span className="font-mono">· {e.ref}</span> : null}
+      <blockquote className="border-l-2 border-accent/60 pl-2 text-[13px] leading-snug text-fg/90">“{e.quote}”</blockquote>
+      <div className="mt-2 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11px] text-muted">
+        <span className="flex items-center gap-1">
+          <Avatar person={person} id={e.actor} className="size-4 text-[9px]" />
+          {person?.name.split(" ")[0] ?? (e.actor.startsWith("agent:") ? "Agent" : e.actor)}
+        </span>
+        <span className="flex items-center gap-1">
+          <Icon className="size-3" />
+          {label}
+          {e.ref ? `, ${e.ref}` : ""}
+        </span>
         <span className="ml-auto">{timeAgo(e.at)}</span>
-      </div>
-      <blockquote className="border-l-2 border-accent/60 pl-2 text-[13px] leading-snug text-fg/90">
-        “{e.quote}”
-      </blockquote>
-      <div className="mt-1.5 flex items-center gap-1.5 text-[11px] text-muted">
-        <Avatar person={person} id={e.actor} className="size-4 text-[9px]" />
-        {person?.name ?? (e.actor.startsWith("agent:") ? `Agent (${e.actor.slice(6)})` : e.actor)}
       </div>
     </li>
   );
@@ -138,14 +138,13 @@ function PersonInspector({ id }: { id: string }) {
   const { people, memories, scopes } = useHivemind();
   const p = people.find((x) => x.id === id);
   if (!p) return null;
-  const taught = memories.filter(
-    (m) => m.author === p.id || m.evidence.some((e) => e.actor === p.id),
-  );
+  const taught = memories.filter((m) => m.author === p.id || m.evidence.some((e) => e.actor === p.id));
   const owns = scopes.filter((s) => s.owner === p.id && s.level !== "personal");
+  const personal = scopes.find((s) => s.id === `personal/${p.id}`);
   return (
     <>
       <Block title="Person">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5">
           <Avatar person={p} id={p.id} className="size-8 text-[12px]" />
           <div>
             <div className="font-semibold">{p.name}</div>
@@ -154,12 +153,15 @@ function PersonInspector({ id }: { id: string }) {
         </div>
         {owns.length ? (
           <div className="mt-3 flex flex-wrap items-center gap-1 text-[12px] text-muted">
-            Approves for {owns.map((s) => <RichText key={s.id} text={scopeLabel(s.id)} />)}
+            Approves lessons for {owns.map((s) => <RichText key={s.id} text={scopeLabel(s.id)} />)}
           </div>
         ) : null}
       </Block>
-      <Block title={`Taught · ${taught.length}`}>
-        <ul className="space-y-1">
+      <Block title={`What ${p.name.split(" ")[0]}'s agent starts with`}>
+        <ContextPackPreview scopeId={personal?.id ?? p.scopeId} person={p} />
+      </Block>
+      <Block title={`Taught ${plural(taught.length, "lesson")}`}>
+        <ul className="space-y-1.5">
           {taught.map((m) => (
             <li key={m.id} className="flex items-center justify-between gap-2">
               <RichText text={`[[${m.slug}]]`} />
@@ -182,25 +184,19 @@ function ScopeInspector({ id }: { id: string }) {
   const owner = people.find((p) => p.id === s.owner);
   return (
     <>
-      <Block title={s.level}>
+      <Block title={s.level === "org" ? "Company" : s.level === "team" ? "Team" : s.level === "repo" ? "Repository" : "Personal"}>
         <div className="text-[15px] font-semibold">{s.level === "personal" ? `@${s.name}` : s.name}</div>
         {owner ? (
           <div className="mt-1 text-[12px] text-muted">
-            Owner <RichText text={`@${owner.id}`} />
+            Owned by <RichText text={`@${owner.id}`} />
           </div>
         ) : null}
         <p className="mt-2 text-[12px] text-muted">
-          An agent here starts with {inherited.length} active lessons, {locked.length} of them locked.
+          An agent here starts with {plural(inherited.length, "lesson")}, {locked.length} of them locked.
         </p>
       </Block>
-      <Block title="Locked rules in force">
-        <ul className="space-y-1">
-          {locked.map((m) => (
-            <li key={m.id}>
-              <RichText text={`🔒 [[${m.slug}]]`} />
-            </li>
-          ))}
-        </ul>
+      <Block title="What an agent here starts with">
+        <ContextPackPreview scopeId={s.id} />
       </Block>
     </>
   );
@@ -219,14 +215,17 @@ const FEED_ICON: Record<FeedEvent["type"], { icon: typeof Check; className: stri
 };
 
 function LiveFeed() {
-  const { feed, activity, people } = useHivemind();
+  const { feed, activity, people, live } = useHivemind();
   const warnings = activity.filter((a) => a.warning);
+  const now = useNow();
+  const fresh = (iso: string) => now - new Date(iso).getTime() < 8000;
   return (
     <div className="flex max-h-[46%] min-h-40 shrink-0 flex-col border-t border-line">
       <SectionHeader
         right={
-          <span className="flex items-center gap-1 text-[11px] text-muted">
-            <span className="size-1.5 animate-pulse rounded-full bg-ok" /> live
+          <span className="flex items-center gap-1.5 text-[11px] text-muted">
+            <span className={cn("size-1.5 rounded-full", live.activity ? "bg-ok" : "bg-accent")} />
+            {live.activity ? "live" : "seed data"}
           </span>
         }
       >
@@ -236,21 +235,37 @@ function LiveFeed() {
         {warnings.map((a) => {
           const who = people.find((p) => p.id === a.actor);
           return (
-            <li key={a.id} className="mb-2 flex gap-2 rounded-md border border-accent/30 bg-accent/10 px-2 py-1.5 text-[12px]">
+            <li
+              key={a.id}
+              className={cn(
+                "mb-2 flex gap-2 rounded-md border border-accent/30 bg-accent/10 px-2.5 py-2 text-[12px] leading-snug",
+                fresh(a.createdAt) && "hm-enter",
+              )}
+            >
               <TriangleAlert className="mt-0.5 size-3.5 shrink-0 text-accent" />
               <span>
-                <span className="font-medium">{who?.name.split(" ")[0] ?? a.actor}’s agent</span> is editing{" "}
-                <span className="font-mono text-[11px]">{a.repo}/{a.file}</span>. {a.warning}
+                <span className="font-medium">{who?.name.split(" ")[0] ?? a.actor}&apos;s agent</span> opened{" "}
+                <span className="font-medium">
+                  {a.repo}/{a.file}
+                </span>
+                . {a.warning}
               </span>
             </li>
           );
         })}
         {feed.map((e) => {
-          const meta = FEED_ICON[e.type];
+          const meta = FEED_ICON[e.type] ?? FEED_ICON.session_start;
           const Icon = meta.icon;
           const who = people.find((p) => p.id === e.actor);
           return (
-            <li key={e.id} className="flex gap-2 py-1.5 text-[12px] leading-snug">
+            <li
+              key={e.id}
+              className={cn(
+                "flex gap-2 rounded-md px-1 py-1.5 text-[12px] leading-snug",
+                (e.type === "blocked" || e.type === "deny") && "bg-danger/[0.06]",
+                fresh(e.at) && "hm-enter",
+              )}
+            >
               <Icon className={`mt-0.5 size-3.5 shrink-0 ${meta.className}`} />
               <span className="min-w-0 flex-1">
                 <span className="font-medium">{who?.name.split(" ")[0] ?? e.actor}</span>{" "}

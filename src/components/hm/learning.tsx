@@ -4,91 +4,114 @@ import {
   Area,
   AreaChart,
   CartesianGrid,
-  ReferenceLine,
+  ReferenceDot,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from "recharts";
-import { ArrowRightLeft, TriangleAlert } from "lucide-react";
+import { ArrowRight, TriangleAlert } from "lucide-react";
 import { useHivemind } from "./store";
-import { Avatar } from "./bits";
+import { Avatar, Label } from "./bits";
 import { RichText } from "./rich-text";
+import { Hive, HiveLegend } from "./hex";
 import { timeAgo } from "./utils";
 
 export function Learning() {
-  const { metrics, metricsLive, memoryBySlug, people } = useHivemind();
+  const { metrics, metricsLive, memoryBySlug, people, memories } = useHivemind();
   const curve = metrics.curve;
-  const head = curve.slice(0, 5);
-  const tail = curve.slice(-5);
   const avg = (xs: typeof curve) => (xs.length ? xs.reduce((s, x) => s + x.corrections, 0) / xs.length : 0);
-  const before = avg(head);
-  const after = avg(tail);
+  const before = avg(curve.slice(0, 5));
+  const after = avg(curve.slice(-5));
   const approvals = curve.filter((c) => c.lessonApproved);
   const ev = metrics.eval;
 
+  const active = memories.filter((m) => m.status === "active");
+  const locked = active.filter((m) => m.locked).length;
+  const waiting = memories.filter((m) => m.status === "pending").length;
+  const blocked = memories.filter((m) => m.status === "blocked").length;
+
   return (
     <div className="h-full overflow-y-auto">
-      <div className="mx-auto max-w-6xl px-8 py-7">
-        <div className="flex items-baseline justify-between gap-4">
+      <div className="mx-auto max-w-6xl px-8 py-8">
+        <div className="flex items-start justify-between gap-6">
           <div>
-            <h1 className="text-[22px] font-semibold tracking-tight">Every agent gets smarter</h1>
-            <p className="mt-1 text-muted">
-              Corrections engineers had to give per session, as approved lessons spread to every agent.
+            <h1 className="text-[28px] leading-tight font-semibold tracking-[-0.02em]">Every agent gets smarter</h1>
+            <p className="mt-1.5 max-w-[60ch] text-[14px] text-muted">
+              When one engineer corrects an agent, the lesson spreads to every agent at the company, so the same
+              correction doesn&apos;t have to be given twice.
             </p>
           </div>
           {!metricsLive ? (
             <span
-              className="flex shrink-0 items-center gap-1.5 rounded-md border border-accent/40 bg-accent/10 px-2.5 py-1 text-[12px] text-accent"
-              title="Replaced automatically when GET /api/metrics returns eval/results.json"
+              className="mt-1 flex shrink-0 items-center gap-1.5 rounded-md border border-accent/40 bg-accent/10 px-2.5 py-1 text-[12px] text-accent"
+              title="Switches automatically when GET /api/metrics returns the eval results"
             >
               <TriangleAlert className="size-3.5" /> Seed data, not results
             </span>
           ) : null}
         </div>
 
-        <div className="mt-6 grid grid-cols-4 gap-3">
-          <Stat
-            label="Corrections per session"
-            value={`${before.toFixed(1)} → ${after.toFixed(1)}`}
-            sub={`first 5 vs last 5 of ${curve.length} sessions`}
-            accent
-          />
-          <Stat label="Repeat-mistake rate" value={`${Math.round(metrics.repeatMistakeRate * 100)}%`} sub="same correction given twice" />
-          <Stat label="Lessons accepted" value={`${Math.round(metrics.acceptanceRate * 100)}%`} sub="approved by the scope owner" />
-          <Stat label="Cross-user transfers" value={`${metrics.transfer.length}`} sub="taught by one, used by another" />
-        </div>
+        <section className="mt-7 grid grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] gap-6 rounded-xl border border-line bg-panel p-6">
+          <div className="flex flex-col">
+            <Label>The hive</Label>
+            <p className="text-[13px] text-muted">
+              {active.length} lessons every agent shares, {locked} locked at the core. {waiting} waiting for approval
+              {blocked ? `, ${blocked} blocked` : ""}.
+            </p>
+            <Hive className="mt-3 h-[300px]" />
+            <HiveLegend />
+          </div>
 
-        <div className="mt-4 rounded-lg border border-line bg-panel p-4">
-          <div className="mb-3 flex items-center justify-between text-[12px] text-muted">
-            <span>Corrections per session</span>
-            <span className="flex items-center gap-1.5">
-              <span className="inline-block h-3 w-px bg-muted" /> lesson approved
+          <div className="flex flex-col justify-center border-l border-line pl-6">
+            <Label>Corrections per session</Label>
+            <div className="flex items-baseline gap-3">
+              <span className="text-[44px] leading-none font-semibold tracking-[-0.03em] text-muted tabular-nums">
+                {before.toFixed(1)}
+              </span>
+              <ArrowRight className="size-6 self-center text-muted" />
+              <span className="text-[44px] leading-none font-semibold tracking-[-0.03em] text-accent tabular-nums">
+                {after.toFixed(1)}
+              </span>
+            </div>
+            <p className="mt-2 text-[13px] text-muted">
+              Average of the first five sessions against the last five, across {curve.length} sessions.
+            </p>
+
+            <dl className="mt-7 grid grid-cols-3 border-t border-line pt-5">
+              <Stat label="Same mistake twice" value={`${Math.round(metrics.repeatMistakeRate * 100)}%`} />
+              <Stat label="Lessons accepted" value={`${Math.round(metrics.acceptanceRate * 100)}%`} divided />
+              <Stat label="Taught by one, used by another" value={`${metrics.transfer.length}`} divided />
+            </dl>
+          </div>
+        </section>
+
+        <section className="mt-6 rounded-xl border border-line bg-panel p-6">
+          <div className="mb-1 flex items-baseline justify-between">
+            <Label className="mb-0">How many corrections each session needed</Label>
+            <span className="flex items-center gap-1.5 text-[12px] text-muted">
+              <span className="inline-block size-2 rounded-full bg-accent ring-2 ring-accent/25" /> a lesson was approved
             </span>
           </div>
-          <div className="h-72">
+          <div className="h-80">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={curve} margin={{ top: 28, right: 24, bottom: 4, left: -16 }}>
+              <AreaChart data={curve} margin={{ top: 34, right: 28, bottom: 6, left: -18 }}>
                 <defs>
                   <linearGradient id="hm-area" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="var(--accent)" stopOpacity={0.28} />
-                    <stop offset="100%" stopColor="var(--accent)" stopOpacity={0.02} />
+                    <stop offset="0%" stopColor="var(--accent)" stopOpacity={0.22} />
+                    <stop offset="100%" stopColor="var(--accent)" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid stroke="var(--border)" strokeDasharray="0" vertical={false} />
+                <CartesianGrid stroke="var(--border)" vertical={false} />
                 <XAxis
                   dataKey="session"
                   tick={{ fill: "var(--muted)", fontSize: 11 }}
                   tickLine={false}
                   axisLine={{ stroke: "var(--border)" }}
-                  label={{ value: "session", position: "insideBottomRight", offset: -2, fill: "var(--muted)", fontSize: 11 }}
+                  interval={4}
+                  tickFormatter={(s) => `Session ${s}`}
                 />
-                <YAxis
-                  allowDecimals={false}
-                  tick={{ fill: "var(--muted)", fontSize: 11 }}
-                  tickLine={false}
-                  axisLine={false}
-                />
+                <YAxis allowDecimals={false} tick={{ fill: "var(--muted)", fontSize: 11 }} tickLine={false} axisLine={false} />
                 <Tooltip
                   cursor={{ stroke: "var(--border)" }}
                   contentStyle={{
@@ -101,20 +124,6 @@ export function Learning() {
                   labelFormatter={(s) => `Session ${s}`}
                   formatter={(v) => [`${v}`, "corrections"]}
                 />
-                {approvals.map((a) => (
-                  <ReferenceLine
-                    key={a.session}
-                    x={a.session}
-                    stroke="var(--muted)"
-                    strokeDasharray="3 3"
-                    label={{
-                      value: shortTitle(memoryBySlug(a.lessonApproved ?? "")?.title ?? a.lessonApproved ?? ""),
-                      position: "top",
-                      fill: "var(--muted)",
-                      fontSize: 11,
-                    }}
-                  />
-                ))}
                 <Area
                   type="monotone"
                   dataKey="corrections"
@@ -122,46 +131,73 @@ export function Learning() {
                   strokeWidth={2}
                   fill="url(#hm-area)"
                   dot={false}
-                  activeDot={{ r: 3, fill: "var(--accent)" }}
+                  activeDot={{ r: 3.5, fill: "var(--accent)", stroke: "var(--panel)" }}
+                  isAnimationActive={false}
                 />
+                {approvals.map((a, i) => (
+                  <ReferenceDot
+                    key={a.session}
+                    x={a.session}
+                    y={a.corrections}
+                    r={5}
+                    fill="var(--accent)"
+                    stroke="var(--panel)"
+                    strokeWidth={2.5}
+                    label={<DotLabel text={shortTitle(memoryBySlug(a.lessonApproved ?? "")?.title ?? a.lessonApproved ?? "")} below={i % 2 === 1} />}
+                  />
+                ))}
               </AreaChart>
             </ResponsiveContainer>
           </div>
-        </div>
+        </section>
 
-        <div className="mt-4 grid grid-cols-5 gap-4">
-          <div className="col-span-3 rounded-lg border border-line bg-panel p-4">
+        <div className="mt-6 grid grid-cols-5 gap-6">
+          <section className="col-span-3 rounded-xl border border-line bg-panel p-6">
             <div className="flex items-baseline justify-between">
-              <h2 className="font-semibold">Replay eval: memory off vs on</h2>
+              <Label className="mb-0">Replay eval: Hivemind off against on</Label>
               {ev ? (
                 <span className="text-[12px] text-muted">
-                  n = {ev.tasks} tasks × {ev.runs} runs, code-checked
+                  {ev.tasks} tasks, {ev.runs} runs each, checked by code
                 </span>
               ) : null}
             </div>
             {ev ? (
-              <div className="mt-4 space-y-4">
-                <BarPair label="Rule violations per task" off={ev.off.violationsPerTask} on={ev.on.violationsPerTask} max={Math.max(ev.off.violationsPerTask, ev.on.violationsPerTask, 0.01)} fmt={(v) => v.toFixed(2)} lowerIsBetter />
-                <BarPair label="Tasks passed with zero corrections" off={ev.off.passRate} on={ev.on.passRate} max={1} fmt={(v) => `${Math.round(v * 100)}%`} />
+              <div className="mt-5 space-y-5">
+                <BarPair
+                  label="Rule violations per task"
+                  off={ev.off.violationsPerTask}
+                  on={ev.on.violationsPerTask}
+                  max={Math.max(ev.off.violationsPerTask, ev.on.violationsPerTask, 0.01)}
+                  fmt={(v) => v.toFixed(2)}
+                  note="lower is better"
+                />
+                <BarPair
+                  label="Tasks done with zero corrections"
+                  off={ev.off.passRate}
+                  on={ev.on.passRate}
+                  max={1}
+                  fmt={(v) => `${Math.round(v * 100)}%`}
+                  note="higher is better"
+                />
               </div>
             ) : (
-              <p className="mt-3 text-muted">Eval results appear here once eval/results.json exists.</p>
+              <p className="mt-3 text-muted">Eval results appear once the replay has run.</p>
             )}
-          </div>
+          </section>
 
-          <div className="col-span-2 rounded-lg border border-line bg-panel p-4">
-            <h2 className="font-semibold">Taught once, used by someone else</h2>
-            <ul className="mt-3 space-y-3">
+          <section className="col-span-2 rounded-xl border border-line bg-panel p-6">
+            <Label>Taught by one, used by another</Label>
+            <ul className="mt-1 space-y-4">
               {metrics.transfer.map((t, i) => {
                 const from = people.find((p) => p.id === t.from);
                 const to = people.find((p) => p.id === t.to);
                 return (
-                  <li key={i} className="text-[13px]">
-                    <RichText text={`[[${t.lesson}]]`} />
-                    <div className="mt-1 flex items-center gap-1.5 text-[12px] text-muted">
+                  <li key={i}>
+                    <RichText text={`[[${t.lesson}]]`} className="text-[13px]" />
+                    <div className="mt-1.5 flex items-center gap-1.5 text-[12px] text-muted">
                       <Avatar person={from} id={t.from} className="size-4 text-[9px]" />
                       {from?.name.split(" ")[0] ?? t.from}
-                      <ArrowRightLeft className="size-3" />
+                      <ArrowRight className="size-3" />
                       <Avatar person={to} id={t.to} className="size-4 text-[9px]" />
                       {to?.name.split(" ")[0] ?? t.to}
                       <span className="ml-auto">{timeAgo(t.at)}</span>
@@ -170,23 +206,44 @@ export function Learning() {
                 );
               })}
             </ul>
-          </div>
+          </section>
         </div>
       </div>
     </div>
   );
 }
 
-function shortTitle(t: string) {
-  return t.length > 24 ? `${t.slice(0, 23).trimEnd()}…` : t;
+/** Lesson name next to its approval dot, with a halo so it stays legible over the line. */
+function DotLabel({ viewBox, text, below }: { viewBox?: { x: number; y: number; width: number; height: number }; text: string; below?: boolean }) {
+  if (!viewBox) return null;
+  const cx = viewBox.x + viewBox.width / 2;
+  const y = below ? viewBox.y + viewBox.height + 17 : viewBox.y - 9;
+  return (
+    <text
+      x={cx}
+      y={y}
+      textAnchor="middle"
+      fontSize={11.5}
+      fill="var(--text)"
+      stroke="var(--panel)"
+      strokeWidth={6}
+      strokeLinejoin="round"
+      paintOrder="stroke"
+    >
+      {text}
+    </text>
+  );
 }
 
-function Stat({ label, value, sub, accent }: { label: string; value: string; sub: string; accent?: boolean }) {
+function shortTitle(t: string) {
+  return t.length > 28 ? `${t.slice(0, 27).trimEnd()}…` : t;
+}
+
+function Stat({ label, value, divided }: { label: string; value: string; divided?: boolean }) {
   return (
-    <div className="rounded-lg border border-line bg-panel p-4">
-      <div className="text-[12px] text-muted">{label}</div>
-      <div className={`mt-1 text-[24px] font-semibold tracking-tight tabular-nums ${accent ? "text-accent" : ""}`}>{value}</div>
-      <div className="mt-0.5 text-[11px] text-muted">{sub}</div>
+    <div className={divided ? "border-l border-line pl-4" : "pr-4"}>
+      <dd className="text-[22px] font-semibold tracking-[-0.01em] tabular-nums">{value}</dd>
+      <dt className="mt-0.5 text-[12px] leading-snug text-muted">{label}</dt>
     </div>
   );
 }
@@ -197,32 +254,32 @@ function BarPair({
   on,
   max,
   fmt,
-  lowerIsBetter,
+  note,
 }: {
   label: string;
   off: number;
   on: number;
   max: number;
   fmt: (v: number) => string;
-  lowerIsBetter?: boolean;
+  note: string;
 }) {
   const rows = [
-    { name: "Memory off", v: off, color: "var(--muted)" },
-    { name: "Hivemind on", v: on, color: "var(--accent)" },
+    { name: "Without Hivemind", v: off, color: "var(--muted)" },
+    { name: "With Hivemind", v: on, color: "var(--accent)" },
   ];
   return (
     <div>
-      <div className="mb-1.5 flex justify-between text-[12px] text-muted">
-        <span>{label}</span>
-        <span>{lowerIsBetter ? "lower is better" : "higher is better"}</span>
+      <div className="mb-2 flex justify-between text-[12px]">
+        <span className="text-fg/80">{label}</span>
+        <span className="text-muted">{note}</span>
       </div>
       {rows.map((r) => (
         <div key={r.name} className="mb-1.5 flex items-center gap-3">
-          <span className="w-24 shrink-0 text-[12px] text-muted">{r.name}</span>
+          <span className="w-32 shrink-0 text-[12px] text-muted">{r.name}</span>
           <div className="h-5 flex-1 rounded bg-elevated">
-            <div className="h-full rounded" style={{ width: `${Math.max((r.v / max) * 100, 1)}%`, background: r.color, opacity: 0.9 }} />
+            <div className="h-full rounded" style={{ width: `${Math.max((r.v / max) * 100, 1)}%`, background: r.color }} />
           </div>
-          <span className="w-12 text-right font-mono text-[12px] tabular-nums">{fmt(r.v)}</span>
+          <span className="w-12 text-right text-[12px] tabular-nums">{fmt(r.v)}</span>
         </div>
       ))}
     </div>
