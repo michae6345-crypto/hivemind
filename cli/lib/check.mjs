@@ -28,14 +28,14 @@ function handle(v, rule) {
 const ownerTitle = (v, rule) => (v.owner.includes(",") ? v.owner.split(",").slice(1).join(",").trim() : (rule?.ownerRole ?? ""));
 
 /** Underline columns for line `i`: the API's exact columns (single-line hits), else our own heuristic. Tab-expanded. */
-function colsFor(v, i, line, rule) {
+export function colsFor(v, i, line, rule) {
   if (v.startCol == null || v.startLine !== v.endLine) return span(line, rule);
   const at = (n) => expand(line.slice(0, n)).length;
   return [at(v.startCol), at(v.endCol ?? line.length)];
 }
 
 /** The LLM's one-line explanation, i.e. whatever follows the standard "…Locked by X, Role." / "…From X's lesson." wording. */
-function explanation(v) {
+export function explanation(v) {
   const m = v.message.match(/(?:Locked by [^.]+\.|From [^.]+'s lesson\.)\s*(.*)$/);
   return plain(m?.[1]?.trim() || "");
 }

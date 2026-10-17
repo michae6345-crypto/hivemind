@@ -25,7 +25,7 @@ const GENERIC = { id: "other", label: "Any MCP agent", rules: { file: "AGENTS.md
 const agentOf = (id) => byId[id] ?? (id === "other" ? GENERIC : null);
 
 // ---------- args ----------
-const BOOLEAN = new Set(["dry-run", "no-sync", "no-vscode", "copilot-cli", "personal", "help", "json", "staged", "fix", "deep"]);
+const BOOLEAN = new Set(["dry-run", "no-sync", "no-vscode", "copilot-cli", "personal", "help", "json", "staged", "fix", "deep", "once", "notify", "no-motion"]);
 function parseArgs(argv) {
   const [cmd = "help", ...rest] = argv;
   const flags = {};
@@ -396,7 +396,9 @@ ${c.bold("Env")}  HIVEMIND_API_URL  HIVEMIND_TOKEN  HIVEMIND_USER  HIVEMIND_REPO
 
 const { cmd, flags, positional } = parseArgs(process.argv.slice(2));
 if (typeof flags.agent === "string") process.env.HIVEMIND_AGENT = flags.agent;
-const commands = { init: cmdInit, sync: cmdSync, status: cmdStatus, teach: cmdTeach, rules: cmdRules, check: (cfg, pos) => cmdCheck(cfg, pos, fail) };
+// watch / statusline live in cli/watch (the terminal app); they parse their own flags from argv too.
+const watchCmd = (file) => async (cfg) => (await import(`./watch/${file}`)).run(process.argv.slice(3), cfg);
+const commands = { watch: watchCmd("index.mjs"), statusline: watchCmd("statusline.mjs"), init: cmdInit, sync: cmdSync, status: cmdStatus, teach: cmdTeach, rules: cmdRules, check: (cfg, pos) => cmdCheck(cfg, pos, fail) };
 if (!commands[cmd] || flags.help) {
   console.log(HELP);
   process.exit(commands[cmd] || cmd === "help" || cmd === "--help" ? 0 : 1);
