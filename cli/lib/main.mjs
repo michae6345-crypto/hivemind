@@ -14,8 +14,6 @@ import { existsSync, statSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { AGENTS, SKILL_FILE, byId, mcpWired } from "./agents.mjs";
-import { cmdCheck } from "./check.mjs";
-import { cmdOpen } from "./open.mjs";
 import { USE_HINT, locateRepo } from "./locate.mjs";
 import { NOT_IN_REPO, WHO_ARE_YOU, explicitUser, findRepoRoot, nativePath, resolveUser } from "./root.mjs";
 import { liveRecent, readState, remember, setDefault } from "./state.mjs";
@@ -272,14 +270,20 @@ async function cmdStatus(cfg) {
   let reachable = false;
   try {
     const qs = new URLSearchParams({ repo: cfg.repo, user: "team", log: "0" });
-    const { data: pack, ms } = await spin("checking Hivemind", api(cfg, `/api/context-pack?${qs}`));
-    reachable = true;
-    const scopes = await api(cfg, "/api/scopes").then((r) => r.data.scopes ?? []).catch(() => []);
-    const known = scopes.some((s) => s.id === cfg.repo);
-    const chain = new URLSearchParams({ scope: known ? cfg.repo : "org", chain: "1" });
-    const [active, pending] = await Promise.all(
-      ["active", "pending"].map((s) => api(cfg, `/api/memories?${chain}&status=${s}`).then((r) => r.data.memories ?? []).catch(() => null)),
+    // All four requests at once, betting the repo scope exists (it almost always does); only if it doesn't, ask again for org.
+    const memories = (scope) =>
+      ["active", "pending"].map((s) => api(cfg, `/api/memories?${new URLSearchParams({ scope, chain: "1" })}&status=${s}`).then((r) => r.data.memories ?? []).catch(() => null));
+    const [{ data: pack, ms }, scopes, ...repoMemories] = await spin(
+      "checking Hivemind",
+      Promise.all([
+        api(cfg, `/api/context-pack?${qs}`),
+        api(cfg, "/api/scopes").then((r) => r.data.scopes ?? []).catch(() => []),
+        ...memories(cfg.repo),
+      ]),
     );
+    reachable = true;
+    const known = scopes.some((s) => s.id === cfg.repo);
+    const [active, pending] = known ? repoMemories : await Promise.all(memories("org"));
     const locked = lockedCount(pack);
     items.push(
       { dot: "ok", key: "API", value: `${host}  ${c.faint(`${ms} ms`)}` },
@@ -422,6 +426,8 @@ const HELP_GROUPS = [
     "Start",
     [
       ["hivemind", "", "open watch to the right of this terminal (same as hivemind open)"],
+      ["claude", "--user <id> · --dry-run", "Claude Code on the left, watch on the right (alias: hm c)"],
+      ["setup-shortcut", "--dry-run", "Windows Terminal profile \"Hivemind + Claude\""],
       ["init", "--agents a,b · --url <api>", "connect every coding agent in this repo"],
       ["use", "<path> · --clear", "the repo to use when you're outside one"],
       ["watch", "", "live team memory, full screen"],
@@ -446,6 +452,9 @@ const HELP_GROUPS = [
   ],
 ];
 
+// The one-line installer for this OS (served by the app: src/app/install.{sh,ps1}).
+const INSTALL = process.platform === "win32" ? `irm ${SITE}/install.ps1 | iex` : `curl -fsSL ${SITE}/install.sh | sh`;
+
 function help() {
   const all = HELP_GROUPS.flatMap(([, items]) => items);
   const nameW = Math.max(...all.map(([n]) => n.length));
@@ -458,6 +467,7 @@ function help() {
   const sep = c.faint(" · ");
   out.push(
     "",
+    `  ${c.faint("Install")} ${c.cyan(INSTALL)}${sep}${c.cyan("hm c")} ${c.faint("(Claude Code + watch, side by side)")}`,
     `  ${c.faint("Try")}    ${["hivemind", "hivemind check --staged", "hivemind why --last"].map((x) => c.cyan(x)).join(sep)}`,
     `  ${c.faint("Flags")}  ${c.faint(["--repo", "--user", "--agent", "--url", "--dir", "--dry-run", "--json"].join("  "))}`,
     `  ${c.faint("Env")}    ${c.faint("HIVEMIND_TOKEN  HIVEMIND_USER  HIVEMIND_REPO  HIVEMIND_API_URL  HIVEMIND_NO_UPDATE=1")}`,
@@ -536,7 +546,9 @@ async function cmdUpdate() {
   const cliFiles = r.files.filter((f) => f.startsWith("cli/"));
   console.log(c.gray(`  ${r.files.length} file${r.files.length === 1 ? "" : "s"} changed, ${cliFiles.length} in cli/${r.files.includes("cli/package.json") ? " (cli/package.json changed: pnpm install started)" : ""}`));
 }
-const commands = { update: cmdUpdate, use: cmdUse, watch: watchCmd("index.mjs"), statusline: watchCmd("statusline.mjs"), open: (cfg) => cmdOpen(cfg, fail), why: async (cfg, pos) => (await import("./why.mjs")).cmdWhy(cfg, pos, fail), init: cmdInit, sync: cmdSync, status: cmdStatus, teach: cmdTeach, rules: cmdRules, check: (cfg, pos) => cmdCheck(cfg, pos, fail) };
+// open / claude normally take the instant path in ../hivemind.mjs; these cover `hivemind open --dir …` style fallbacks.
+const launch = (extra = {}) => async (cfg) => (await import("./open.mjs")).cmdOpen({ ...cfg, flags: { ...cfg.flags, ...extra } }, fail);
+const commands = { update: cmdUpdate, use: cmdUse, watch: watchCmd("index.mjs"), statusline: watchCmd("statusline.mjs"), open: launch(), claude: launch({ claude: true }), c: launch({ claude: true }), "setup-shortcut": async (cfg) => (await import("./shortcut.mjs")).cmdSetupShortcut(cfg, fail), why: async (cfg, pos) => (await import("./why.mjs")).cmdWhy(cfg, pos, fail), init: cmdInit, sync: cmdSync, status: cmdStatus, teach: cmdTeach, rules: cmdRules, check: async (cfg, pos) => (await import("./check.mjs")).cmdCheck(cfg, pos, fail) };
 if (cmd === "--version" || cmd === "-v" || cmd === "version" || (flags.version && cmd !== "watch")) {
   console.log(`hivemind ${VERSION}`);
   process.exit(0);

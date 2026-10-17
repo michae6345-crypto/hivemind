@@ -6,7 +6,8 @@
   "homepage": "https://hivemind-q17i.onrender.com",
   "type": "module",
   "bin": {
-    "hivemind": "hivemind.mjs"
+    "hivemind": "hivemind.mjs",
+    "hm": "hivemind.mjs"
   },
   "files": [
     "hivemind.mjs",

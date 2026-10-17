@@ -104,7 +104,13 @@ export function plan(cfg, { claude, user, size, cwd }) {
   if (process.env.TMUX) {
     return { how: "tmux: split this window", cmd: "tmux", args: ["split-window", "-h", "-l", `${Math.round(size * 100)}%`, "-c", cwd, line], then: wantClaude ? "claude" : null };
   }
-  return { how: null, line };
+  if (wantClaude && onPath("tmux")) {
+    // `hm c` outside tmux/iTerm2: a new tmux session, Claude Code on the left, watch on the right, attached here.
+    const pct = `${Math.round(size * 100)}%`;
+    const args = ["new-session", "-c", cwd, "claude", ";", "split-window", "-h", "-l", pct, "-c", cwd, line, ";", "select-pane", "-L"];
+    return { how: "tmux: new session, split", cmd: "tmux", args, then: null, attach: true };
+  }
+  return { how: null, line, then: wantClaude ? "claude" : null };
 }
 
 /** SessionStart --auto: once per Claude Code session (or terminal pane), never twice. */
@@ -148,14 +154,24 @@ export async function cmdOpen(cfg, fail) {
     return; // silent: SessionStart stdout becomes model context
   }
 
+  // `hm c` needs Claude Code itself; say how to get it instead of opening a pane next to an error.
+  const wantClaude = !!cfg.flags.claude && !insideClaude();
+  const dry = cfg.flags["dry-run"] || cfg.dryRun;
+  if (wantClaude && !onPath("claude")) {
+    const msg = "Claude Code isn't installed (no `claude` on PATH). Install it: npm i -g @anthropic-ai/claude-code";
+    if (dry) console.log(`${c.yellow("!")} ${msg}`);
+    else fail(msg);
+  }
+
   if (!p.how) {
     console.log(`${brand()} ${c.gray("· open")}  no supported terminal to split here. Run this in a second pane:`);
     console.log(`  ${c.cyan(p.line)}`);
+    if (p.then && !dry) await runHere(p.then, cfg.root);
     return;
   }
   const where = p.how.includes("split") ? "on the right" : `in a ${p.how}`;
   const done = `${brand()} ${c.gray("opened")} ${where} ${c.gray("·")} watching ${c.repo(`#${cfg.repo}`)} as ${c.handle(`@${user || "you"}`)}`;
-  if (cfg.flags["dry-run"] || cfg.dryRun) {
+  if (dry) {
     console.log(`${brand()} ${c.gray(`· open (dry run) · ${p.how}`)}`);
     console.log(`  ${c.cyan([p.cmd, ...p.args].map(q).join(" "))}`);
     if (p.then) console.log(`  ${c.cyan(p.then)} ${c.gray("(in this pane)")}`);
@@ -163,12 +179,16 @@ export async function cmdOpen(cfg, fail) {
   }
   // Opt-in: only needed when another window took focus since you typed (scripted runs). Costs a PowerShell start.
   if (p.cmd === "wt" && p.args[1] === "0" && process.env.HIVEMIND_OPEN_FOCUS === "1") focusOwnWindow();
+  if (p.attach) console.log(done); // tmux takes over this terminal until the session ends
   const r = spawnSync(p.cmd, p.args, { stdio: "inherit", windowsHide: false });
+  if (p.attach) return;
   if (r.error || r.status) fail(`couldn't open the pane: ${r.error?.message ?? `${p.cmd} exited ${r.status}`}`);
   console.log(done + (p.then ? c.gray(" · starting claude here") : ""));
-  if (p.then) {
-    // This pane becomes Claude Code. shell:true so Windows finds claude.cmd.
-    const child = spawn(p.then, [], { stdio: "inherit", shell: true, cwd: cfg.root });
-    await new Promise((res) => child.on("exit", res));
-  }
+  if (p.then) await runHere(p.then, cfg.root);
+}
+
+/** This pane becomes Claude Code. shell:true so Windows finds claude.cmd. */
+async function runHere(cmd, cwd) {
+  const child = spawn(cmd, [], { stdio: "inherit", shell: true, cwd });
+  await new Promise((res) => child.on("exit", res));
 }
