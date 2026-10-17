@@ -31,7 +31,9 @@ function hasWt() {
   return wtCache;
 }
 /** Plain `node` when its folder is on PATH (no quoting of "Program Files" inside the wt command line). */
-const nodeBin = () => ((process.env.PATH ?? "").split(delimiter).some((d) => d && d.toLowerCase() === dirname(process.execPath).toLowerCase()) ? "node" : process.execPath);
+const trimDir = (d) => d.replace(/[\\/]+$/, "").toLowerCase(); // PATH entries may end in "\" (PowerShell's often do)
+const nodeBin = () =>
+  (process.env.PATH ?? "").split(delimiter).some((d) => d && trimDir(d) === trimDir(dirname(process.execPath))) ? "node" : process.execPath;
 const insideClaude = () => !!process.env.CLAUDECODE || !!process.env.CLAUDE_CODE_ENTRYPOINT;
 
 /** argv for the watch pane. `node <cli>` works whether or not `hivemind` is installed globally (no .cmd shim issues). */

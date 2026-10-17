@@ -20,10 +20,14 @@ reply with its output line only:
 node "../../cli/hivemind.mjs" open
 ```
 
-The output is one line, `⬢ Hivemind opened on the right · watching #repo/<name> as @<user>`. Reply with that line and
+The output is one line, `⬢ Hivemind opened on the right · watching #repo/<name> as @<user>`. Reply with the output and
 nothing else: no summary, no follow-up question. If the command fails, reply with its error line only.
 
 (The user can skip this turn entirely by typing `!hivemind`, Claude Code's `!` prefix runs it directly.)
+
+This works from any folder. Outside a repo, `hivemind open` uses the default repo (`hivemind use <path>`) or the most
+recent one, and prints `⬢ Hivemind · not in a repo here — using #repo/<name> (<path>)` before the opened line. Reply with
+both lines as printed. If it says "Not in a Hivemind repo", reply with that line only.
 
 ## `rules [file]`: list the rules that apply. Only when explicitly asked
 

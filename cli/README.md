@@ -65,6 +65,27 @@ Opening is instant. Nothing calls the API before the pane spawns, because the pa
 - `hivemind open --claude` also runs `claude` in the left pane, which sets up the whole demo layout in one command.
 - `hivemind help` still prints help.
 
+### From anywhere (home folder, `!hivemind`)
+
+Every run inside a repo is remembered in `~/.hivemind/state.json`: the last 10 repos, with their repo id and user.
+When `hivemind`, `open`, `watch`, `statusline`, `status` or `why` runs outside a repo, it picks one of those instead of
+giving up:
+
+1. Your default, if you've set one with `hivemind use <path>`.
+2. Your recent repos. With exactly one, or without a TTY (e.g. `!hivemind` in Claude Code), it uses the most recent.
+   With several and a TTY, it shows a numbered picker.
+3. A quick search (about 1.5s) for `.hivemind.json` in `~/coding-projects`, `~/projects`, `~/code`, `~/src`,
+   `~/Documents` (depth 5) and the current folder (depth 4). It skips `node_modules`, `.git`, `.next`, `AppData` and
+   `.paseo`.
+
+Either way it prints one line and carries on:
+
+```text
+⬢ Hivemind · not in a repo here — using #repo/playground (C:\…\hivemind\playground)
+```
+
+`hivemind use` lists recent repos, `hivemind use <path>` sets the default and `hivemind use --clear` clears it.
+
 **Inside Claude Code**
 
 - `!hivemind` is the instant path. Claude Code's `!` prefix runs the command directly, without a model turn. Inside
@@ -90,6 +111,7 @@ Opening is instant. Nothing calls the API before the pane spawns, because the pa
 | `status` | Pings the API, then shows the rules in the pack, pending lessons, and each agent's MCP, hooks and rules files |
 | `teach "<rule>" [--scope repo/x|team/x]` | Sends the rule to `/api/events` as a correction, so it gets the same extract, merge and 🔒 checks as any other correction. Prints `Lesson proposed — waiting on @<owner>`, or `Blocked by a locked rule`. A `team/…` scope is sent as a proposal for that scope |
 | `rules [--file path]` | Prints the rules that apply now. With `--file`, it prints that file's rules plus live edits, using MCP `get_team_rules`. Output is colored on a TTY and plain markdown when piped |
+| `use [<path> | --clear]` | Sets the default repo for runs outside a repo, such as from your home folder or with `!hivemind` in Claude Code. With no argument, it lists the recent repos from `~/.hivemind/state.json` |
 | `why [--last | <rule words> | <file>:<line>]` | The history behind one rule, in about 12 lines: who set or taught it and the quote, the evidence (PRs as clickable links), approvals, whether it's in every agent's session pack, how often it was reinforced, and what it blocked. `--last` (the default) picks your most recent block, or the most recent `hivemind check` flag. In Claude Code: `/hivemind why` |
 | `check <file…>` / `check --staged` `[--fix] [--deep]` | Checks files against the team's rules via `POST /api/vscode/check`, the same regex + Haiku engine as the VS Code squiggles. Each violation prints as a code frame. Its header is a clickable `path#Lnn` link (OSC 8 → `permalink()` from `watch/git.mjs`, else `file://`; `NO_HYPERLINKS=1` turns it off), followed by 2 lines of context, the range underlined `~~~~` (rose for locked rules, honey for lessons), the rule, the owner's `@handle` and the quick fix as a diff. `--fix` applies the quick fixes (deduped, bottom-up) and re-checks. Exits 1 while a locked rule is broken, so `hivemind check --staged` works as a pre-commit hook |
 

@@ -16,7 +16,9 @@ import { fileURLToPath } from "node:url";
 import { AGENTS, SKILL_FILE, byId, mcpWired } from "./agents.mjs";
 import { cmdCheck } from "./check.mjs";
 import { cmdOpen } from "./open.mjs";
-import { NOT_IN_REPO, WHO_ARE_YOU, findRepoRoot, nativePath, resolveUser } from "./root.mjs";
+import { USE_HINT, locateRepo } from "./locate.mjs";
+import { NOT_IN_REPO, WHO_ARE_YOU, explicitUser, findRepoRoot, nativePath, resolveUser } from "./root.mjs";
+import { liveRecent, readState, remember, setDefault } from "./state.mjs";
 import { brand, handleChip, label, rich, scopeChip } from "./style.mjs";
 import { rulesFrontmatter } from "./templates.mjs";
 import { END, START, api, banner, c, callerAgent, mcpCall, mergeJson, onPath, post, read, readEnvFile, rel, sym, table, plain, upsertBlock, write } from "./util.mjs";
@@ -28,7 +30,7 @@ const GENERIC = { id: "other", label: "Any MCP agent", rules: { file: "AGENTS.md
 const agentOf = (id) => byId[id] ?? (id === "other" ? GENERIC : null);
 
 // ---------- args ----------
-const BOOLEAN = new Set(["dry-run", "no-sync", "no-vscode", "copilot-cli", "no-statusline", "personal", "help", "json", "staged", "fix", "deep", "version", "once", "snapshot", "notify", "no-motion", "claude", "auto", "open", "last"]);
+const BOOLEAN = new Set(["dry-run", "no-sync", "no-vscode", "copilot-cli", "no-statusline", "personal", "help", "json", "staged", "fix", "deep", "version", "once", "snapshot", "notify", "no-motion", "claude", "auto", "open", "last", "clear"]);
 function parseArgs(argv) {
   // `hivemind --open` / `hivemind --user ben`: flags with no subcommand → cmd "" (main decides: open or help).
   const [cmd = "", ...rest] = argv[0]?.startsWith("--") && !["--help", "--version"].includes(argv[0]) ? ["", ...argv] : argv;
@@ -415,6 +417,7 @@ function help() {
     group("Start"),
     cmd("init", "[--agents a,b] [--url <api>]", "connect every coding agent in this repo"),
     cmd("open", "[--claude] [--user <id>]", "watch in a pane on the right; plain `hivemind` does this"),
+    cmd("use", "[<path> | --clear]", "default repo for runs outside one (home, !hivemind); lists recent"),
     cmd("watch", "", "live team memory; run it in a split pane"),
     "",
     group("While you work"),
@@ -449,16 +452,48 @@ if (typeof flags.agent === "string") process.env.HIVEMIND_AGENT = flags.agent;
 // watch / statusline only ever run on a real repo: the nearest .hivemind.json or git root above cwd (or --dir), never ~
 // or a drive root, so the file watcher can't end up scanning a home directory.
 const watchCmd = (file) => async (cfg) => {
-  const found = findRepoRoot(typeof cfg.flags.dir === "string" ? nativePath(cfg.flags.dir) : process.cwd());
+  const quiet = file === "statusline.mjs"; // one line, refreshed every few seconds: no notes, no picker
+  const found = await locateRepo({ dir: typeof cfg.flags.dir === "string" ? cfg.flags.dir : undefined, interactive: quiet ? false : undefined });
   if (!found) {
-    if (file === "statusline.mjs") return console.log(`${brand()} ${c.gray("· not in a Hivemind repo")}`);
-    fail(NOT_IN_REPO);
+    if (quiet) return console.log(`${brand()} ${c.gray("· not in a Hivemind repo")}`);
+    fail(`${NOT_IN_REPO}
+  ${USE_HINT}`);
   }
+  if (found.note && !quiet) console.log(found.note);
   const scoped = resolveConfig({ ...cfg.flags, dir: found.root });
-  if (!scoped.actor && file !== "statusline.mjs") fail(WHO_ARE_YOU);
+  if (!scoped.actor && !quiet) fail(WHO_ARE_YOU);
+  if (!quiet) remember({ path: found.root, repo: scoped.repo, user: explicitUser(cfg.flags) });
   return (await import(`../watch/${file}`)).run(process.argv.slice(3), scoped);
 };
-const commands = { watch: watchCmd("index.mjs"), statusline: watchCmd("statusline.mjs"), open: (cfg) => cmdOpen(cfg, fail), why: async (cfg, pos) => (await import("./why.mjs")).cmdWhy(cfg, pos, fail), init: cmdInit, sync: cmdSync, status: cmdStatus, teach: cmdTeach, rules: cmdRules, check: (cfg, pos) => cmdCheck(cfg, pos, fail) };
+// `hivemind use [<path>]`: set the default repo for runs outside a repo, or list the recent ones.
+async function cmdUse(cfg, positional) {
+  const arg = positional.join(" ").trim();
+  if (cfg.flags.clear) {
+    setDefault(undefined);
+    return console.log(`${brand()} ${c.gray("· use")}  default cleared; outside a repo Hivemind uses your most recent one`);
+  }
+  if (arg) {
+    const found = findRepoRoot(nativePath(arg));
+    if (!found) fail(`${arg} is not a Hivemind repo (no .hivemind.json or git root there). Run hivemind init in it first.`);
+    const repo = repoIdOf(found);
+    setDefault(found.root);
+    remember({ path: found.root, repo, user: explicitUser(cfg.flags) });
+    return console.log(`${brand()} ${c.gray("· use")}  default is now ${c.repo(`#${repo}`)} ${c.gray(`(${found.root})`)}`);
+  }
+  const st = readState();
+  const recent = liveRecent();
+  console.log(`${brand()} ${c.gray("· use")}  ${recent.length ? "recent repos" : "no repos yet; run hivemind in one, or hivemind use <path>"}`);
+  for (const r of recent) {
+    const isDefault = st.default && st.default.toLowerCase() === r.path.toLowerCase();
+    console.log(`  ${isDefault ? c.lesson("●") : c.faint("○")} ${c.repo(`#${r.repo ?? "repo/?"}`)}  ${c.gray(r.path)}${r.user ? c.gray(` · @${r.user}`) : ""}${isDefault ? c.lesson("  default") : ""}`);
+  }
+  if (recent.length) console.log(c.faint(`  set the default: hivemind use <path> · clear it: hivemind use --clear`));
+}
+const repoIdOf = (found) => {
+  const raw = String(found.saved?.repo || basename(found.root));
+  return raw.includes("/") ? raw : `repo/${raw}`;
+};
+const commands = { use: cmdUse, watch: watchCmd("index.mjs"), statusline: watchCmd("statusline.mjs"), open: (cfg) => cmdOpen(cfg, fail), why: async (cfg, pos) => (await import("./why.mjs")).cmdWhy(cfg, pos, fail), init: cmdInit, sync: cmdSync, status: cmdStatus, teach: cmdTeach, rules: cmdRules, check: (cfg, pos) => cmdCheck(cfg, pos, fail) };
 if (cmd === "--version" || cmd === "-v" || cmd === "version" || (flags.version && cmd !== "watch")) {
   console.log(`hivemind ${VERSION}`);
   process.exit(0);
@@ -468,4 +503,22 @@ if (!commands[cmd] || (flags.help && cmd !== "watch" && cmd !== "statusline")) {
   console.log(help());
   process.exit(commands[cmd] || ["help", "--help", "-h"].includes(cmd) ? 0 : 1);
 }
-commands[cmd](resolveConfig(flags), positional).catch((e) => fail(e?.stack ?? e));
+// status / why from outside a repo use the same fallback as `hivemind` (default → recent → search).
+const FALLBACK = new Set(["status", "why"]);
+let cfg0 = resolveConfig(flags);
+if (FALLBACK.has(cmd) && typeof flags.dir !== "string" && !findRepoRoot(process.cwd())) {
+  const found = await locateRepo();
+  if (!found) fail(`${NOT_IN_REPO}
+  ${USE_HINT}`);
+  if (found.note && !flags.json) console.log(found.note);
+  cfg0 = resolveConfig({ ...flags, dir: found.root });
+}
+// Remember every successful run inside a repo, so `hivemind` from anywhere knows where to go next time.
+const NO_REMEMBER = new Set(["statusline", "use", "watch"]); // watch remembers itself (it never returns while running)
+commands[cmd](cfg0, positional)
+  .then(() => {
+    if (NO_REMEMBER.has(cmd) || cfg0.dryRun) return;
+    const at = findRepoRoot(cfg0.root);
+    if (at) remember({ path: at.root, repo: cfg0.repo, user: explicitUser(flags) });
+  })
+  .catch((e) => fail(e?.stack ?? e));

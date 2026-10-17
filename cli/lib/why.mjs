@@ -104,7 +104,11 @@ export async function cmdWhy(cfg, positional, fail) {
     target = await findAtLine(cfg, file, Number(line));
     if (!target) fail(`no team rule flags ${arg}`);
   } else target = { ref: arg, why: null };
-  if (!target) fail("nothing to explain yet: no recent block or flag for you here. Try `hivemind why <rule words>`.");
+  if (!target) {
+    // Not an error: nothing has been blocked or flagged for you yet.
+    console.log(`${brand()} ${c.gray("· why")}  nothing to explain yet: no recent block or flag for you here. Try ${c.cyan("hivemind why <rule words>")}.`);
+    return;
+  }
 
   const rule = await findByWords(cfg, [target.ref]);
   if (!rule) fail(`no rule matches "${target.ref}"`);
@@ -141,7 +145,7 @@ export async function cmdWhy(cfg, positional, fail) {
 
   // Reach: in today's pack → every agent wired to this repo gets it at session start.
   const inPack = !!pack?.memoryIds?.includes(rule.id);
-  const agents = [...new Set([...(live.feed ?? []), ...(live.items ?? [])].filter((f) => f.agent && (!f.repo || cfg.repo.endsWith(f.repo))).map((f) => AGENT[f.agent] ?? f.agent))];
+  const agents = [...new Set([...(live.feed ?? []), ...(live.items ?? [])].filter((f) => f.agent && f.agent !== "other" && (!f.repo || cfg.repo.endsWith(f.repo))).map((f) => AGENT[f.agent] ?? f.agent))];
   out.push(
     `${c.gray("In context")} ${inPack ? `every agent in ${scopeChip(cfg.repo)} at session start` : c.gray(`not in ${cfg.repo}'s pack (ranked out or out of scope)`)}${inPack && agents.length ? c.gray(` · seen today: ${agents.join(", ")}`) : ""}`,
   );

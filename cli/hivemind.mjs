@@ -21,19 +21,24 @@ if (wantsOpen) {
     else if (!BOOL.has(k) && rest[i + 1] && !rest[i + 1].startsWith("--")) flags[k] = rest[++i];
     else flags[k] = true;
   }
-  const { NOT_IN_REPO, WHO_ARE_YOU, findRepoRoot, nativePath, repoIdFor, resolveUser } = await import("./lib/root.mjs");
+  const { NOT_IN_REPO, WHO_ARE_YOU, explicitUser, repoIdFor, resolveUser } = await import("./lib/root.mjs");
   const fail = (msg) => {
     console.error(`✗ ${msg}`);
     process.exit(1);
   };
   // The pane must watch THIS repo as THIS user: find the repo above cwd (never ~), resolve the user, pass both explicitly.
-  const found = typeof flags.dir === "string" ? findRepoRoot(nativePath(flags.dir)) : findRepoRoot(process.cwd());
-  if (!found) fail(NOT_IN_REPO);
+  // Outside a repo (home folder, `!hivemind` in Claude Code), fall back to the default / recent / found repo.
+  const { USE_HINT, locateRepo } = await import("./lib/locate.mjs");
+  const found = await locateRepo({ dir: typeof flags.dir === "string" ? flags.dir : undefined });
+  if (!found) fail(`${NOT_IN_REPO}
+  ${USE_HINT}`);
+  if (found.note) console.log(found.note);
   const user = resolveUser(flags, found.saved, found.root);
   if (!user) fail(WHO_ARE_YOU);
   const cfg = { root: found.root, flags: { ...flags, user }, repo: repoIdFor(flags, found.saved, found.root), dryRun: !!flags["dry-run"] };
   const { cmdOpen } = await import("./lib/open.mjs");
   await cmdOpen(cfg, fail);
+  if (!cfg.dryRun) (await import("./lib/state.mjs")).remember({ path: found.root, repo: cfg.repo, user: explicitUser(flags) });
 } else {
   await import("./lib/main.mjs");
 }
