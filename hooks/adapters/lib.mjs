@@ -2,13 +2,17 @@
 // Each adapter reads its tool's hook payload from stdin, maps it onto the Claude-Code-shaped Hivemind hook
 // endpoints, and translates the answer back. Node 18+, no dependencies.
 //
-// Env: HIVEMIND_API_URL (default http://localhost:3000), HIVEMIND_TOKEN, HIVEMIND_USER (default sam),
-//      HIVEMIND_REPO (default repo/<basename of workspace>). Missing vars are read from <hivemind>/.env.local.
+// Env: HIVEMIND_API_URL (default: production, https://hivemind-beta-virid.vercel.app; set http://localhost:3000 for a
+//      local server), HIVEMIND_TOKEN, HIVEMIND_USER (default sam), HIVEMIND_REPO (default repo/<basename of workspace>).
+//      A missing HIVEMIND_TOKEN is read from <hivemind>/.env.local (only the token: that file's HIVEMIND_API_URL is the
+//      server's local setting and must not pull hooks off production). Same rules as hooks/session-start.mjs.
 // Never breaks the host session: every failure path prints the tool's no-op output and exits 0.
 import { readFileSync } from "node:fs";
 import { basename, dirname, isAbsolute, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
+const DEFAULT_API = "https://hivemind-beta-virid.vercel.app";
+const FROM_ENV_FILE = new Set(["HIVEMIND_TOKEN"]);
 const TIMEOUT_MS = 8000; // prompt / edit / session-end
 const BRIEFING_TIMEOUT_MS = 12000; // host start hooks are configured with 15s
 export const PACK_CAP = 9500;
@@ -17,7 +21,7 @@ function loadEnvFile(path) {
   try {
     for (const line of readFileSync(path, "utf8").split(/\r?\n/)) {
       const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*?)\s*$/i);
-      if (!m || line.trimStart().startsWith("#")) continue;
+      if (!m || line.trimStart().startsWith("#") || !FROM_ENV_FILE.has(m[1])) continue;
       const val = m[2].replace(/^(['"])(.*)\1$/, "$2");
       if (!process.env[m[1]] && val) process.env[m[1]] = val;
     }
@@ -46,7 +50,7 @@ export function context(agent, { cwd, session }) {
   const root = slash(cwd || process.env.HIVEMIND_PROJECT_DIR || process.cwd());
   return {
     agent,
-    api: (process.env.HIVEMIND_API_URL || "http://localhost:3000").replace(/\/+$/, ""),
+    api: (process.env.HIVEMIND_API_URL || DEFAULT_API).replace(/\/+$/, ""),
     user: process.env.HIVEMIND_USER || "sam",
     repo: process.env.HIVEMIND_REPO || `repo/${basename(root)}`,
     cwd: root,

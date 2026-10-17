@@ -46,8 +46,8 @@ Every request carries `Authorization: Bearer $HIVEMIND_TOKEN`, `x-hm-user`, `x-h
 no-op output (`{}`, `{"continue":true}`, or an "unavailable" briefing) and exits 0, so it never breaks the host session.
 `HIVEMIND_DEBUG=1` prints errors to stderr.
 
-Env (missing vars are read from the hivemind checkout's `.env.local`, same as `hooks/session-start.mjs`):
-`HIVEMIND_API_URL`, `HIVEMIND_TOKEN`, `HIVEMIND_USER` (default `sam`), `HIVEMIND_REPO` (default `repo/<workspace folder>`).
+Env (same rules as `hooks/session-start.mjs`):
+`HIVEMIND_API_URL` (default production `https://hivemind-beta-virid.vercel.app`; set `http://localhost:3000` for a local server), `HIVEMIND_TOKEN`, `HIVEMIND_USER` (default `sam`), `HIVEMIND_REPO` (default `repo/<workspace folder>`). Only `HIVEMIND_TOKEN` is read from `.env.local`.
 
 ## Templates (for `hivemind init`)
 
