@@ -3,8 +3,32 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { isAbsolute, relative, resolve } from "node:path";
-import { brand, handleChip, label } from "./style.mjs";
+import { pathToFileURL } from "node:url";
+import { brand, handleChip, label, useColor } from "./style.mjs";
 import { api, c, plain, post } from "./util.mjs";
+
+// Code-frame headers are clickable: permalink() from agent K's watch/git.mjs (remote blob URL at the current commit),
+// else a file:// URL, wrapped in an OSC 8 hyperlink and labelled `path#Lnn`.
+let git = null;
+try {
+  git = await import("../watch/git.mjs");
+} catch {
+  /* watch/ not installed, or git.mjs not landed yet */
+}
+const linkable = process.env.FORCE_HYPERLINK === "1" || (useColor && !!process.stdout.isTTY && !process.env.NO_HYPERLINKS);
+const osc8 = (url, text) => (linkable ? `\x1b]8;;${url}\x1b\\${text}\x1b]8;;\x1b\\` : text);
+const hyperlink = git?.hyperlink ?? git?.osc8 ?? osc8;
+
+function permalinkFor(abs, root, line) {
+  try {
+    const r = git?.permalink?.(abs, line, { root });
+    const url = typeof r === "string" ? r : r?.url;
+    if (url) return url;
+  } catch {
+    /* not a git repo, no remote, … */
+  }
+  return `${pathToFileURL(abs).href}#L${line}`;
+}
 
 const CODE_EXT = /\.(m?[jt]sx?|cjs|cts|py|go|rb|java|kt|rs|sql|cs|php|swift|scala|sh)$/i;
 const CONTEXT = 2;
@@ -70,7 +94,7 @@ function span(line, rule) {
 }
 
 // ---------- rendering ----------
-function frame(file, lines, v, rule) {
+function frame(file, lines, v, rule, loc) {
   const col = tone(v.locked);
   const first = Math.max(0, v.startLine - CONTEXT);
   const last = Math.min(lines.length - 1, v.endLine + CONTEXT);
@@ -83,7 +107,7 @@ function frame(file, lines, v, rule) {
   const badge = label(v.locked ? "locked" : "lesson"); // "LOCKED RULE" / "TEAM LESSON", same as hivemind watch
   const out = [
     `${badge}  ${c.bold(plain(v.ruleTitle))}`,
-    `${" ".repeat(width)} ${c.gray("╭─[")}${c.cyan(file)}${c.gray(`:${v.startLine + 1}:${sc + 1}]`)}`,
+    `${" ".repeat(width)} ${c.gray("╭─[")}${hyperlink(permalinkFor(loc.abs, loc.root, v.startLine + 1), c.cyan(`${file}#L${v.startLine + 1}`))}${c.gray(`:${sc + 1}]`)}`,
     bar,
   ];
   const why = explanation(v) || (v.locked ? "breaks a locked rule" : "doesn't follow a team lesson");
@@ -221,7 +245,7 @@ export async function cmdCheck(cfg, positional, fail) {
     const { violations, rules } = await checkOne(cfg, file, text).catch((e) => fail(`check failed for ${file}: ${e.message}`));
     const lines = text.split(/\r?\n/);
     for (const v of violations) {
-      console.log(`\n${frame(file, lines, v, rules.get(v.ruleId))}`);
+      console.log(`\n${frame(file, lines, v, rules.get(v.ruleId), { abs: t.abs, root: cfg.root })}`);
       if (v.locked) locked++;
       else lessons++;
     }
