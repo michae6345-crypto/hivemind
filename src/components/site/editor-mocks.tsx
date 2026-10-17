@@ -4,7 +4,7 @@ import { Check, Lightbulb, Lock, MessageSquare, Search, X } from "lucide-react";
 import { motion } from "motion/react";
 import { Logo } from "@/components/hm/bits";
 import { cn } from "@/components/hm/utils";
-import { LESSON, LOCKED_RULE } from "./demo-script";
+import { LESSON, LOCKED_RULE, SCENES } from "./demo-script";
 
 // VS Code, boards 1–4 of the design canvas, drawn as dark windows on the light page.
 // Every string follows public/brand/vscode/wording.md, which Michael's extension (vscode-extension/) reads too.
@@ -37,7 +37,7 @@ function StatusBar() {
     <div className="flex h-6 items-center gap-3 bg-[#2a2a2c] px-3 text-[11px] text-[var(--win-muted)]">
       <span>main</span>
       <span className="ml-auto flex items-center gap-1.5 text-[var(--win-text)]">
-        <Logo onDark className="size-3" /> Hivemind: 13 rules, 1 waiting
+        <Logo onDark className="size-3" /> Hivemind: {SCENES[0].rules} rules, 1 waiting
       </span>
       <span>TypeScript</span>
     </div>

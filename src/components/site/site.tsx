@@ -249,7 +249,7 @@ function StepCards() {
           <Step n={1} title="Alex corrects their agent" />
           <div className="mt-4 rounded-[10px] bg-window p-3.5 text-[12px] leading-[1.6] text-[var(--win-text)]" style={{ fontFamily: "var(--font-geist-mono), monospace" }}>
             <div className="text-[var(--win-muted)]">&gt; {PROMPTS.alexCorrect}</div>
-            <div className="mt-1.5 text-[var(--win-honey)]">📝 Hivemind captured a lesson — pending approval by Jordan Reyes</div>
+            <div className="mt-1.5 text-[var(--win-honey)]">📝 Hivemind captured a lesson — pending approval by @jordan</div>
           </div>
         </Reveal>
         <Reveal className="hm-card p-6" delay={0.08}>
