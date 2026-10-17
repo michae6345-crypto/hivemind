@@ -118,7 +118,7 @@ function feedFromMemories(memories: Memory[]): FeedEvent[] {
 export function HivemindProvider({ children }: { children: ReactNode }) {
   const [mode, setMode] = useState<Mode>("mock");
   const [scopes, setScopes] = useState<Scope[]>(mock.scopes);
-  const [people] = useState<Person[]>(mock.people);
+  const [people, setPeople] = useState<Person[]>(mock.people);
   const [memories, setMemories] = useState<Memory[]>(mock.memories);
   const [feed, setFeed] = useState<FeedEvent[]>(mock.feed);
   const [activity, setActivity] = useState<ActivityItem[]>(mock.activity);
@@ -154,29 +154,36 @@ export function HivemindProvider({ children }: { children: ReactNode }) {
       if (!stop) timer = setTimeout(tick, live ? 2000 : 10_000);
     }
     async function poll(): Promise<boolean> {
+      // Contract shapes (src/contracts): { scopes, people } · { memories } · { items, feed }
       const [s, m] = await Promise.all([
-        getJSON<Scope[]>("/api/scopes", headersRef.current),
-        getJSON<Memory[]>("/api/memories", headersRef.current),
+        getJSON<{ scopes: Scope[]; people: Person[] } | Scope[]>("/api/scopes", headersRef.current),
+        getJSON<{ memories: Memory[] } | Memory[]>("/api/memories", headersRef.current),
       ]);
       if (stop) return false;
-      if (Array.isArray(s) && Array.isArray(m) && m.length > 0) {
-        setMode("live");
-        setScopes(s);
-        setMemories(m);
-        setFeed(feedFromMemories(m));
-        const live = await getJSON<{ items?: ActivityItem[] } | ActivityItem[]>(
-          "/api/activity/live",
-          headersRef.current,
-        );
-        if (live) setActivity(Array.isArray(live) ? live : (live.items ?? []));
-        const met = await getJSON<Metrics>("/api/metrics", headersRef.current);
-        if (met && Array.isArray(met.curve) && met.curve.length > 0) {
-          setMetrics(met);
-          setMetricsLive(true);
-        }
-        return true;
+      const scopeList = Array.isArray(s) ? s : s?.scopes;
+      const memList = Array.isArray(m) ? m : m?.memories;
+      if (!Array.isArray(scopeList) || !Array.isArray(memList) || memList.length === 0) return false;
+
+      setMode("live");
+      setScopes(scopeList);
+      if (s && !Array.isArray(s) && Array.isArray(s.people) && s.people.length) setPeople(s.people);
+      setMemories(memList);
+
+      const live = await getJSON<{ items?: ActivityItem[]; feed?: FeedEvent[] } | ActivityItem[]>(
+        "/api/activity/live",
+        headersRef.current,
+      );
+      if (Array.isArray(live)) setActivity(live);
+      else if (live) setActivity(live.items ?? []);
+      const liveFeed = live && !Array.isArray(live) ? live.feed : undefined;
+      setFeed(Array.isArray(liveFeed) && liveFeed.length ? liveFeed : feedFromMemories(memList));
+
+      const met = await getJSON<Metrics>("/api/metrics", headersRef.current);
+      if (met && Array.isArray(met.curve) && met.curve.length > 0) {
+        setMetrics(met);
+        setMetricsLive(true);
       }
-      return false;
+      return true;
     }
     tick();
     return () => {
