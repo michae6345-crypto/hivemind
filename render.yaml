@@ -1,0 +1,30 @@
+# Render Blueprint for Hivemind (Next.js app + API + MCP + hook routes).
+# Render dashboard → New → Blueprint → pick michae6345-crypto/hivemind → fill the secret env vars → Apply.
+# Paid "starter" plan on purpose: free instances sleep after 15 min idle, and a ~50s cold start
+# would blow Claude Code's 5s hook timeout. Oregon is closest to Supabase us-west-1.
+services:
+  - type: web
+    name: hivemind
+    runtime: node
+    region: oregon
+    plan: starter
+    branch: main
+    autoDeploy: true
+    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm build
+    startCommand: pnpm start
+    healthCheckPath: /api/metrics
+    envVars:
+      - key: NODE_VERSION
+        value: "24"
+      - key: NEXT_TELEMETRY_DISABLED
+        value: "1"
+      - key: NEXT_PUBLIC_SUPABASE_URL
+        sync: false
+      - key: NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: HIVEMIND_TOKEN
+        sync: false
+      - key: HIVEMIND_API_URL
+        sync: false
