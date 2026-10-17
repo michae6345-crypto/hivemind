@@ -11,7 +11,7 @@
 // Newest first. NOW = the last 10 minutes. A row that just arrived starts on the selected wash and steps back to the
 // background over 3 frames, 100 ms apart (spec §6). ↑↓ move the selection (selected row on the wash); enter opens the
 // lesson behind a card. Empty: "No agents working right now." (editor-spec wording).
-import { linkFile } from "../git.mjs";
+import { link, linkFile } from "../git.mjs";
 const NOW_MS = 10 * 60000;
 const EDIT_WINDOW_MS = 30 * 60000; // edits older than this are noise
 const WASH = ["#232A45", "#21263A", "#1F222F"]; // selected wash, then two steps back (pre-blended on #1C1C1E)
@@ -40,9 +40,26 @@ function words(c) {
       return ["corrected", "its agent"];
     case "flag":
       return ["broke", "a team rule"];
+    case "fix":
+      return ["fixed", c.file ?? "a file"];
     default:
       return [c.kind, ""];
   }
+}
+
+/** `src/welcome.ts#L2 → lesson proposed "…"`: the file links to the engine's permalink (else ours), the outcome in honey. */
+function fixObject(th, c, state, room = Infinity) {
+  const label = c.file ? `${c.file}${c.fileLine ? `#L${c.fileLine}` : ""}` : "a file";
+  const file = c.url ? link(c.url, th.t.blueText(label)) : c.file ? linkFile(c.file, c.fileLine ?? undefined, undefined, { root: state.workspace?.root, label }) : th.t.muted(label);
+  const outcome = c.outcome === "blocked" ? th.t.lockedText(c.outcome) : th.t.lessonText(c.outcome ?? "lesson proposed");
+  const head = ` ${file} ${th.t.faint("→")} ${outcome} `;
+  const left = room - th.width(head);
+  if (left < 10) {
+    // Narrow pane: no title, and the short outcome ("proposed", "live", "reinforced") so it isn't cut.
+    const short = ` ${file} ${th.t.faint("→")} ${(c.outcome === "blocked" ? th.t.lockedText : th.t.lessonText)(String(c.outcome ?? "").replace(/^lesson /, ""))}`;
+    return th.width(head) <= room ? head.trimEnd() : short;
+  }
+  return head + th.t.muted(th.clip(`"${th.plain(c.memory?.title ?? "")}"`, left));
 }
 
 const ago = (iso, now) => {
@@ -85,11 +102,23 @@ export default {
       const pad = " ".repeat(Math.max(0, CHIP_CELLS - th.width(chip)));
       const tool = th.t.faint(` ${th.toolName(c.agent) || (c.kind === "approved" || c.kind === "rejected" ? "Hivemind" : "")}`.padEnd(TOOL_CELLS));
       const [verb, obj] = words(c);
+      // A fix has no tool; on a narrow pane its empty tool column goes so the file and outcome fit.
+      const toolCell = c.kind === "fix" && !c.agent && w < 80 ? " " : tool;
       const v = c.kind === "blocked" ? th.t.lockedText(verb) : th.t.text(verb);
       // Edits link to the file on GitHub (OSC 8), at the line watch flagged in it if any.
       const flagged = c.kind === "edit" && c.file ? (state.flags?.[c.file] ?? [])[0] : null;
-      const object = c.kind === "edit" && c.file ? ` ${linkFile(c.file, flagged ? flagged.startLine + 1 : undefined, undefined, { root: state.workspace?.root })}` : obj ? th.t.muted(` ${obj}`) : "";
-      const line = ` ${chip}${pad}${tool}${v}${object}  ${th.t.faint(ago(c.at, now))}`;
+      const object =
+        c.kind === "fix"
+          ? fixObject(th, c, state, w - th.width(` ${chip}${pad}${toolCell}${v}`) - th.width(`  ${ago(c.at, now)}`))
+          : c.kind === "edit" && c.file
+            ? ` ${linkFile(c.file, flagged ? flagged.startLine + 1 : undefined, undefined, { root: state.workspace?.root })}`
+            : obj
+              ? th.t.muted(` ${obj}`)
+              : "";
+      const line =
+        c.kind === "fix" // the age stays on the row, right-aligned, however narrow the pane
+          ? th.spread(` ${chip}${pad}${toolCell}${v}${object}`, ` ${th.t.faint(ago(c.at, now))}`, w)
+          : ` ${chip}${pad}${tool}${v}${object}  ${th.t.faint(ago(c.at, now))}`;
       const age = c.born ? Math.floor((now - c.born) / 100) : Infinity;
       const wash = i === sel ? WASH[0] : age < WASH.length ? WASH[age] : null;
       return washed(th, th.clip(line, w), wash, w);

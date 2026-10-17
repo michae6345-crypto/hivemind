@@ -139,6 +139,29 @@ export function toCards(live, memById, ctx) {
     }
   }
 
+  // Code fixes (POST /api/events type "fix"): the live feed doesn't carry them, but the engine stores each one as
+  // evidence on the lesson it proposed or reinforced, with { file, line, url }. First evidence = the lesson came from
+  // this fix ("lesson proposed"); a later one = the fix reinforced a known rule.
+  for (const m of memById.values()) {
+    (m.evidence ?? []).forEach((e, i) => {
+      if (e.type !== "fix") return;
+      const outcome = m.status === "blocked" ? "blocked" : i === 0 ? (m.status === "active" ? "lesson live" : "lesson proposed") : "reinforced";
+      put({
+        key: `fix:${e.ref ?? `${m.id}:${e.at}`}`,
+        kind: "fix",
+        at: e.at,
+        actor: String(e.actor ?? "").replace(/^agent:/, ""),
+        memory: m,
+        scopeId: m.scopeId,
+        file: e.file ?? null,
+        fileLine: e.line ?? null,
+        url: e.url ?? null,
+        outcome,
+        line: `${handle(e.actor)} fixed ${e.file ?? "a file"}${e.line ? `#L${e.line}` : ""} → ${outcome} "${plain(m.title)}"`,
+      });
+    });
+  }
+
   // Edits and collisions (activity rows are the last 30 min, newest first).
   const items = live.items ?? [];
   for (let i = 0; i < items.length; i++) {

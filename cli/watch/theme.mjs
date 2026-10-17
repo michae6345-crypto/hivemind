@@ -191,6 +191,7 @@ const LABELS = {
   edit: ["EDIT", P.faint],
   correction: ["CORRECTION", P.muted],
   flag: ["FLAG", P.locked],
+  fix: ["FIX", P.lesson],
   fact: ["FACT", P.muted],
 };
 /** Uppercase kind label in its colour: label("locked") → bold rose "LOCKED RULE". */
