@@ -88,5 +88,8 @@ export const handleChip = external?.handleChip ?? ((h) => t.bold(t.handle(h.star
 /** "#repo/export-service" in its layer colour. */
 export const scopeChip = external?.scopeChip ?? ((id) => (id.startsWith("team/") ? t.team : id.startsWith("repo/") ? t.repo : t.text)(`#${id}`));
 
+/** @handles, #scopes and `code` coloured in running text (watch/theme.mjs `rich`), else @handles only. */
+export const rich = external?.rich ?? ((s) => String(s).replace(/@[\w.-]+/g, (h) => t.handle(h)));
+
 /** Whether the shared watch theme was found (shown in --version). */
 export const themeSource = external ? "watch/theme.mjs" : "built-in spec";

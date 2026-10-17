@@ -15,7 +15,7 @@ import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { AGENTS, SKILL_FILE, byId, mcpWired } from "./lib/agents.mjs";
 import { cmdCheck } from "./lib/check.mjs";
-import { handleChip, label, scopeChip } from "./lib/style.mjs";
+import { handleChip, label, rich, scopeChip } from "./lib/style.mjs";
 import { rulesFrontmatter } from "./lib/templates.mjs";
 import { END, START, api, banner, c, callerAgent, mcpCall, mergeJson, onPath, post, read, readEnvFile, rel, sym, table, plain, upsertBlock, write } from "./lib/util.mjs";
 
@@ -105,14 +105,18 @@ const ACTION = {
 };
 
 // ---------- sync ----------
+/** Locked rules in a pack: the API's `locked` count, else counted from the markdown ("LOCKED RULE ·" blocks or old "- 🔒" lines). */
+const lockedCount = (pack) =>
+  typeof pack.locked === "number" ? pack.locked : (pack.markdown?.match(/^(?:LOCKED RULE · |- 🔒)/gm) ?? []).length;
+
 /** Make the Claude-flavoured pack agent-neutral: own header, drop the volatile "Live now" block. */
 function shapePack(markdown, cfg) {
   const i = markdown.indexOf("\n## ");
   const bodyPart = i === -1 ? "" : markdown.slice(i);
-  const withoutLive = bodyPart.replace(/\n## ⚠️ Live now\n[\s\S]*?(?=\n## |\n---\n|$)/, "");
+  const withoutLive = bodyPart.replace(/\n## (?:⚠️ )?Live now\n[\s\S]*?(?=\n## |\n---\n|\nHivemind · |$)/, "");
   return (
     `<!-- Managed by \`hivemind sync\`. Edits inside this block are overwritten; propose changes in Hivemind instead. -->\n` +
-    `# Hivemind — team memory for ${cfg.repo}\n` +
+    `# Hivemind · Team rules for #${cfg.repo}\n` +
     `These are this repo's working rules, synced from Hivemind team memory. They come from teammates' corrections and ` +
     `code reviews, approved by team leads. Follow them, and treat locked rules as company policy that always applies.\n` +
     `Call the Hivemind \`get_team_rules\` MCP tool at the start of every task for the live version; when the user corrects you, call \`propose_memory\`.\n` +
@@ -147,7 +151,7 @@ async function runSync(cfg, agents) {
     const after = upsertBlock(before, block, rulesFrontmatter(HM_ROOT, agent) ?? rules.frontmatter ?? "");
     const action = before === null ? "created" : before === after ? "unchanged" : "updated";
     if (action !== "unchanged") write(p, after, cfg.dryRun);
-    const locked = (block.match(/^- 🔒/gm) ?? []).length;
+    const locked = lockedCount(pack);
     rows.push({ file, agent: agent.label, action, detail: `${pack.memoryIds?.length ?? 0} rules · ${locked} locked` });
   }
   return { rows };
@@ -266,7 +270,7 @@ async function cmdStatus(cfg) {
     const [active, pending] = await Promise.all(
       ["active", "pending"].map((s) => api(cfg, `/api/memories?${chain}&status=${s}`).then((r) => r.data.memories ?? []).catch(() => null)),
     );
-    const locked = (pack.markdown.match(/^- 🔒/gm) ?? []).length;
+    const locked = lockedCount(pack);
     console.log(
       table(
         ["Hivemind", ""],
@@ -370,12 +374,21 @@ async function cmdRules(cfg) {
   }
   if (cfg.flags.json) return process.stdout.write(markdown.trimEnd() + "\n");
   if (!process.stdout.isTTY) return process.stdout.write(plain(markdown).trimEnd() + "\n");
+  // Same look as hivemind watch: kind labels in their colour, titles bold, provenance muted, @handles/#scopes rich.
+  let title = false; // the line after "LOCKED RULE · #org" is that rule's title
   for (const raw of markdown.split("\n")) {
     const line = plain(raw);
-    if (line.startsWith("#")) console.log(c.bold(line));
-    else if (raw.includes("🔒")) console.log(c.rose(line)); // color carries "locked" now that the glyph is gone
-    else if (raw.includes("⚠️")) console.log(c.yellow(line));
-    else console.log(line.replace(/\*\*(.+?)\*\*/g, (_, t) => c.bold(t)));
+    const head = line.match(/^(LOCKED RULE|TEAM RULE|TEAM LESSON)( · .*)?$/);
+    if (head) {
+      console.log(`${label(head[1] === "LOCKED RULE" ? "locked" : "lesson", head[1])}${c.gray(head[2] ?? "")}`);
+      title = true;
+    } else if (title && line.trim()) {
+      console.log(c.bold(line));
+      title = false;
+    } else if (line.startsWith("#")) console.log(c.bold(line));
+    else if (/^(Set by|Learned from|From) /.test(line)) console.log(c.gray(rich(line)));
+    else if (raw.includes("🔒")) console.log(c.rose(line)); // older packs: colour carries "locked" once the glyph is gone
+    else console.log(rich(line.replace(/\*\*(.+?)\*\*/g, (_, t) => c.bold(t))));
   }
 }
 
