@@ -104,13 +104,13 @@ for (const p of scopePlan) {
 console.log("\npeople:");
 for (const p of peoplePlan) console.log(p.reasons.length ? `  keep   ${p.id}  (${p.reasons.join("; ")})` : `  delete ${p.id}`);
 
-if (!APPLY) process.exit(0);
-
-// ---- apply ----
-for (const p of scopePlan.filter((p) => !p.blockers.length)) {
-  if (p.memHere.length) must(`move ${p.sid}`, await sb.from("memories").update({ scope_id: p.target }).eq("scope_id", p.sid));
-  must(`delete ${p.sid}`, await sb.from("scopes").delete().eq("id", p.sid));
+// ---- apply ---- (no process.exit on the dry-run path: it trips a libuv assertion on Windows with fetch handles open)
+if (APPLY) {
+  for (const p of scopePlan.filter((p) => !p.blockers.length)) {
+    if (p.memHere.length) must(`move ${p.sid}`, await sb.from("memories").update({ scope_id: p.target }).eq("scope_id", p.sid));
+    must(`delete ${p.sid}`, await sb.from("scopes").delete().eq("id", p.sid));
+  }
+  const del = peoplePlan.filter((p) => !p.reasons.length).map((p) => p.id);
+  if (del.length) must("delete people", await sb.from("people").delete().in("id", del));
+  console.log(`\n✓ removed ${removedScopes.size} scopes, ${del.length} people`);
 }
-const del = peoplePlan.filter((p) => !p.reasons.length).map((p) => p.id);
-if (del.length) must("delete people", await sb.from("people").delete().in("id", del));
-console.log(`\n✓ removed ${removedScopes.size} scopes, ${del.length} people`);
