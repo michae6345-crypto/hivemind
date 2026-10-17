@@ -39,19 +39,24 @@ Hivemind is shared memory for AI coding agents, with a chain of command.
    `src/export.ts`). Agents can also propose lessons through MCP. Every proposal starts as ⏳ **pending**.
 2. **A human approves it.** The lead who owns that scope (team, repo) approves or rejects it in the Approvals inbox.
    Agents can only propose. They can never approve.
-3. **Every agent gets it.** When any engineer starts a new agent session, a SessionStart hook injects a context pack:
+3. **Every agent gets it.** When any engineer starts a new agent session, a session-start hook injects a context pack:
    locked policies first, then lessons ranked by confidence and scope, the code owners, and who else is editing the
    repo right now. It stays under 6,000 characters (Claude Code caps hook context at 10,000).
 4. **Locked rules can't be overridden.** Security can 🔒 lock an org-wide rule ("Never mix data from different lab
    customers in one export"). Locked rules always come first in the pack and never decay. A proposed lesson that
    contradicts one is blocked.
 5. **It watches agents while they work.** A PostToolUse hook records every file edit. If another engineer's agent
-   touched the same file in the last 10 minutes, the agent is told: "⚠️ @alex's agent edited export.ts 2 min ago —
-   coordinate before changing it." The first time an agent touches a file, it also gets the locked rules that mention
+   touched the same file in the last 10 minutes, whichever tool it ran in, the agent is told: "⚠️ @alex's Cursor agent
+   edited export.ts 2 min ago — coordinate before changing it." The first time an agent touches a file, it also gets the locked rules that mention
    that file.
 6. **Confidence changes with use.** Each lesson keeps a Beta(α, β) score. Evidence from more people and sessions
    without a repeat correction raise it, and corrections against it lower it. The pack ranks lessons by the Wilson
    lower bound, so a lesson seen once by one person ranks below one confirmed by five.
+7. **It works with any agent, in any terminal.** One command, `hivemind init`, connects a repo to the agents the team
+   already uses: Claude Code, Cursor, Gemini CLI, Codex, GitHub Copilot and Windsurf, each through its own hooks and
+   MCP. Clients without hooks (claude.ai, Claude Desktop) call `get_team_rules` and `propose_memory` over MCP. In the
+   editor, the same lessons show inline with the name of the person who taught them, and code that breaks a 🔒 rule
+   is underlined with a one-click fix.
 
 The demo company is **Meridian Data**, a fictional AI training-data company with two lab customers (Lab A, Lab B),
 a Head of Security (Maya), a Data Pipelines lead (Jordan) and two engineers (Alex, Noor).
@@ -92,10 +97,12 @@ per-task table and reproduction commands: `docs/eval.md`.
 - **Data:** Supabase Postgres. Tables for scopes (org → team → repo → personal), people and roles, memories
   (status `pending | active | rejected | invalid | blocked`, `locked`, α/β, evidence JSON), events, activity and a
   pack log.
-- **Agent integration:** Claude Code hooks. SessionStart is a Node script that fetches `/api/context-pack`.
-  PostToolUse posts each edit to `/api/hooks/tool`, which returns collision and rule warnings. An MCP server
-  (`mcp-handler`, Streamable HTTP, inside a Next.js route) exposes `search_memory` and `propose_memory`. Proposals
-  are always pending.
+- **Agent integration:** hooks and MCP, per tool. In Claude Code, SessionStart is a Node script that fetches
+  `/api/context-pack`, and UserPromptSubmit, PostToolUse and SessionEnd are http hooks; PostToolUse returns collision
+  and rule warnings. Cursor, Gemini CLI, Codex, Copilot and Windsurf get adapters that map their own hook events onto
+  the same endpoints, and `hivemind init` writes each tool's config. An MCP server (`mcp-handler`, Streamable HTTP,
+  inside a Next.js route) exposes `get_team_rules`, `search_memory` and `propose_memory`. Proposals are always
+  pending.
 - **Ranking:** Wilson lower bound on each lesson's Beta score × scope specificity, with locked policies first, filled
   greedily to the character budget.
 - **Learning engine:** Claude Haiku 5.5 classifies corrections (generalizable rule vs one-off vs noise), merges
@@ -145,10 +152,9 @@ per-task table and reproduction commands: `docs/eval.md`.
 
 ## What's next
 
-- **Every agent, not just Claude Code:** `hivemind init` to write config for Cursor, Gemini CLI, Copilot, Codex and
-  Claude chat through MCP and hooks, so lessons follow the engineer across vendors. *(See build status.)*
-- **A VS Code overlay:** lessons as inline suggestions labeled with who taught them, and a squiggle with a one-click
-  fix when code breaks a locked rule. *(See build status.)*
+- **Closing the gaps between tools:** Windsurf's hooks can't inject context and VS Code has no session-end event,
+  so Windsurf briefs from a rules file and MCP, and Copilot in VS Code doesn't update confidence yet. Each gap closes when
+  the vendor adds the hook.
 - **Learning from PR review comments,** not only chat corrections (a `gh api` importer).
 - **Measuring retrieval:** run the eval against the live ranked pack instead of the curated one, on more tasks and
   more models.
@@ -161,7 +167,7 @@ per-task table and reproduction commands: `docs/eval.md`.
 
 `next.js` · `typescript` · `react` · `tailwindcss` · `shadcn/ui` · `motion` · `codemirror` · `supabase` ·
 `postgresql` · `anthropic` · `claude-code` · `claude-haiku` · `claude-sonnet` · `model-context-protocol` ·
-`mcp-handler` · `zod` · `node.js` · `vercel` · `pnpm`
+`mcp-handler` · `zod` · `node.js` · `vercel` · `pnpm` · `cursor` · `gemini-cli` · `codex` · `github-copilot` · `windsurf`
 
 ---
 

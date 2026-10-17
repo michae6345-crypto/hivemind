@@ -29,7 +29,7 @@ export function Site() {
         <Nav />
         <Hero />
         <HowItWorks />
-        <InYourEditor />
+        <AnyAgent />
         <LockedRules />
         <Results />
         <Closing />
@@ -62,7 +62,7 @@ function Nav() {
         <nav className="hm-glass hm-glass-strong hidden items-center gap-1 rounded-full p-1 text-[13.5px] md:flex">
           {[
             ["How it works", "#how"],
-            ["In your editor", "#editor"],
+            ["Any agent", "#agents"],
             ["Results", "#results"],
           ].map(([label, href]) => (
             <a
@@ -327,13 +327,15 @@ function HiveStates() {
   );
 }
 
-// ── In your editor ──────────────────────────────────────────────────────────
+// ── Any agent ───────────────────────────────────────────────────────────────
 
-function InYourEditor() {
+function AnyAgent() {
   return (
     <section className="px-4 pt-32">
-      <SectionHead id="editor" one="It shows up where you work." two="Editor, chat and terminal.">
-        The same lessons appear in VS Code, with the name of the person who taught them.
+      <SectionHead id="agents" one="It works with any agent." two="In any terminal or editor.">
+        Claude Code, Cursor, Gemini CLI, Codex, Copilot and Windsurf read the same lessons through their own hooks and
+        MCP. <code className="rounded bg-panel px-1 font-mono text-[14px] text-fg">hivemind init</code> connects a repo to the ones your team
+        uses.
       </SectionHead>
       <div className="relative mx-auto mt-14 grid max-w-[1120px] gap-6 lg:grid-cols-[1.25fr_1fr]">
         <Reveal>
