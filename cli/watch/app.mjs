@@ -286,7 +286,9 @@ export async function cmdWatch(cfg) {
     const v = state.detail ? detail : TABS.find((x) => x.id === state.tab);
     const H = (k, what) => ({ k, s: KEY(k, what) }); // a hint you can also click
     const own = (v?.keys?.(state) ?? []).map(([a, b]) => H(a, b));
-    let hints = state.help
+    let hints = state.palette
+      ? [H("enter", "run"), H("esc", "close")]
+      : state.help
       ? [H("esc", "close help"), H("q", "quit")]
       : state.teach.focus
         ? [H("enter", "send"), H("esc", "cancel")]
@@ -355,7 +357,7 @@ export async function cmdWatch(cfg) {
     const view = state.detail ? detail : TABS.find((v) => v.id === state.tab);
     const bodyStart = body.length;
     try {
-      const rendered = state.help ? helpLines(w) : view.render(state, ctx);
+      const rendered = state.palette ? paletteLines(w, bodyH) : state.help ? helpLines(w) : view.render(state, ctx);
       // The shell already leaves one quiet line under the tabs; a view's own leading blank would make it two.
       if (!body.length && rendered.length && !strip(rendered[0]).trim() && !ROW_MARK_RE.test(rendered[0])) rendered.shift();
       body.push(...rendered);
@@ -379,7 +381,7 @@ export async function cmdWatch(cfg) {
     const boxFrom = top.length + bodyH + toastLines(w, now).length;
     // top = header line(s) · tabs · bar · spacer
     layout = { ...layout, tabsRow: top.length - 3, bodyTop: top.length, marks, boxFrom, boxTo: boxFrom + box.lines.length - 1, footerRow: h - 1 };
-    const caret = box.caret ? { row: h - 2 - 2, col: box.caret.col } : null;
+    const caret = state.palette?.caret ? { row: top.length + state.palette.caret.row, col: state.palette.caret.col } : box.caret ? { row: h - 2 - 2, col: box.caret.col } : null;
     return { lines, caret };
   }
 
@@ -420,6 +422,7 @@ export async function cmdWatch(cfg) {
       k("?", "rules for the file that last changed"),
       k("p", "switch persona (kevin · emily · ben · greg)"),
       k("i", `invert scrolling (now ${state.invertScroll ? "inverted" : "as your OS sets it"})`),
+      k("ctrl+k  :", "command palette: go to any command, rule or person"),
       k("h", "this help"),
       k("q  ctrl+c", "quit"),
       "",
@@ -481,6 +484,10 @@ export async function cmdWatch(cfg) {
     const n = wheel.n;
     wheel.n = 0;
     if (!n || state.teach.focus || state.help) return;
+    if (state.palette) {
+      state.palette.i = Math.max(0, state.palette.i + n);
+      return render();
+    }
     const v = state.detail ? detail : TABS.find((x) => x.id === state.tab);
     const ctx = ctxFor(screen.cols, screen.rows);
     const key = n > 0 ? { name: "down", ch: undefined } : { name: "up", ch: undefined };
@@ -505,6 +512,12 @@ export async function cmdWatch(cfg) {
       state.help = false;
       return render();
     }
+    if (state.palette) {
+      const mark = layout.marks[y - layout.bodyTop];
+      if (mark != null && state.palette.items?.[Number(mark)]) return runPalette(state.palette.items[Number(mark)]);
+      if (y < layout.bodyTop || y >= layout.bodyTop + (state.palette.items?.length ?? 0) + 5) state.palette = null; // outside the card closes it
+      return render();
+    }
     if (y === layout.tabsRow) {
       const tab = layout.tabs.find((tb) => x >= tb.from && x < tb.to);
       if (tab) actions.setTab(tab.id);
@@ -526,6 +539,106 @@ export async function cmdWatch(cfg) {
     lastClick = { row: r, mark, at: now };
     v.select(i, state);
     if (again) safeKey(v, { name: "return", ch: "\r" }, ctxFor(screen.cols, screen.rows)); // second click = enter
+    render();
+  }
+
+  // ---------- command palette (Ctrl+K or :) ----------
+  /** Subsequence match with bonuses for word starts and runs; -1 if `q` isn't in `s` in order. */
+  function fuzzy(q, s) {
+    if (!q) return 0;
+    const hay = s.toLowerCase();
+    let score = 0;
+    let at = -1;
+    let run = 0;
+    for (const ch of q.toLowerCase()) {
+      const next = hay.indexOf(ch, at + 1);
+      if (next < 0) return -1;
+      run = next === at + 1 ? run + 1 : 0;
+      score += 1 + run * 4 + (next === 0 || /[\s@#/·-]/.test(hay[next - 1]) ? 8 : 0) - Math.min(4, (next - at - 1) * 0.2);
+      at = next;
+    }
+    return score - hay.length * 0.02;
+  }
+  function paletteItems() {
+    const ctx = ctxFor(screen.cols, screen.rows);
+    const cmd = (label, key, run) => ({ kind: "command", label, hint: key, run });
+    const items = [
+      cmd("Go to Here", "1", () => actions.setTab("here")),
+      cmd("Go to Rules", "2", () => actions.setTab("rules")),
+      cmd("Go to Queue", "3", () => actions.setTab("queue")),
+      cmd("Go to Feed", "4", () => actions.setTab("feed")),
+      cmd("Teach Hivemind a rule", "t", () => (state.teach = { focus: true, text: "" })),
+      cmd("Why: explain the selected rule", "w", () => onKey("w", { name: "w" })),
+      cmd("Rules for the last changed file", "?", () => onKey("?", { name: "?" })),
+      cmd(state.invertScroll ? "Scroll the OS way again" : "Invert scrolling", "i", () => toggleInvert()),
+      cmd("Keys and mouse", "h", () => (state.help = true)),
+      cmd("Quit", "q", () => quit()),
+    ];
+    for (const m of state.memories ?? [])
+      if (m.status === "pending") items.push({ kind: "lesson", label: plain(m.title), hint: "waiting", run: () => actions.openDetail(m.id) });
+    for (const r of state.rules ?? [])
+      if (r.kind !== "owner") items.push({ kind: r.locked ? "locked" : "rule", label: plain(r.title), hint: r.locked ? "locked rule" : "rule", run: () => actions.openDetail(r.id) });
+    for (const p of state.people ?? [])
+      if (p.id !== state.actor) items.push({ kind: "person", label: `@${p.id}`, sub: p.title, hint: "view as", run: () => switchPersona(state, ctx, p.id) });
+    return items;
+  }
+  function paletteMatches() {
+    const q = state.palette.q.trim();
+    const all = paletteItems();
+    if (!q) return all.filter((x) => x.kind === "command" || x.kind === "lesson");
+    return all
+      .map((x) => ({ x, s: Math.max(fuzzy(q, x.label), x.sub ? fuzzy(q, x.sub) - 9 : -1) }))
+      .filter((m) => m.s >= 0)
+      .sort((a, b) => b.s - a.s)
+      .map((m) => m.x);
+  }
+  function runPalette(item) {
+    state.palette = null;
+    if (item) item.run();
+    render();
+  }
+  /** The palette card: a rounded box, centred, with the query on top and the matches below (selection on the wash). */
+  function paletteLines(w, h) {
+    const pw = Math.min(w - 2, 66);
+    const left = " ".repeat(Math.max(0, Math.floor((w - pw) / 2)));
+    const inner = pw - 4;
+    const p = state.palette;
+    const matches = paletteMatches();
+    const room = Math.max(1, Math.min(9, h - 6));
+    p.i = Math.max(0, Math.min(p.i, matches.length - 1));
+    const first = Math.max(0, Math.min(p.i - room + 1, matches.length - room));
+    const hair = (s) => t.hair(s);
+    const out = [];
+    out.push(left + hair("╭─ ") + fg(P.lesson)(HEX) + " " + t.faint("Go to anything") + " " + hair("─".repeat(Math.max(0, pw - 21)) + "╮"));
+    const q = p.q;
+    const shown = q.length > inner - 2 ? "…" + q.slice(q.length - inner + 3) : q;
+    out.push(left + hair("│ ") + padEnd(`${t.blueText("›")} ${q ? t.text(shown) : t.faint("Commands, rules, people…")}`, inner) + hair(" │"));
+    p.caret = { row: 1, col: left.length + 4 + width(shown) };
+    out.push(left + hair("├" + "─".repeat(pw - 2) + "┤"));
+    if (!matches.length) out.push(left + hair("│ ") + padEnd(t.faint("No matches."), inner) + hair(" │"));
+    matches.slice(first, first + room).forEach((m, k) => {
+      const i = first + k;
+      const sel = i === p.i;
+      const mark = { command: t.blueText("›"), lesson: t.lesson("▎"), rule: t.lesson("▎"), locked: t.locked("▎"), person: t.faint("●") }[m.kind];
+      const label = m.kind === "person" ? `${t.text(m.label)} ${t.faint(m.sub ?? "")}` : sel ? bold(t.text(m.label)) : t.text(m.label);
+      const hint = m.kind === "command" ? (theme.COLOR ? theme.bg(P.pill)(` ${t.blueText(m.hint)} `) : m.hint) : t.faint(m.hint);
+      const row = spread(`${mark} ${label}`, hint, inner);
+      out.push(theme.rowMark(i) + left + hair("│ ") + (sel ? theme.bg(P.sel)(row) : row) + hair(" │"));
+    });
+    const keys = `${t.faint("↑↓ move · enter run · esc close")}`;
+    out.push(left + hair("╰─ ") + keys + " " + hair("─".repeat(Math.max(0, pw - 6 - width(keys))) + "─╯"));
+    p.items = matches;
+    return out;
+  }
+  function onPaletteKey(str, key) {
+    const p = state.palette;
+    if (key.name === "escape" || (key.ctrl && key.name === "k")) state.palette = null;
+    else if (key.name === "return" || key.name === "enter") return runPalette((p.items ?? paletteMatches())[p.i]);
+    else if (key.name === "down" || (key.ctrl && key.name === "n")) p.i += 1;
+    else if (key.name === "up" || (key.ctrl && key.name === "p")) p.i = Math.max(0, p.i - 1);
+    else if (key.name === "backspace") (p.q = p.q.slice(0, -1)), (p.i = 0);
+    else if (key.ctrl && key.name === "u") (p.q = ""), (p.i = 0);
+    else if (str && !key.ctrl && !key.meta && str >= " " && str !== "\x7f") (p.q += str), (p.i = 0);
     render();
   }
 
@@ -587,6 +700,11 @@ export async function cmdWatch(cfg) {
     const key = { ...raw, name: raw.name ?? str, ch: str };
     if (key.ctrl && key.name === "c") return quit();
     if (state.teach.focus) return onTeachKey(str, key);
+    if (state.palette) return onPaletteKey(str, key);
+    if ((key.ctrl && key.name === "k") || str === ":") {
+      state.palette = { q: "", i: 0 };
+      return render();
+    }
     if (state.celebration && !state.celebration.moving?.(Date.now())) {
       state.celebration = null;
       if (key.name === "escape") return render();

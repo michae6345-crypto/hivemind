@@ -194,10 +194,11 @@ export function plain403(e, m, state, ctx) {
 }
 
 // ---------- persona switch (p) ----------
-export function switchPersona(state, ctx) {
+/** p cycles the cast; `to` (the command palette's "View as @ben") jumps straight to anyone in people. */
+export function switchPersona(state, ctx, to) {
   const ids = PERSONAS.filter((id) => state.people.some((p) => p.id === id));
-  if (!ids.length) return;
-  const next = ids[(ids.indexOf(state.actor) + 1) % ids.length];
+  if (!ids.length && !to) return;
+  const next = to && state.people.some((p) => p.id === to) ? to : ids[(ids.indexOf(state.actor) + 1) % ids.length];
   const me = state.people.find((p) => p.id === next) ?? null;
   ctx.cfg.actor = next; // the API client reads cfg.actor for x-hm-user on every call
   if (ctx.cfg.flags) delete ctx.cfg.flags.role;
