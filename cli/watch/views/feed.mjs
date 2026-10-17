@@ -97,7 +97,7 @@ export default {
     if (fresh && !th.REDUCED) ctx.actions?.animate?.(WASH.length * 100 + 50);
 
     const row = (c, i) => {
-      const isAgent = !c.actor || /^agent|^agent:/.test(c.actor);
+      const isAgent = th.isBot(c.actor); // agent sessions and the CLI read "an agent", never "@cli"
       const chip = isAgent ? ` ${th.t.muted("an agent")}` : th.handleChip(c.actor);
       const pad = " ".repeat(Math.max(0, CHIP_CELLS - th.width(chip)));
       const tool = th.t.faint(` ${th.toolName(c.agent) || (c.kind === "approved" || c.kind === "rejected" ? "Hivemind" : "")}`.padEnd(TOOL_CELLS));

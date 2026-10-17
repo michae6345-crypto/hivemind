@@ -101,6 +101,9 @@ export function scopeChip(scopeId) {
   return pill(`${fg(col)(dot)} ${t.text(label)}`);
 }
 
+/** Not a person: agent sessions ("agent:…"), the CLI itself ("cli", "watch-…"). They read "an agent", never "@cli". */
+export const isBot = (a) => !a || /^(agent\b|agent:|cli$|cli-|watch-)/.test(String(a).replace(/^@/, ""));
+
 // A person's dot is their layer: Security = org, a lead = team, an engineer = repo (terminal-spec §4).
 const ROLE = new Map();
 export function setPeople(people = []) {
@@ -114,7 +117,7 @@ const personColor = (id) => {
 /** ` ● @jordan ` on the chip background; { pos: true } puts the possessive inside: ` ● @alex's `. */
 export function handleChip(h, { pos = false } = {}) {
   const id = String(h ?? "").replace(/^@/, "");
-  if (!id || id.startsWith("agent")) return t.muted(pos ? "an agent's" : "an agent");
+  if (isBot(id)) return t.muted(pos ? "an agent's" : "an agent");
   return pill(`${fg(personColor(id))("●")} ${t.text(`@${id}${pos ? "'s" : ""}`)}`);
 }
 const pill = (inner) => (COLOR ? bg(P.pill)(` ${inner} `) : inner);

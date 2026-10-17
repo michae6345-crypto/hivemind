@@ -13,7 +13,9 @@ const isApproval = (e) => e?.type === "manual" && /^Approved by /.test(e.quote ?
 export const origin = (m) => (m?.evidence ?? []).find((e) => !isApproval(e)) ?? null;
 /** Last "Approved by …" evidence: { actor, at }. */
 export const approval = (m) => [...(m?.evidence ?? [])].reverse().find(isApproval) ?? null;
-export const isAgentActor = (a) => !a || String(a).startsWith("agent");
+import { isBot } from "../theme.mjs";
+/** Agent sessions and the CLI ("cli") are never shown as @people. */
+export const isAgentActor = isBot;
 /** The human behind a rule: the corrector / reviewer, else the author ("agent:…" stays an agent). */
 export const ownerHandle = (m) => {
   const o = origin(m);

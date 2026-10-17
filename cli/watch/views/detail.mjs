@@ -172,7 +172,7 @@ export default {
 
     // why: every piece of evidence (with permalinks) and the counts (shared with `hivemind why`)
     const facts = whyFacts(m, { memories: allMemories(state, ctx), fired: state.fired?.[m.id] ?? 0 });
-    out.push(...whyLines(facts, { width: w, root: state.workspace?.root, skipOrigin: true }), "");
+    out.push(...whyLines(facts, { width: w, root: state.workspace?.root, skipOrigin: true, repo: state.repo }), "");
 
     // facts
     const fact = (k, val) => `${t.faint(k.padEnd(13))}${val}`;

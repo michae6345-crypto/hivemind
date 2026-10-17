@@ -1,7 +1,7 @@
 // What `hivemind watch` knows: one small API client, the scope chain, and the live feed turned into cards.
 // Sources: GET /api/activity/live (edits, collisions, sessions, corrections, approvals), GET /api/memories (the queue and
 // lesson titles for this repo's chain), GET /api/vscode/rules (counts, approver), POST /api/vscode/check (flags).
-import { plain, toolName } from "./theme.mjs";
+import { isBot, plain, toolName } from "./theme.mjs";
 import { permalink } from "./git.mjs";
 
 export function client(cfg) {
@@ -67,11 +67,11 @@ export function short(iso, now = Date.now()) {
   if (s < 86400) return `${Math.round(s / 3600)}h`;
   return `${Math.round(s / 86400)}d`;
 }
-export const handle = (actor) => (!actor || String(actor).startsWith("agent") ? "an agent" : `@${actor}`);
+export const handle = (actor) => (isBot(actor) ? "an agent" : `@${actor}`);
 /** "@adrian's Cursor agent" / "@noor's Claude Code" / "an agent". */
 export function whose(actor, agent, { suffix = "" } = {}) {
   const tool = toolName(agent);
-  if (!actor || String(actor).startsWith("agent")) return tool ? `a ${tool} agent` : "an agent";
+  if (isBot(actor)) return tool ? `a ${tool} agent` : "an agent";
   return tool ? `@${actor}'s ${tool}${suffix}` : `@${actor}`;
 }
 export const base = (f) => String(f).split("/").pop();
@@ -151,7 +151,7 @@ export function toCards(live, memById, ctx) {
         key: `fix:${e.ref ?? `${m.id}:${e.at}`}`,
         kind: "fix",
         at: e.at,
-        actor: String(e.actor ?? "").replace(/^agent:/, ""),
+        actor: e.actor ?? "",
         memory: m,
         scopeId: m.scopeId,
         file: e.file ?? null,

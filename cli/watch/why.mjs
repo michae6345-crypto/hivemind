@@ -5,7 +5,7 @@
 //   evidence (who, what, when, the quote, a clickable path#Lnn), then the counts line
 //   ("reinforced 3× · fired 2× this session · blocked 1 lesson").
 import { linkFile, link } from "./git.mjs";
-import { bold, plain, t } from "./theme.mjs";
+import { bold, isBot, plain, t } from "./theme.mjs";
 import { wrap } from "./term.mjs";
 
 /**
@@ -21,7 +21,16 @@ export const blocks = (lesson, rule) => {
 export const blockingRule = (lesson, memories = []) => memories.find((x) => x.locked && blocks(lesson, x)) ?? null;
 
 const isApproval = (e) => e?.type === "manual" && /^Approved by /.test(e.quote ?? "");
-const handle = (a) => (!a || String(a).startsWith("agent") ? "an agent" : `@${String(a).replace(/^@/, "")}`);
+const handle = (a) => (isBot(a) ? "an agent" : `@${String(a).replace(/^@/, "")}`);
+/** Evidence paths can be recorded from any checkout ("coding-projects/…/demo/export-service/src/export.ts"): keep the repo-relative tail. */
+function shortPath(p, repo) {
+  const s = String(p).replace(/\\/g, "/");
+  const name = String(repo ?? "").replace(/^repo\//, "");
+  const at = name ? s.lastIndexOf(`/${name}/`) : -1;
+  if (at >= 0) return s.slice(at + name.length + 2);
+  const parts = s.split("/");
+  return parts.length > 3 ? `…/${parts.slice(-3).join("/")}` : s;
+}
 const day = (iso) => (iso ? new Date(iso).toLocaleString("en-GB", { day: "numeric", month: "short" }) : "");
 
 /**
@@ -41,7 +50,8 @@ export function whyFacts(m, { memories = [], fired = 0 } = {}) {
     origin: evidence[0] ?? null,
     approval: [...all].reverse().find(isApproval) ?? null,
     evidence,
-    reinforced: Math.max(0, evidence.length - 1),
+    // Same number as `hivemind why` and the server's confidence: alpha starts at 1 and each reinforcement adds to it.
+    reinforced: Number.isFinite(m?.alpha) ? Math.max(0, Math.round(m.alpha - 1)) : Math.max(0, evidence.length - 1),
     fixes: evidence.filter((e) => e.type === "fix").length,
     blocked,
     fired,
@@ -57,11 +67,12 @@ const VERB = {
 };
 
 /** One entry: `○ Oct 14  @kevin fixed src/welcome.ts#L2` + the quote (wrapped, muted). */
-function entry(e, i, { width, root }) {
+function entry(e, i, { width, root, repo }) {
+  const label = e.file ? `${shortPath(e.file, repo)}${e.line ? `#L${e.line}` : ""}` : "";
   const where = e.file
     ? e.url
-      ? link(e.url, t.blueText(`${e.file}${e.line ? `#L${e.line}` : ""}`))
-      : linkFile(e.file, e.line ?? undefined, undefined, { root, label: `${e.file}${e.line ? `#L${e.line}` : ""}` })
+      ? link(e.url, t.blueText(label))
+      : linkFile(e.file, e.line ?? undefined, undefined, { root, label })
     : e.url
       ? link(e.url, t.blueText(e.ref ?? "link"))
       : "";
@@ -83,7 +94,7 @@ function entry(e, i, { width, root }) {
  * The evidence section + the counts line, fitted to `width`.
  * skipOrigin: the caller already shows where the rule came from (watch's Detail timeline), so list only what came after.
  */
-export function whyLines(f, { width = 64, root = process.cwd(), skipOrigin = false } = {}) {
+export function whyLines(f, { width = 64, root = process.cwd(), skipOrigin = false, repo } = {}) {
   const out = [];
   const first = skipOrigin ? 1 : 0;
   const list = f.evidence.slice(first);
@@ -92,7 +103,7 @@ export function whyLines(f, { width = 64, root = process.cwd(), skipOrigin = fal
     const shown = list.slice(-6);
     if (list.length > 6) out.push(t.faint(`   … ${list.length - 6} earlier`));
     shown.forEach((e, i) => {
-      out.push(...entry(e, first + list.length - shown.length + i, { width, root }));
+      out.push(...entry(e, first + list.length - shown.length + i, { width, root, repo }));
       if (i < shown.length - 1) out.push(t.hair(" │"));
     });
   }
