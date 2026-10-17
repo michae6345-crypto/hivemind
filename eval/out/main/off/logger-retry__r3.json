@@ -1,0 +1,21 @@
+{
+  "task": "logger-retry",
+  "convention": "use-logger",
+  "heldOut": false,
+  "arm": "off",
+  "run": 3,
+  "ok": true,
+  "completed": true,
+  "touched": [
+    "src/exports/retry.ts"
+  ],
+  "violations": {},
+  "targetViolated": false,
+  "violationCount": 0,
+  "pass": true,
+  "packChars": 0,
+  "costUsd": 0.026044699999999997,
+  "turns": 7,
+  "ms": 42123,
+  "result": "I've added `src/exports/retry.ts`, and I haven't run or tested it.\n\n`retryUpload(fn, attempts = 3)` calls `fn` and returns its result on success. After each failure it waits 100ms, then 200ms, then 400ms, and so on, doubling each time. It makes no wait after the last attempt.\n\nFor on-call visibility it logs through the existing `logger`:\n- **Each failed attempt that will be retried:** a `warn` line with the attempt number, the error message, and the delay before the next try.\n- **The final failure:** an `error` line, after which the last error is rethrown so callers still see it.\n\nIf `attempts` is below 1, it still makes one attempt.\n\nI haven't wired it into `csvExport.ts`, which currently calls `upload` directly. Say if you want that done."
+}

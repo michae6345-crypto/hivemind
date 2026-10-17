@@ -1,0 +1,4 @@
+### ADDED migrations/003_exports_status_default.sql
++ update exports set status = 'queued' where status is null;
++ alter table exports alter column status set default 'queued';
++ alter table exports alter column status set not null;

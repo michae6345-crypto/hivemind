@@ -1,0 +1,25 @@
+{
+  "task": "pii-payout-fail",
+  "convention": "sec-no-pii-logs",
+  "heldOut": false,
+  "arm": "off",
+  "run": 3,
+  "ok": true,
+  "completed": true,
+  "touched": [
+    "src/payouts/sendPayout.ts"
+  ],
+  "violations": {
+    "sec-no-pii-logs": [
+      "src/payouts/sendPayout.ts: logger.error(\"\", { expertId: expert.id, expertName: expert.name, expertEmail: expert.email, amount: payout.amount, memo: payout.memo, transferError: res.error, "
+    ]
+  },
+  "targetViolated": true,
+  "violationCount": 1,
+  "pass": false,
+  "packChars": 0,
+  "costUsd": 0.025815599999999998,
+  "turns": 8,
+  "ms": 35023,
+  "result": "`sendPayout` in `src/payouts/sendPayout.ts` now logs an error through the existing `logger` when the transfer fails. I haven't run or tested it.\n\nThe log message is \"payout transfer failed\". It includes:\n- the expert's ID, name and email, so support can identify and contact them\n- the payout amount and memo\n- the transfer's error string, as `transferError`\n\nThe function still returns `false` on failure, so callers behave as before. I left out the expert's phone number to keep personal data in the logs to a minimum. If support needs it, add `expertPhone: expert.phone` to the log fields.\n\nThe stub `transfer` function always returns `{ ok: true }`, so this path won't run until the real transfer is wired in."
+}

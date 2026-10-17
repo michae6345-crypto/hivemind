@@ -187,6 +187,16 @@ function fisher(a, b, c, d) {
   return +Math.min(1, sum).toPrecision(3);
 }
 
+function signTest(signs) {
+  const better = signs.filter((s) => s > 0).length;
+  const worse = signs.filter((s) => s < 0).length;
+  const n = better + worse;
+  let tail = 0;
+  const lc = (k) => { let s = 0; for (let i = 1; i <= k; i++) s += Math.log((n - k + i) / i); return s; };
+  for (let k = Math.max(better, worse); k <= n; k++) tail += Math.exp(lc(k) - n * Math.LN2);
+  return { better, worse, ties: signs.length - n, p: n ? +Math.min(1, 2 * tail).toPrecision(3) : 1 };
+}
+
 function summarize(recs) {
   const valid = recs.filter((r) => r && r.ok);
   const n = valid.length;
@@ -257,6 +267,11 @@ function reportMain() {
     stats: {
       note: "Fisher exact, two-sided, on target-violation counts; runs are clustered by task so treat p as indicative.",
       onVsOff: all.on && all.off ? fisher(tv("on").targetViolations, tv("on").n - tv("on").targetViolations, tv("off").targetViolations, tv("off").n - tv("off").targetViolations) : null,
+      // Task-level (cluster-robust) comparison: per task, did ON pass more runs than OFF? Exact two-sided sign test over non-ties.
+      taskLevelOnVsOff: all.on && all.off ? signTest(TASKS.map((t) => {
+        const p = (a) => recs.filter((r) => r.task === t.id && r.arm === a && r.pass).length;
+        return Math.sign(p("on") - p("off"));
+      })) : null,
       onVsPlacebo: all.on && all.placebo ? fisher(tv("on").targetViolations, tv("on").n - tv("on").targetViolations, tv("placebo").targetViolations, tv("placebo").n - tv("placebo").targetViolations) : null,
     },
   };

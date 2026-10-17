@@ -1,0 +1,24 @@
+### ADDED src/exports/jsonlExport.ts
++ import type { ExportRow } from "./types";
++ import { loadBatch } from "./rows";
++ import { upload } from "./sink";
++ export function toJsonl(rows: ExportRow[]): string {
++   return rows
++     .map((r) =>
++       JSON.stringify({
++         id: r.id,
++         batch_id: r.batchId,
++         prompt: r.prompt,
++         response: r.response,
++         rating: r.rating,
++       }),
++     )
++     .join("\n");
++ }
++ 
++ export async function exportJsonl(jobId: string, batchId: string): Promise<string> {
++   const rows = await loadBatch(batchId);
++   console.log("exporting", rows.length, "rows for job", jobId);
++   return upload(`${jobId}.jsonl`, toJsonl(rows));
++ }
++ 

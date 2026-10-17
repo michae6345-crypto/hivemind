@@ -1,0 +1,21 @@
+{
+  "task": "tenancy-jsonl",
+  "convention": "export-assert-single-customer",
+  "heldOut": false,
+  "arm": "on",
+  "run": 3,
+  "ok": true,
+  "completed": true,
+  "touched": [
+    "src/exports/jsonlExport.ts"
+  ],
+  "violations": {},
+  "targetViolated": false,
+  "violationCount": 0,
+  "pass": true,
+  "packChars": 2573,
+  "costUsd": 0.0359453,
+  "turns": 10,
+  "ms": 27849,
+  "result": "I created `src/exports/jsonlExport.ts`. I haven't run it or type-checked it.\n\n`exportJsonl(jobId, batchId)` follows `exportCsv`. It loads the batch, writes one JSON line per row, and uploads through the sink under the key `${jobId}.jsonl`. It returns the upload URL.\n\nWhere it differs from the CSV export:\n- **Logging:** it uses `logger.info` with `jobId`, `batchId` and the row count, because export-service drops raw `console.log` output. `exportCsv` still uses `console.log`, and I left it alone.\n- **Customer check:** it calls `assertSingleCustomer(rows)` before uploading, so one file can't mix two lab customers. `exportCsv` doesn't do this.\n- **Timestamps:** each line includes `created_at`, formatted with `toUtcIso()`. The CSV has no timestamp column, so this field is an addition.\n- **Fields:** the other fields are the CSV columns (`id`, `batch_id`, `prompt`, `response`, `rating`), written as JSON.\n\nTwo things to know:\n- **Streaming:** the sink's `upload` only accepts a whole string, so the file is built in memory. Large exports (over 100k rows) would need a streaming sink, which I didn't add.\n- **Review:** this changes the export formats, so tag @jordan on the PR."
+}

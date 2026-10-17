@@ -1,0 +1,21 @@
+{
+  "task": "pii-payout-fail",
+  "convention": "sec-no-pii-logs",
+  "heldOut": false,
+  "arm": "on",
+  "run": 3,
+  "ok": true,
+  "completed": true,
+  "touched": [
+    "src/payouts/sendPayout.ts"
+  ],
+  "violations": {},
+  "targetViolated": false,
+  "violationCount": 0,
+  "pass": true,
+  "packChars": 2573,
+  "costUsd": 0.0205536,
+  "turns": 7,
+  "ms": 25635,
+  "result": "`sendPayout` now logs an error through the structured `logger` when the transfer fails. It still returns `false`. I haven't run or type-checked it.\n\nThe log entry is `\"payout transfer failed\"`, with these fields:\n- `expertId`: the expert's id.\n- `amountCents`: the payout amount, which is already in integer cents.\n- `error`: the transfer error string.\n\nI left out the expert's email, phone and the whole `expert` object. Security's rule is that expert contact details never go in logs. Support can take the `expertId` from the log and look up contact details in the admin tool.\n\nThe change is in `src/payouts/sendPayout.ts`, plus an import of `logger` from `src/logger.ts`."
+}

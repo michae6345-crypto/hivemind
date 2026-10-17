@@ -1,0 +1,21 @@
+{
+  "task": "logger-retry",
+  "convention": "use-logger",
+  "heldOut": false,
+  "arm": "placebo",
+  "run": 3,
+  "ok": true,
+  "completed": true,
+  "touched": [
+    "src/exports/retry.ts"
+  ],
+  "violations": {},
+  "targetViolated": false,
+  "violationCount": 0,
+  "pass": true,
+  "packChars": 1984,
+  "costUsd": 0.0196241,
+  "turns": 5,
+  "ms": 35003,
+  "result": "I added `src/exports/retry.ts` with `retryUpload(fn, attempts = 3)`. I haven't run it or written tests for it.\n\n- **Backoff:** it waits 100ms after the first failure and 200ms after the second, doubling each time. It doesn't wait after the last attempt.\n- **Failed attempts:** each one is logged with `logger.warn` (the existing JSON logger in `src/logger.ts`). The entry has the attempt number, the total attempts and the error message.\n- **Final failure:** once all attempts are used, it logs a `logger.error` entry and rethrows the original error, so callers still see the real failure.\n\nI didn't wire it into `src/exports/sink.ts` or the scheduler, so nothing calls it yet. The log entries don't include a `job_id`. If on-call needs one, you could have the caller pass it in, or log it at the call site."
+}

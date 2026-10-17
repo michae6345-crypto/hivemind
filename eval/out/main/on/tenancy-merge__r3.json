@@ -1,0 +1,21 @@
+{
+  "task": "tenancy-merge",
+  "convention": "export-assert-single-customer",
+  "heldOut": true,
+  "arm": "on",
+  "run": 3,
+  "ok": true,
+  "completed": true,
+  "touched": [
+    "src/exports/mergeExport.ts"
+  ],
+  "violations": {},
+  "targetViolated": false,
+  "violationCount": 0,
+  "pass": true,
+  "packChars": 2573,
+  "costUsd": 0.028156699999999996,
+  "turns": 8,
+  "ms": 32709,
+  "result": "I added `src/exports/mergeExport.ts` with `exportMergedCsv(jobId, batchIds)`. I haven't compiled it or run it.\n\nIt loads every batch with `loadBatch`, joins the rows in the order of `batchIds`, and uploads one CSV through `toCsv` and `upload`.\n\n- **One customer per file:** it calls `assertSingleCustomer(rows)` before uploading. If the batches belong to different lab customers, the export throws instead of mixing their data.\n- **Re-runs:** the object key is `${jobId}.csv`, so running the same job again writes to the same key. Rows are also deduplicated by `id`, so a repeated batch id can't produce duplicate rows.\n- **Logging:** it logs the job id and the row and batch counts with `logger.info`. I didn't use `console.log`, even though `csvExport.ts` does.\n\nIt builds the whole CSV in memory, like `exportCsv`. If merged exports can pass 100k rows, they should be streamed instead, which would mean changing `upload` and `toCsv`. I haven't done that.\n\nThe export-service owner, @jordan, should be tagged on the PR, since this adds a new export path."
+}

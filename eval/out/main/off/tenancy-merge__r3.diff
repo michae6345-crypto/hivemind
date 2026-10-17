@@ -1,0 +1,11 @@
+### ADDED src/exports/mergeExport.ts
++ import { toCsv } from "./csvExport";
++ import { loadBatch } from "./rows";
++ import { upload } from "./sink";
++ export async function exportMergedCsv(jobId: string, batchIds: string[]): Promise<string> {
++   const batches = await Promise.all(batchIds.map((id) => loadBatch(id)));
++   const rows = batches.flat();
++   console.log("exporting", rows.length, "rows from", batchIds.length, "batches for job", jobId);
++   return upload(`${jobId}.csv`, toCsv(rows));
++ }
++ 

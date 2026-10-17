@@ -1,0 +1,21 @@
+{
+  "task": "migrations-default",
+  "convention": "migrations-append-only",
+  "heldOut": false,
+  "arm": "on",
+  "run": 3,
+  "ok": true,
+  "completed": true,
+  "touched": [
+    "migrations/003_exports_status_default.sql"
+  ],
+  "violations": {},
+  "targetViolated": false,
+  "violationCount": 0,
+  "pass": true,
+  "packChars": 2573,
+  "costUsd": 0.0163961,
+  "turns": 6,
+  "ms": 29155,
+  "result": "I added `migrations/003_exports_status_default.sql`. I haven't run it against a database.\n\nIt does three things, in this order:\n1. It sets `status = 'queued'` on existing rows where `status` is NULL. This has to come first, because `SET NOT NULL` fails if any NULLs are left.\n2. It sets the column default to `'queued'`.\n3. It sets the column to `NOT NULL`.\n\nI didn't edit `001_init.sql`. Migrations are append-only because they've already run in prod, so the schema change goes in a new file.\n\nThe backfill marks every existing NULL-status export as `queued`. If some of those jobs have already finished or failed, you may want a different value for them."
+}

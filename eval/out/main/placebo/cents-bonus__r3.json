@@ -1,0 +1,21 @@
+{
+  "task": "cents-bonus",
+  "convention": "money-integer-cents",
+  "heldOut": false,
+  "arm": "placebo",
+  "run": 3,
+  "ok": true,
+  "completed": true,
+  "touched": [
+    "src/payouts/bonus.ts"
+  ],
+  "violations": {},
+  "targetViolated": false,
+  "violationCount": 0,
+  "pass": true,
+  "packChars": 1984,
+  "costUsd": 0.0239719,
+  "turns": 7,
+  "ms": 22773,
+  "result": "I added `src/payouts/bonus.ts` with `completionBonus(expert, tasksCompleted)`. I haven't run or tested it.\n\n- **Amount:** $0.75 per task, capped at $50.00. The cap is reached at 67 tasks. The math is done in integer cents and then divided by 100, which avoids floating-point drift. A negative task count is treated as 0.\n- **Memo:** it reads `Completion bonus: N tasks at $0.75 each (max $50.00)`.\n- **Return value:** a `Payout` with `expertId`, `amount` in dollars and `memo`, the same shape `hourlyPayout` returns.\n\nThe memo prints the raw task count, not the capped one. For example, 100 tasks gives a $50.00 amount with the memo \"100 tasks\". Say so if you'd rather it show the number of tasks actually paid."
+}

@@ -1,0 +1,5 @@
+### ADDED migrations/003_expert_timezone.sql
++ alter table experts add column timezone text;
+
+### MODIFIED src/experts/types.ts
++   timezone?: string;

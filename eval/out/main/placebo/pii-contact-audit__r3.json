@@ -1,0 +1,25 @@
+{
+  "task": "pii-contact-audit",
+  "convention": "sec-no-pii-logs",
+  "heldOut": true,
+  "arm": "placebo",
+  "run": 3,
+  "ok": true,
+  "completed": true,
+  "touched": [
+    "src/experts/updateContact.ts"
+  ],
+  "violations": {
+    "sec-no-pii-logs": [
+      "src/experts/updateContact.ts: logger.info(\"\", { audit: true, expertId: id, fields: Object.keys(after), before, after, at: toUtcIso(Date.now()), })"
+    ]
+  },
+  "targetViolated": true,
+  "violationCount": 1,
+  "pass": false,
+  "packChars": 1984,
+  "costUsd": 0.032525200000000004,
+  "turns": 9,
+  "ms": 35463,
+  "result": "I created `src/experts/updateContact.ts`. I haven't run it or type-checked it, and I didn't add tests.\n\n- **Flow:** it loads the expert with `getExpert` and throws `Expert not found: <id>` if there isn't one. It applies only the `email` and `phone` values that differ from the current ones, then saves with `saveExpert`.\n- **No-op calls:** if nothing actually changes, it returns the expert as is. It doesn't write to the database or the log.\n- **Audit entry:** after a successful save, it logs `expert.contact_updated` through the existing `logger.info`. The entry has `audit: true`, `expertId`, the list of changed fields, the old and new values, and a UTC timestamp. Logging the old values lets you see what an account's contact details were before a takeover.\n\n**Audit log limits:** the repo has no audit table or audit-log module, so the entry goes to the structured stdout log. The entry doesn't say who made the change, because `updateContact` doesn't take an actor. For takeover investigations you'll probably want an `actor` or `requestId` argument, and a durable audit table. I can add either.\n\n**Log contents:** the entry contains the expert's raw email and phone numbers. Check that your log retention and access policy allows that."
+}

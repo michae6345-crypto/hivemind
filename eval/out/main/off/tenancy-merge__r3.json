@@ -1,0 +1,28 @@
+{
+  "task": "tenancy-merge",
+  "convention": "export-assert-single-customer",
+  "heldOut": true,
+  "arm": "off",
+  "run": 3,
+  "ok": true,
+  "completed": true,
+  "touched": [
+    "src/exports/mergeExport.ts"
+  ],
+  "violations": {
+    "use-logger": [
+      "src/exports/mergeExport.ts: console.log("
+    ],
+    "export-assert-single-customer": [
+      "src/exports/mergeExport.ts: uploads rows without assertSingleCustomer()"
+    ]
+  },
+  "targetViolated": true,
+  "violationCount": 2,
+  "pass": false,
+  "packChars": 0,
+  "costUsd": 0.0227856,
+  "turns": 7,
+  "ms": 33746,
+  "result": "I added `src/exports/mergeExport.ts` with `exportMergedCsv(jobId, batchIds)`. I haven't compiled it or run it.\n\nIt loads all the batches in parallel with `loadBatch`. It joins the rows in the order of `batchIds`, then passes them through `toCsv` once. It uploads the result as `${jobId}.csv`, the same key `exportCsv` uses, and returns the upload URL. It also logs the row count, like `exportCsv` does.\n\nEach row keeps its own `batch_id` column, so you can still tell which batch a row came from. An empty `batchIds` array uploads a CSV with only the header row."
+}

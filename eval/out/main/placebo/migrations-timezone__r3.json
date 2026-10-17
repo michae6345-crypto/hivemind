@@ -1,0 +1,22 @@
+{
+  "task": "migrations-timezone",
+  "convention": "migrations-append-only",
+  "heldOut": false,
+  "arm": "placebo",
+  "run": 3,
+  "ok": true,
+  "completed": true,
+  "touched": [
+    "migrations/003_expert_timezone.sql",
+    "src/experts/types.ts"
+  ],
+  "violations": {},
+  "targetViolated": false,
+  "violationCount": 0,
+  "pass": true,
+  "packChars": 1984,
+  "costUsd": 0.0189126,
+  "turns": 8,
+  "ms": 33643,
+  "result": "I added both changes:\n\n- **Migration:** `migrations/003_expert_timezone.sql` runs `alter table experts add column timezone text;`. The column is nullable, so existing rows are unaffected. It holds the IANA name, for example `America/Chicago`.\n- **Type:** `src/experts/types.ts` now has `timezone?: string` on `Expert`.\n\nI haven't run the migration or checked the code that reads and writes experts, so any queries and mappers that build `Expert` objects won't use the new column yet. I also didn't add validation that the value is a real IANA zone name."
+}

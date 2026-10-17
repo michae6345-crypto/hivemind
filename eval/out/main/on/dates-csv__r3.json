@@ -1,0 +1,21 @@
+{
+  "task": "dates-csv",
+  "convention": "dates-to-utc-iso",
+  "heldOut": false,
+  "arm": "on",
+  "run": 3,
+  "ok": true,
+  "completed": true,
+  "touched": [
+    "src/exports/csvExport.ts"
+  ],
+  "violations": {},
+  "targetViolated": false,
+  "violationCount": 0,
+  "pass": true,
+  "packChars": 2573,
+  "costUsd": 0.0223872,
+  "turns": 6,
+  "ms": 28150,
+  "result": "I added a `created_at` column to `toCsv` in `src/exports/csvExport.ts`. It's the last column, and each value is the row's `createdAt` formatted with `toUtcIso()`. I used `toUtcIso()` instead of `toISOString()` because the team convention requires it for any timestamp that leaves the service. I haven't run the tests or the type-check.\n\nI left some other things in this file alone because they were outside your request:\n- `exportCsv` still uses `console.log`, but the convention is `logger` from `src/logger.ts`.\n- `exportCsv` doesn't call `assertSingleCustomer(rows)` before upload, which the convention requires for every export path.\n\nSince this changes the export format, @jordan should be tagged on the PR, as the team convention asks. I can fix the other two issues if you want."
+}

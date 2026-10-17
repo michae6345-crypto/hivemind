@@ -1,0 +1,21 @@
+{
+  "task": "pii-contact-audit",
+  "convention": "sec-no-pii-logs",
+  "heldOut": true,
+  "arm": "on",
+  "run": 3,
+  "ok": true,
+  "completed": true,
+  "touched": [
+    "src/experts/updateContact.ts"
+  ],
+  "violations": {},
+  "targetViolated": false,
+  "violationCount": 0,
+  "pass": true,
+  "packChars": 2573,
+  "costUsd": 0.0271194,
+  "turns": 8,
+  "ms": 31822,
+  "result": "I added `src/experts/updateContact.ts`. I haven't compiled it or run it.\n\n- **Flow:** it loads the expert with `getExpert` and throws if the id doesn't exist. It applies only the fields that were provided and actually differ, then saves with `saveExpert`.\n- **No-op updates:** if nothing changed, it returns without saving or writing an audit entry.\n- **Audit entry:** after the save succeeds, it writes `logger.info(\"expert contact updated\", { audit: true, expertId, changedFields, at })`. The timestamp uses `toUtcIso()`.\n\n**The audit entry has no old or new email or phone values.** The org's security rule bars logging expert PII, so it records only the expert `id` and which fields changed (`email`, `phone`, or both). For an account-takeover report, that still shows when a contact change happened and to which fields. Support can look up the actual contact details in the admin tool.\n\nIf you need the before and after values for investigations, they'd have to go in a access-controlled audit table, not the logs. That's a separate decision, and I can add it if you want."
+}

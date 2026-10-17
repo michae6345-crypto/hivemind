@@ -1,0 +1,21 @@
+{
+  "task": "cents-bonus",
+  "convention": "money-integer-cents",
+  "heldOut": false,
+  "arm": "on",
+  "run": 3,
+  "ok": true,
+  "completed": true,
+  "touched": [
+    "src/payouts/bonus.ts"
+  ],
+  "violations": {},
+  "targetViolated": false,
+  "violationCount": 0,
+  "pass": true,
+  "packChars": 2573,
+  "costUsd": 0.0214257,
+  "turns": 7,
+  "ms": 21721,
+  "result": "I added `src/payouts/bonus.ts` with `completionBonus(expert, tasksCompleted)`. I haven't run or type-checked it.\n\n- **Amount:** it pays 75 cents per task, capped at 5000 cents ($50.00). Amounts are integer cents, like the org's other money code. The cap is reached at about 67 tasks.\n- **Memo:** it reads `Completion bonus for N tasks`.\n- **Return value:** it returns `{ expertId: expert.id, amount, memo }`. The memo and payout use only the expert's `id`, not their email or phone.\n\nI didn't add validation for negative or fractional `tasksCompleted`. A negative count would give a negative payout. If you want, I can add a guard."
+}

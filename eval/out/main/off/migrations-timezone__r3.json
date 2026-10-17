@@ -1,0 +1,22 @@
+{
+  "task": "migrations-timezone",
+  "convention": "migrations-append-only",
+  "heldOut": false,
+  "arm": "off",
+  "run": 3,
+  "ok": true,
+  "completed": true,
+  "touched": [
+    "migrations/003_expert_timezone.sql",
+    "src/experts/types.ts"
+  ],
+  "violations": {},
+  "targetViolated": false,
+  "violationCount": 0,
+  "pass": true,
+  "packChars": 0,
+  "costUsd": 0.0238697,
+  "turns": 9,
+  "ms": 29387,
+  "result": "I added the column and the type field. I haven't run the migration or compiled anything.\n\n- **Migration:** `migrations/003_expert_timezone.sql` runs `alter table experts add column timezone text;`. The column is nullable, so existing rows are fine. I didn't add a check that the value is a valid IANA name. That check would have to happen in app code.\n- **Type:** `src/experts/types.ts` now has `timezone?: string` on `Expert`.\n\nI left `saveExpert` in `src/experts/experts.ts` alone, so it won't write the timezone yet. Its `update` only sets name, email and phone. It doesn't set `country` or `hourly_rate` either.\n\n`getExpert` uses `select *`, which returns snake_case column names like `hourly_rate`, while the type uses camelCase `hourlyRate`. That mismatch was already there. `timezone` is a single word, so it maps correctly.\n\nI can add `timezone` to `saveExpert`'s update if you want."
+}

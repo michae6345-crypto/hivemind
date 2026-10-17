@@ -1,0 +1,26 @@
+{
+  "task": "dates-link-expiry",
+  "convention": "dates-to-utc-iso",
+  "heldOut": true,
+  "arm": "off",
+  "run": 3,
+  "ok": true,
+  "completed": true,
+  "touched": [
+    "src/exports/links.ts"
+  ],
+  "violations": {
+    "dates-to-utc-iso": [
+      "src/exports/links.ts: .toISOString(",
+      "toUtcIso() not used"
+    ]
+  },
+  "targetViolated": true,
+  "violationCount": 1,
+  "pass": false,
+  "packChars": 0,
+  "costUsd": 0.0156358,
+  "turns": 4,
+  "ms": 21751,
+  "result": "I updated `src/exports/links.ts`:\n\n- `DownloadLink` now has `expiresAt: string`.\n- `createDownloadLink` sets `expiresAt` to 7 days after creation, as an ISO timestamp.\n- The URL now includes it as `?token=...&expires=<URL-encoded ISO timestamp>`.\n\nNothing else in the repo uses `DownloadLink` or `createDownloadLink`, so there were no other callers to update.\n\nThis only adds the timestamp to the link. Nothing checks `expires` yet. To make links actually expire, whatever serves the download has to reject requests past that time. Because the timestamp is a plain query parameter, anyone could edit it unless the server also signs it or looks the expiry up by token."
+}

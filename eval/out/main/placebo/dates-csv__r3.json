@@ -1,0 +1,26 @@
+{
+  "task": "dates-csv",
+  "convention": "dates-to-utc-iso",
+  "heldOut": false,
+  "arm": "placebo",
+  "run": 3,
+  "ok": true,
+  "completed": true,
+  "touched": [
+    "src/exports/csvExport.ts"
+  ],
+  "violations": {
+    "dates-to-utc-iso": [
+      "src/exports/csvExport.ts: .toISOString(",
+      "toUtcIso() not used"
+    ]
+  },
+  "targetViolated": true,
+  "violationCount": 1,
+  "pass": false,
+  "packChars": 1984,
+  "costUsd": 0.0196747,
+  "turns": 5,
+  "ms": 25805,
+  "result": "I added `created_at` as the last column of the CSV that `toCsv` produces in `src/exports/csvExport.ts`. Each row's `createdAt` is written as an ISO 8601 string, for example `2026-10-16T12:00:00.000Z`. I didn't run or test it.\n\n- **Same output for the same job:** ISO format doesn't depend on locale or timezone, so re-running a job with the same `job_id` gives the same file.\n- **Export format change:** the CSV format now differs, and the team lessons say to tag @jordan on PRs that change export formats.\n- **Invalid dates:** if a row's `createdAt` isn't a valid `Date`, `toISOString()` throws. I'm assuming `loadBatch` always returns real `Date` values, as `ExportRow` declares.\n- **Not covered:** `exportCsv` still builds the whole CSV as one string. That was already the case, and I left it alone."
+}

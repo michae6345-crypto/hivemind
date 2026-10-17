@@ -1,0 +1,5 @@
+### MODIFIED src/exports/csvExport.ts
++   const header = ["id", "batch_id", "prompt", "response", "rating", "created_at"];
++   const lines = rows.map((r) =>
++     [r.id, r.batchId, r.prompt, r.response, r.rating, r.createdAt.toISOString()].map(csvCell).join(","),
++   );

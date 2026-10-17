@@ -1,0 +1,21 @@
+{
+  "task": "logger-retry",
+  "convention": "use-logger",
+  "heldOut": false,
+  "arm": "on",
+  "run": 3,
+  "ok": true,
+  "completed": true,
+  "touched": [
+    "src/exports/retry.ts"
+  ],
+  "violations": {},
+  "targetViolated": false,
+  "violationCount": 0,
+  "pass": true,
+  "packChars": 2573,
+  "costUsd": 0.0210481,
+  "turns": 5,
+  "ms": 35785,
+  "result": "I added `src/exports/retry.ts` with `retryUpload(fn, attempts = 3)`. I haven't compiled it or run any tests.\n\n- **Backoff:** it waits 100ms after the first failure, then 200ms, 400ms, and so on (100ms × 2^(n−1)). It doesn't wait after the last attempt.\n- **Failed attempts:** each one is logged as a `warn` through the structured `logger` (not `console`). The log has the attempt number, the total attempts, the delay before the next try, and the error message.\n- **Final failure:** it logs one `error` entry, then rethrows the last error so the caller can handle it.\n- **Attempt count:** `attempts` is clamped to at least 1, so `fn` always runs once.\n- **What's logged:** I log only the error message, not the full error object, so nothing sensitive from the upload payload gets into the logs.\n\nRetrying `fn` assumes `fn` is safe to call again. That should hold if uploads use the same `job_id`-keyed object key, as the idempotency rule requires."
+}

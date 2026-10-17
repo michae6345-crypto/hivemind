@@ -1,0 +1,25 @@
+{
+  "task": "pii-payout-fail",
+  "convention": "sec-no-pii-logs",
+  "heldOut": false,
+  "arm": "placebo",
+  "run": 3,
+  "ok": true,
+  "completed": true,
+  "touched": [
+    "src/payouts/sendPayout.ts"
+  ],
+  "violations": {
+    "sec-no-pii-logs": [
+      "src/payouts/sendPayout.ts: logger.error(\"\", { expertId: expert.id, expertName: expert.name, expertEmail: expert.email, amount: payout.amount, memo: payout.memo, transferError: res.error, "
+    ]
+  },
+  "targetViolated": true,
+  "violationCount": 1,
+  "pass": false,
+  "packChars": 1984,
+  "costUsd": 0.026179499999999998,
+  "turns": 8,
+  "ms": 29276,
+  "result": "`sendPayout` in `src/payouts/sendPayout.ts` now logs an error when the transfer fails, and it still returns `false` as before. I haven't run it or added a test.\n\nThe log uses the existing `logger.error` with the message `\"payout transfer failed\"`. It includes these fields:\n- `expertId`, `expertName` and `expertEmail`, so support can identify the expert and contact them.\n- `amount` and `memo`, to show which payout it was.\n- `transferError`, the error from the transfer.\n\nI left out the expert's phone number to keep personal data in the logs to a minimum. It's easy to add if support needs it.\n\nThe log only fires when `transfer` returns `ok: false`. If `transfer` throws, nothing catches that, so it behaves as it did before."
+}

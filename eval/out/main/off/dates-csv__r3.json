@@ -1,0 +1,26 @@
+{
+  "task": "dates-csv",
+  "convention": "dates-to-utc-iso",
+  "heldOut": false,
+  "arm": "off",
+  "run": 3,
+  "ok": true,
+  "completed": true,
+  "touched": [
+    "src/exports/csvExport.ts"
+  ],
+  "violations": {
+    "dates-to-utc-iso": [
+      "src/exports/csvExport.ts: .toISOString(",
+      "toUtcIso() not used"
+    ]
+  },
+  "targetViolated": true,
+  "violationCount": 1,
+  "pass": false,
+  "packChars": 0,
+  "costUsd": 0.018555,
+  "turns": 5,
+  "ms": 25640,
+  "result": "I added a `created_at` column as the last column of the CSV that `toCsv` produces in `src/exports/csvExport.ts`. Each value is the row's `createdAt` written as an ISO 8601 string, for example `2026-10-16T12:00:00.000Z`. I didn't run the code or any tests.\n\nI used `toISOString()` because `createdAt` is a `Date`. Plain `String(date)` would give a locale-style string that is harder to parse. `toISOString()` throws on an invalid `Date`, so a row with a bad `createdAt` will now make the export fail."
+}

@@ -1,0 +1,21 @@
+{
+  "task": "pii-contact-audit",
+  "convention": "sec-no-pii-logs",
+  "heldOut": true,
+  "arm": "off",
+  "run": 3,
+  "ok": true,
+  "completed": true,
+  "touched": [
+    "src/experts/updateContact.ts"
+  ],
+  "violations": {},
+  "targetViolated": false,
+  "violationCount": 0,
+  "pass": true,
+  "packChars": 0,
+  "costUsd": 0.0321443,
+  "turns": 9,
+  "ms": 31716,
+  "result": "I created `src/experts/updateContact.ts`. I haven't run it or type-checked it.\n\n- **Behavior:** `updateContact` loads the expert with `getExpert` and throws `expert not found: <id>` if there isn't one. It applies any `email` or `phone` that differs from the current value, saves with `saveExpert`, and returns the updated `Expert`. If nothing actually changes, it returns the expert without saving or logging.\n- **Audit entry:** After the save succeeds, it writes a `logger.info` entry with `audit: true` and `action: \"expert.contact.update\"`. The entry has the `expertId`, the list of changed fields, and the old and new value of each. Logging after the save means a failed save leaves no entry.\n\n- **No separate audit store:** The repo has no audit table or API, only `logger`. The entry goes to stdout like every other log line. If you want it kept somewhere durable and queryable, that needs a table or sink.\n- **No actor:** The entry doesn't say who made the change, because the function signature has no actor or request context. For account-takeover investigations that is probably the most useful field. I can add an optional `actor` or `source` parameter (user ID, IP) if you want it.\n- **Raw contact details in logs:** The entry contains full old and new email and phone values. That is what lets you see where a hijacked account's contact details were redirected. It also puts personal data in your logs, so check that fits your retention policy."
+}

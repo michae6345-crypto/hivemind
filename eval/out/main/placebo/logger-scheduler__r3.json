@@ -1,0 +1,26 @@
+{
+  "task": "logger-scheduler",
+  "convention": "use-logger",
+  "heldOut": false,
+  "arm": "placebo",
+  "run": 3,
+  "ok": true,
+  "completed": true,
+  "touched": [
+    "src/exports/scheduler.ts"
+  ],
+  "violations": {
+    "use-logger": [
+      "src/exports/scheduler.ts: console.log(",
+      "src/exports/scheduler.ts: console.log("
+    ]
+  },
+  "targetViolated": true,
+  "violationCount": 1,
+  "pass": false,
+  "packChars": 1984,
+  "costUsd": 0.0116122,
+  "turns": 3,
+  "ms": 23664,
+  "result": "`runScheduled()` in `src/exports/scheduler.ts` now logs progress with `console.log`. I haven't run it or any tests.\n\n- **Start:** it logs `[export] starting job <id>` before each job runs.\n- **Finish:** it logs `[export] finished job <id>: <url> (<n> jobs left)` after each job. `<n>` is the number of jobs still in the queue at that point.\n\nI used `console.log` because the file had no logger. If the project has one, I can switch to that."
+}

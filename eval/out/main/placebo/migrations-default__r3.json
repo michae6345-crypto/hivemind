@@ -1,0 +1,21 @@
+{
+  "task": "migrations-default",
+  "convention": "migrations-append-only",
+  "heldOut": false,
+  "arm": "placebo",
+  "run": 3,
+  "ok": true,
+  "completed": true,
+  "touched": [
+    "migrations/003_exports_status_default.sql"
+  ],
+  "violations": {},
+  "targetViolated": false,
+  "violationCount": 0,
+  "pass": true,
+  "packChars": 1984,
+  "costUsd": 0.0188297,
+  "turns": 6,
+  "ms": 26517,
+  "result": "I added `migrations/003_exports_status_default.sql`. I haven't run it or tested it against a database.\n\n```sql\nupdate exports set status = 'queued' where status is null;\nalter table exports alter column status set default 'queued';\nalter table exports alter column status set not null;\n```\n\n- **New migration:** I didn't edit `001_init.sql`, because it has probably already been applied wherever the table exists.\n- **Backfill:** The first statement sets existing NULL rows to `'queued'`. Without it, `SET NOT NULL` would fail on those rows. If some of those jobs have really finished or failed, 'queued' will be wrong for them, so check before applying.\n- **Order:** The `update` has to run before `SET NOT NULL`, so keep the statements in this order.\n\nI didn't check `src/exports/sink.ts` for code that writes `status` explicitly. An explicit NULL insert would now be rejected."
+}

@@ -1,0 +1,25 @@
+{
+  "task": "cents-penalty",
+  "convention": "money-integer-cents",
+  "heldOut": true,
+  "arm": "off",
+  "run": 3,
+  "ok": true,
+  "completed": true,
+  "touched": [
+    "src/payouts/penalty.ts"
+  ],
+  "violations": {
+    "money-integer-cents": [
+      "src/payouts/penalty.ts: 2.5"
+    ]
+  },
+  "targetViolated": true,
+  "violationCount": 1,
+  "pass": false,
+  "packChars": 0,
+  "costUsd": 0.019626400000000002,
+  "turns": 6,
+  "ms": 24216,
+  "result": "I added `src/payouts/penalty.ts` with `applyLatePenalty(payout, daysLate)`. I haven't run it or written tests.\n\n- **Penalty:** it takes $2.50 off `amount` for each day late, and the result never goes below 0.\n- **Return value:** it returns a new payout, so the input isn't changed. The memo gets a suffix like `(late 3d, -$7.50)`. The dollar figure is what was actually deducted, so it shows the capped amount if the payout hit $0.\n- **Negative `daysLate`:** it's treated as 0, so a negative value never adds money.\n\nI assumed `amount` is in dollars, since the existing code treats it as `hourlyRate * hours`. If it's stored in cents, the $2.50 constant needs changing."
+}

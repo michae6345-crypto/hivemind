@@ -1,0 +1,45 @@
+### ADDED src/experts/updateContact.ts
++ import { logger } from "../logger";
++ import { toUtcIso } from "../time";
++ import { getExpert, saveExpert } from "./experts";
++ import type { Expert } from "./types";
++ type ContactChanges = { email?: string; phone?: string };
++ type ContactField = keyof ContactChanges;
++ 
++ export async function updateContact(id: string, changes: ContactChanges): Promise<Expert> {
++   const expert = await getExpert(id);
++   if (!expert) {
++     throw new Error(`Expert not found: ${id}`);
++   }
++ 
++   const before: Partial<Record<ContactField, string>> = {};
++   const after: Partial<Record<ContactField, string>> = {};
++   const updated: Expert = { ...expert };
++ 
++   for (const field of ["email", "phone"] as const) {
++     const value = changes[field];
++     if (value !== undefined && value !== expert[field]) {
++       before[field] = expert[field];
++       after[field] = value;
++       updated[field] = value;
++     }
++   }
++ 
++   if (Object.keys(after).length === 0) {
++     return expert;
++   }
++ 
++   await saveExpert(updated);
++ 
++   logger.info("expert.contact_updated", {
++     audit: true,
++     expertId: id,
++     fields: Object.keys(after),
++     before,
++     after,
++     at: toUtcIso(Date.now()),
++   });
++ 
++   return updated;
++ }
++ 
