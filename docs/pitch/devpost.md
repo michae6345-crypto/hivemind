@@ -55,8 +55,7 @@ Hivemind is shared memory for AI coding agents, with a chain of command.
 7. **It works with any agent, in any terminal.** One command, `hivemind init`, connects a repo to the agents the team
    already uses: Claude Code, Cursor, Gemini CLI, Codex, GitHub Copilot and Windsurf, each through its own hooks and
    MCP. Clients without hooks (claude.ai, Claude Desktop) call `get_team_rules` and `propose_memory` over MCP. In the
-   editor, the same lessons show inline with the name of the person who taught them, and code that breaks a 🔒 rule
-   is underlined with a one-click fix.
+   terminal, `hivemind check --staged` flags code that breaks a 🔒 rule before it's committed.
 
 We built Hivemind for AI training-data teams like AfterQuery's, so the demo company is **Meridian Data**, a fictional
 AI training-data company with two lab customers (Lab A, Lab B),
@@ -195,7 +194,7 @@ the video or on Devpost. ⏳ rows are roadmap until they land. ✅ means the cod
 | Demo reset + rehearsal scripts | ✅ | `scripts/reset-demo.mjs`, `scripts/e2e-demo.mjs` |
 | Approve / reject (role-checked, 🔒 blocks only security can clear), `POST /api/memories` | ✅ | `src/app/api/memories/` |
 | Visible "⬢ Hivemind loaded N team rules" line at session start | ✅ | `hooks/session-start.mjs` |
-| VS Code overlay (agent H) | ✅ `.vsix` packaged | `vscode-extension/dist/hivemind-vscode.vsix` |
+| VS Code overlay (agent H) | dropped from the demo and pitch (Michael, 17 Oct); code stays in the repo | `vscode-extension/` |
 | MCP chat cards for `get_team_rules` / `propose_memory` (MCP Apps) | ✅ | `src/app/api/mcp/` |
 | Vercel deploy (live link): https://hivemind-beta-virid.vercel.app | ✅ auto-deploys from main | `docs/deploy.md` |
 | Decay, invalidation, PR-comment importer | roadmap | |
