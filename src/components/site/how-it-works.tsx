@@ -1,10 +1,11 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { motion, useMotionValue, useMotionValueEvent, useScroll, useSpring, useTransform, type MotionValue } from "motion/react";
 import { cn } from "@/components/hm/utils";
 import screens from "./watch-screens.json";
 import { TermLine, type Seg, type Screen } from "./watch-terminal";
+import { HIVE, LESSON, LOCKED_RULE, PROMPTS } from "./demo-script";
 
 // "How it works", told once: the real split terminal (Claude Code on the left, `hivemind watch` on the right),
 // pinned and played by scroll. The frames are tui-reference.mjs's story() (watch-screens.json), the same strings
@@ -79,11 +80,7 @@ export function HowItWorksPinned() {
     <div ref={ref} className="relative hidden h-[420vh] lg:block">
       <div className="sticky top-0 flex h-svh flex-col overflow-hidden px-4 pt-[92px] pb-8">
         <motion.div style={{ opacity: headOpacity, y: headY, filter: headBlur }} className="absolute inset-x-0 top-[128px] px-4 text-center">
-          <h2 className="hm-display text-[48px]">
-            How it works.
-            <br />
-            <span className="tone-2">One correction, every agent.</span>
-          </h2>
+          <h2 className="hm-display text-[48px]">One correction reaches every agent.</h2>
           <p className="mx-auto mt-4 max-w-[58ch] text-[16px] leading-relaxed text-muted">
             Claude Code on the left, <span className="font-mono text-[15px] text-fg">hivemind watch</span> on the right. Scroll to play it.
           </p>
@@ -149,5 +146,97 @@ function Caption({ n, title, body, active, done, p, b }: { n: number; title: str
         <motion.div style={{ scaleX: fill }} className="h-px origin-left bg-fg/60" />
       </div>
     </li>
+  );
+}
+
+// ── Phones: the same five steps as cards, each with only the lines that matter ──────────────────────────
+
+const PHONE_MONO = { fontFamily: 'ui-monospace, "SF Mono", Menlo, Consolas, var(--font-geist-mono), monospace' } as const;
+
+function Snip({ children }: { children: ReactNode }) {
+  return (
+    <div className="mt-4 rounded-[10px] bg-[#1c1c1e] px-3.5 py-3 text-[12px] leading-[1.55] break-words text-[#e4e4e7]" style={PHONE_MONO}>
+      {children}
+    </div>
+  );
+}
+
+export function HowItWorksSteps() {
+  const steps: { body: string; snip: ReactNode }[] = [
+    {
+      body: STEPS[0].body,
+      snip: (
+        <>
+          <div className="text-[#a1a1aa]">&gt; {PROMPTS.alexCorrect}</div>
+          <div className="mt-1.5 text-[#f5c26b]">{HIVE.lessonCaptured(LESSON, "@ben")}</div>
+        </>
+      ),
+    },
+    {
+      body: STEPS[1].body,
+      snip: (
+        <>
+          <div className="font-bold">{LESSON}</div>
+          <div className="mt-1.5">
+            <span className="font-bold text-[#91a7ff]">a</span> <span className="text-[#71717a]">approve</span>
+            <span className="ml-4 font-bold text-[#91a7ff]">r</span> <span className="text-[#71717a]">reject</span>
+          </div>
+          <div className="mt-1 font-bold text-[#3dd68c]">Approved · in every agent&apos;s next session</div>
+        </>
+      ),
+    },
+    {
+      body: STEPS[2].body,
+      snip: (
+        <>
+          <div>
+            <span className="text-[#f5a524]">⬢</span> <span className="font-bold">Your lesson is live</span>
+          </div>
+          <div className="text-[#71717a]">
+            Team rules <span className="font-bold text-[#f5a524]">11</span>
+          </div>
+        </>
+      ),
+    },
+    {
+      body: STEPS[3].body,
+      snip: (
+        <>
+          <div className="text-[#f5c26b]">{HIVE.sessionLoaded(11)}</div>
+          <div className="mt-1.5 rounded-[4px] bg-[#f5a52426] px-1.5 text-[#f5c26b]">+ assertSingleCustomer(rows);</div>
+          <div className="mt-1 text-[#71717a]">from @kevin&apos;s lesson</div>
+        </>
+      ),
+    },
+    {
+      body: STEPS[4].body,
+      snip: (
+        <>
+          <div className="text-[#a1a1aa]">&gt; {PROMPTS.noorBad}</div>
+          <div className="mt-1.5 text-[#ff9592]">{HIVE.lessonBlocked("", LOCKED_RULE, "@greg")}</div>
+        </>
+      ),
+    },
+  ];
+  return (
+    <ol className="mx-auto flex max-w-[520px] flex-col gap-4">
+      {steps.map((x, i) => (
+        <motion.li
+          key={i}
+          initial={{ opacity: 0, y: 14 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.5 }}
+          transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+          className="hm-card p-5"
+        >
+          <div className="flex items-baseline gap-3">
+            <span className="font-mono text-[12px] text-muted tabular-nums">0{i + 1}</span>
+            <h3 className="font-brand text-[19px] leading-tight font-medium tracking-[-0.02em]">{STEPS[i].title}</h3>
+          </div>
+          <p className="mt-1.5 text-[14.5px] leading-relaxed text-muted">{x.body}</p>
+          <Snip>{x.snip}</Snip>
+        </motion.li>
+      ))}
+    </ol>
   );
 }

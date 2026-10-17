@@ -10,9 +10,8 @@ import { evalDetail } from "@/mocks/data";
 import { cn } from "@/components/hm/utils";
 import { Dither } from "./dither";
 import { HeroHive } from "./hero-hive";
-import { HowItWorksPinned } from "./how-it-works";
+import { HowItWorksPinned, HowItWorksSteps } from "./how-it-works";
 import { UnderTheHood } from "./under-the-hood";
-import { WatchStory } from "./watch-terminal";
 import { LOCKED_RULE, PROMPTS } from "./demo-script";
 import { Note } from "./notes";
 
@@ -66,13 +65,14 @@ function Nav() {
   return (
     <header className="fixed inset-x-0 top-0 z-50 px-4 pt-4">
       <div className="mx-auto flex max-w-[1120px] items-center justify-between gap-3">
-        <a href="#top" aria-label="Hivemind, back to top" className="hm-glass hm-glass-strong flex size-11 items-center justify-center rounded-full">
+        <a href="#top" aria-label="Hivemind, back to top" className="hm-glass hm-glass-strong flex h-11 items-center gap-2 rounded-full pr-4 pl-3">
           <Logo className="size-6" />
+          <Wordmark className="text-[19px]" />
         </a>
         <nav className="hm-glass hm-glass-strong hidden items-center gap-1 rounded-full p-1 text-[13.5px] md:flex">
           {[
             ["How it works", "#how"],
-            ["Under the hood", "#hood"],
+            ["While you work", "#hood"],
             ["Results", "#results"],
           ].map(([label, href]) => (
             <a
@@ -118,24 +118,22 @@ function Reveal({ children, className, delay = 0 }: { children: ReactNode; class
   );
 }
 
-function SectionHead({ id, one, two, children }: { id?: string; one: string; two: string; children?: ReactNode }) {
+/** A section's one headline (the point, in plain words) and an optional line under it. */
+function SectionHead({ id, title, children, width = 1120 }: { id?: string; title: string; children?: ReactNode; width?: number }) {
   return (
     <motion.div
       initial="hidden"
       whileInView="show"
       viewport={{ once: true, amount: 0.5 }}
       variants={{ show: { transition: { staggerChildren: 0.045 } } }}
-      className="mx-auto max-w-[760px] text-center"
+      className="mx-auto"
+      style={{ maxWidth: width }}
     >
-      <h2 id={id} className="hm-display scroll-mt-28 text-[34px] text-balance sm:text-[48px]">
-        <Words text={one} />
-        <br />
-        <span className="tone-2">
-          <Words text={two} />
-        </span>
+      <h2 id={id} className="hm-display max-w-[22ch] scroll-mt-28 text-[30px] text-balance sm:text-[44px]">
+        <Words text={title} />
       </h2>
       {children ? (
-        <motion.p variants={rise} className="mx-auto mt-4 max-w-[58ch] text-[16px] leading-relaxed text-muted">
+        <motion.p variants={rise} className="mt-4 max-w-[60ch] text-[16px] leading-relaxed text-muted sm:text-[17px]">
           {children}
         </motion.p>
       ) : null}
@@ -165,12 +163,12 @@ function HowItWorks() {
     <section id="how" className="pt-24 lg:pt-16">
       <HowItWorksPinned />
       <div className="px-4 pt-8 lg:hidden">
-        <SectionHead one="How it works." two="One correction, every agent.">
-          Claude Code on the left, <code className="font-mono text-[15px] text-fg">hivemind watch</code> on the right.
+        <SectionHead title="One correction reaches every agent.">
+          Five steps, from Kevin&apos;s correction to a bad lesson that gets blocked.
         </SectionHead>
-        <Reveal className="mt-10">
-          <WatchStory />
-        </Reveal>
+        <div className="mt-10">
+          <HowItWorksSteps />
+        </div>
       </div>
     </section>
   );
@@ -196,9 +194,9 @@ const CELLS: [number, number][] = [
 function LockedRules() {
   return (
     <section className="px-4 pt-32">
-      <SectionHead id="locked" one="Bad lessons don't get in." two="Security locks the rules that matter.">
-        Any lesson that contradicts a locked rule is blocked before it reaches a single agent. Nobody below Security
-        can override it.
+      <SectionHead id="locked" title="Bad lessons never reach an agent." width={900}>
+        Security locks the rules that matter. A lesson that contradicts one is blocked, and nobody below Security can
+        change it.
       </SectionHead>
       <Reveal className="mx-auto mt-14 max-w-[900px]">
         <div className="hm-card overflow-hidden">
@@ -261,8 +259,8 @@ function LockedRules() {
 function UnderHood() {
   return (
     <section className="px-4 pt-32">
-      <SectionHead id="hood" one="Under the hood." two="What it does while you work.">
-        Four things that happen without anyone asking.
+      <SectionHead id="hood" title="What it does while you work.">
+        All of it in the terminal, next to whichever agent you use.
       </SectionHead>
       <div className="mt-14">
         <UnderTheHood />
@@ -277,7 +275,7 @@ function Results() {
   const d = evalDetail;
   return (
     <section className="px-4 pt-32">
-      <SectionHead id="results" one="Does it work?" two="Same tasks, with and without it.">
+      <SectionHead id="results" title={`Without it, agents broke the rule in ${d.targetViolations.off} of ${d.n.off} runs. With it, ${d.targetViolations.on}.`} width={760}>
         12 coding tasks, 3 runs each, graded by code: did the agent break the team&apos;s rule?
       </SectionHead>
       <Reveal className="mx-auto mt-12 grid max-w-[760px] gap-4 sm:grid-cols-2">
@@ -301,7 +299,6 @@ function Compare({ label, broke, of, tone }: { label: string; broke: number; of:
     <div className={cn("hm-card p-6 sm:p-7", !bad && "ring-1 ring-ok/30")}>
       <div className="flex items-center justify-between text-[14px]">
         <span className={cn("font-medium", bad ? "text-muted" : "text-fg")}>{label}</span>
-        {!bad && <span className="rounded-full bg-ok/10 px-2 py-0.5 font-mono text-[11px] text-ok">every run passed</span>}
       </div>
       <div className="mt-5 flex items-baseline gap-2">
         <span className="hm-display text-[64px] leading-none tabular-nums" style={{ color: bad ? "var(--danger)" : "var(--ok)" }}>
@@ -352,20 +349,17 @@ function Closing() {
               );
             })}
           </svg>
-          <Note dir="left" className="absolute top-0 left-[118px] w-max" width={170} delay={0.9}>
+          <Note dir="left" className="absolute top-0 left-[118px] hidden w-max sm:flex" width={170} delay={0.9}>
             your team&apos;s first lesson goes here
           </Note>
         </div>
-        <h2 className="hm-display text-[38px] sm:text-[56px]">
-          Ready to teach
-          <br />
-          <span className="tone-2">every agent?</span>
-        </h2>
+        <h2 className="hm-display text-[38px] sm:text-[56px]">Correct it once.</h2>
+        <p className="mt-3 text-[17px] text-muted">Every agent on your team remembers.</p>
         <div className="mt-8 flex flex-wrap justify-center gap-3">
           <PillLink href="/app" primary>
             Open the app <ArrowRight className="size-4" />
           </PillLink>
-          <PillLink href="#how">Watch the demo</PillLink>
+          <PillLink href="#how">See how it works</PillLink>
         </div>
       </Reveal>
     </section>

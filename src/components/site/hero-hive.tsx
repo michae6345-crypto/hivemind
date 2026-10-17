@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Play } from "lucide-react";
 import { AnimatePresence, motion, useInView, useReducedMotion, type Variants } from "motion/react";
 import { Logo } from "@/components/hm/bits";
 import { cn } from "@/components/hm/utils";
+import { Note } from "./notes";
 
 // The hero acts out the product in one loop, so a visitor knows what Hivemind does before reading a word of the
 // page: each hex is a teammate's coding agent, the middle one is the team's memory. The step rail under the hive
@@ -72,7 +73,7 @@ const STEPS: { label: ReactNode; ms: number }[] = [
   { label: <>It becomes a lesson, waiting on <Chip>@ben</Chip></>, ms: 2600 },
   { label: <><Chip>@ben</Chip> approves it</>, ms: 2000 },
   { label: <>Every agent follows it next session</>, ms: 3200 },
-  { label: <>A bad lesson hits <Chip kind="lock">@greg</Chip>&apos;s 🔒 rule</>, ms: 4200 },
+  { label: <>A bad lesson hits <Chip kind="lock">@greg</Chip>&apos;s locked rule</>, ms: 4200 },
 ];
 
 function Chip({ children, kind = "person" }: { children: ReactNode; kind?: "person" | "lock" }) {
@@ -94,24 +95,33 @@ export function HeroHive({ evalOff, evalOn, runs }: { evalOff: number; evalOn: n
         variants={{ show: { transition: { staggerChildren: 0.12, delayChildren: 0.05 } } }}
         className="flex flex-col items-center text-center lg:items-start lg:text-left"
       >
-        <motion.p
-          variants={rise}
-          className="hm-glass inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 font-mono text-[12px] tracking-tight text-fg/80"
-        >
-          <span className="size-1.5 rounded-full bg-honey" aria-hidden />
-          Persistent memory across your team&apos;s AI agents
-        </motion.p>
-        <h1 className="hm-display mt-6 text-[46px] sm:text-[64px] lg:text-[50px] lg:whitespace-nowrap xl:text-[62px]">
+        <h1 className="hm-display text-[38px] sm:text-[64px] lg:text-[50px] lg:whitespace-nowrap xl:text-[62px]">
           <motion.span variants={rise} className="block">
             Correct one agent.
           </motion.span>
           <motion.span variants={rise} className="tone-2 block">
-            Every agent learns.
+            Every agent{" "}
+            <span className="relative inline-block">
+              learns.
+              {/* A pencil underline in honey that draws itself in, the same hand as the site's notes. */}
+              <svg viewBox="0 0 200 18" preserveAspectRatio="none" className="absolute -bottom-[0.14em] left-0 h-[0.28em] w-full overflow-visible" aria-hidden>
+                <motion.path
+                  d="M3 11 C 40 4, 80 15, 118 8 S 175 5, 197 9"
+                  fill="none"
+                  stroke="var(--honey)"
+                  strokeWidth={5}
+                  strokeLinecap="round"
+                  initial={{ pathLength: 0, opacity: 0 }}
+                  animate={{ pathLength: 1, opacity: 1 }}
+                  transition={{ delay: 1.1, duration: 0.8, ease: [0.65, 0, 0.35, 1] }}
+                />
+              </svg>
+            </span>
           </motion.span>
         </h1>
-        <motion.p variants={rise} className="mt-6 max-w-[48ch] text-[16px] leading-relaxed text-muted sm:text-[17px]">
-          Tell your coding agent it got something wrong, and Hivemind saves the fix as a lesson. Once your lead approves
-          it, every agent on the team follows it from its next session: Claude Code, Cursor, Codex, Copilot and Gemini CLI.
+        <motion.p variants={rise} className="mt-6 max-w-[44ch] text-[17px] leading-relaxed text-muted sm:text-[18px]">
+          <span className="text-fg">Hivemind is persistent memory across your team&apos;s AI agents.</span> Tell one agent
+          it got something wrong; once your lead approves the lesson, every agent follows it.
         </motion.p>
         <motion.div variants={rise} className="mt-8 flex flex-wrap justify-center gap-3 lg:justify-start">
           <a href="#how" className="hm-pill hm-pill-primary h-11 px-5 text-[14px]">
@@ -121,22 +131,11 @@ export function HeroHive({ evalOff, evalOn, runs }: { evalOff: number; evalOn: n
             Open the app
           </Link>
         </motion.div>
-        <motion.a
-          variants={rise}
-          href="#results"
-          className="group mt-8 flex flex-wrap items-baseline justify-center gap-x-3 gap-y-1 font-mono text-[12.5px] text-muted lg:justify-start"
-        >
-          <span className="whitespace-nowrap">
-            <span className="text-fg tabular-nums">{evalOff}</span>/{runs} runs broke a team rule without it
-          </span>
-          <span aria-hidden className="text-line">
-            ·
-          </span>
-          <span className="whitespace-nowrap">
-            <span className="text-ok tabular-nums">{evalOn}</span>/{runs} with it
-          </span>
-          <span aria-hidden className="transition-transform duration-200 group-hover:translate-x-0.5">
-            →
+        <motion.a variants={rise} href="#results" className="group mt-7 max-w-[44ch] text-[14px] leading-relaxed text-muted">
+          In our eval, agents broke the team&apos;s rule in <span className="font-medium text-lock tabular-nums">{evalOff} of {runs}</span> runs
+          without Hivemind, and in <span className="font-medium text-ok tabular-nums">{evalOn}</span> with it.{" "}
+          <span className="whitespace-nowrap text-fg underline decoration-line underline-offset-4 transition-colors group-hover:decoration-fg">
+            See the results
           </span>
         </motion.a>
       </motion.div>
@@ -145,8 +144,12 @@ export function HeroHive({ evalOff, evalOn, runs }: { evalOff: number; evalOn: n
         initial={{ opacity: 0, y: 24, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 1.2, ease: EASE, delay: 0.25 }}
+        className="relative hidden sm:block"
       >
         <Hive />
+        <Note dir="up-right" className="absolute bottom-[19%] -left-2 hidden xl:flex" width={150} delay={1.6}>
+          each hexagon is a teammate&apos;s agent
+        </Note>
       </motion.div>
     </div>
   );
@@ -511,22 +514,13 @@ function Bubble({ x, y, w, text, tail, tone }: { x: number; y: number; w: number
 
 function Rail({ step, run, playing, onPick }: { step: number; run: number; playing: boolean; onPick: (i: number) => void }) {
   return (
-    <ol className="mt-4 grid grid-cols-5 gap-1.5 sm:gap-2">
-      {STEPS.map((st, i) => {
-        const on = i === step;
-        return (
-          <li key={i}>
-            <button
-              type="button"
-              onClick={() => onPick(i)}
-              aria-current={on ? "step" : undefined}
-              className={cn(
-                "group flex h-full w-full flex-col gap-1.5 rounded-xl p-2 text-left transition-colors duration-200 sm:p-2.5",
-                on ? "hm-card" : "hover:bg-white/70",
-              )}
-            >
+    <div className="mx-auto mt-2 max-w-[440px]">
+      <ol className="flex gap-1.5">
+        {STEPS.map((st, i) => (
+          <li key={i} className="flex-1">
+            <button type="button" onClick={() => onPick(i)} aria-label={`Step ${i + 1}`} aria-current={i === step ? "step" : undefined} className="block w-full py-2">
               <span className="relative block h-[3px] w-full overflow-hidden rounded-full bg-line">
-                {on ? (
+                {i === step ? (
                   <motion.span
                     key={`${i}-${run}`}
                     className="absolute inset-y-0 left-0 rounded-full bg-honey"
@@ -538,22 +532,24 @@ function Rail({ step, run, playing, onPick }: { step: number; run: number; playi
                   <span className="absolute inset-0 rounded-full bg-honey/40" />
                 ) : null}
               </span>
-              <span className="font-mono text-[10.5px] text-muted tabular-nums">{String(i + 1).padStart(2, "0")}</span>
-              <span
-                className={cn(
-                  "hidden text-[12.5px] leading-snug sm:block",
-                  on ? "text-fg" : "text-muted group-hover:text-fg",
-                )}
-              >
-                {st.label}
-              </span>
             </button>
           </li>
-        );
-      })}
-      <li className="col-span-5 px-1 text-[13px] leading-snug text-fg sm:hidden" aria-live="polite">
-        {STEPS.map((st, i) => (i === step ? <Fragment key={i}>{st.label}</Fragment> : null))}
-      </li>
-    </ol>
+        ))}
+      </ol>
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.p
+          key={step}
+          initial={{ opacity: 0, y: 4, filter: "blur(3px)" }}
+          animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+          exit={{ opacity: 0, filter: "blur(3px)" }}
+          transition={{ duration: 0.3 }}
+          className="mt-1 text-center text-[15px] leading-snug text-fg"
+          aria-live="polite"
+        >
+          <span className="mr-2 font-mono text-[12px] text-muted tabular-nums">{String(step + 1).padStart(2, "0")}</span>
+          {STEPS[step].label}
+        </motion.p>
+      </AnimatePresence>
+    </div>
   );
 }
