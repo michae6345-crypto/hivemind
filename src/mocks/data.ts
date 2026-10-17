@@ -5,6 +5,7 @@
 
 import type {
   ActivityItem,
+  EvalDetail,
   FeedEvent,
   Memory,
   Metrics,
@@ -501,10 +502,20 @@ export const metrics: Metrics = {
     { lesson: "money-integer-cents", from: "jordan", to: "noor", at: daysAgo(2) },
     { lesson: "use-pnpm", from: "noor", to: "alex", at: daysAgo(1) },
   ],
+  // The real replay eval (eval/results.json, 17 Oct 2026), so Results reads right before /api/metrics answers.
   eval: {
     tasks: 12,
     runs: 3,
-    off: { violationsPerTask: 0.83, passRate: 0.25 },
-    on: { violationsPerTask: 0.17, passRate: 0.83 },
+    off: { violationsPerTask: 0.778, passRate: 0.389 },
+    on: { violationsPerTask: 0, passRate: 1 },
   },
+};
+
+/** Snapshot of the eval detail in eval/results.json (claude-sonnet-5-5, 12 tasks x 3 runs per arm). */
+export const evalDetail: EvalDetail = {
+  model: "claude-sonnet-5-5",
+  n: { off: 36, on: 36, placebo: 36 },
+  targetViolations: { off: 22, on: 0, placebo: 21 },
+  heldOut: { off: { n: 12, targetViolations: 9 }, on: { n: 12, targetViolations: 0 }, placebo: { n: 12, targetViolations: 9 } },
+  heldOutTasks: ["tenancy-merge", "cents-penalty", "pii-contact-audit", "dates-link-expiry"],
 };

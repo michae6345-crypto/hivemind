@@ -93,75 +93,77 @@ body {
 }
 .hm-display .tone-2 { color: var(--muted); }
 
-/* Token chips: a white pill, a hairline, a 6px coloured dot and mono text (● #repo/export-service).
-   Shared by the editor (CodeMirror marks) and React chips. */
-.hm-chip {
-  --dot: var(--muted);
-  display: inline;
-  border-radius: 999px;
-  border: 1px solid var(--border);
-  background: var(--panel);
-  padding: 0 7px;
-  font-family: var(--font-geist-mono), ui-monospace, monospace;
-  font-size: 0.86em;
-  font-weight: 500;
-  line-height: 1.55;
-  color: var(--text);
-  cursor: pointer;
-  white-space: nowrap;
-  vertical-align: baseline;
-  transition: border-color 160ms var(--ease-hover), background-color 160ms var(--ease-hover);
-}
-.hm-chip::before {
-  content: "";
-  display: inline-block;
-  vertical-align: 0.08em;
-  margin-right: 5px;
-  width: 6px;
-  height: 6px;
-  border-radius: 999px;
-  background: var(--dot);
-}
-.hm-chip[data-kind="team"] { --dot: var(--chip-team); }
-.hm-chip[data-kind="repo"] { --dot: var(--chip-repo); }
-.hm-chip[data-kind="org"] { --dot: var(--chip-org); }
-.hm-chip[data-kind="person"] { --dot: var(--chip-person); }
-.hm-chip[data-kind="link"] { --dot: var(--honey); }
-.hm-chip[data-kind="lock"] { --dot: var(--chip-lock); color: var(--chip-lock); }
-.hm-chip[data-kind="lock"]:has(svg)::before { display: none; }
-.hm-chip:hover { border-color: color-mix(in srgb, var(--text) 22%, var(--border)); }
+/* Component classes sit in a layer so Tailwind utilities on the same element still win. */
+@layer components {
+  /* Token chips: a white pill, a hairline, a 6px coloured dot and mono text (● #repo/export-service).
+     Shared by the editor (CodeMirror marks) and React chips. */
+  .hm-chip {
+    --dot: var(--muted);
+    display: inline;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--panel);
+    padding: 0 7px;
+    font-family: var(--font-geist-mono), ui-monospace, monospace;
+    font-size: 0.86em;
+    font-weight: 500;
+    line-height: 1.55;
+    color: var(--text);
+    cursor: pointer;
+    white-space: nowrap;
+    vertical-align: baseline;
+    transition: border-color 160ms var(--ease-hover), background-color 160ms var(--ease-hover);
+  }
+  .hm-chip::before {
+    content: "";
+    display: inline-block;
+    vertical-align: 0.08em;
+    margin-right: 5px;
+    width: 6px;
+    height: 6px;
+    border-radius: 999px;
+    background: var(--dot);
+  }
+  .hm-chip[data-kind="team"] { --dot: var(--chip-team); }
+  .hm-chip[data-kind="repo"] { --dot: var(--chip-repo); }
+  .hm-chip[data-kind="org"] { --dot: var(--chip-org); }
+  .hm-chip[data-kind="person"] { --dot: var(--chip-person); }
+  .hm-chip[data-kind="link"] { --dot: var(--honey); }
+  .hm-chip[data-kind="lock"] { --dot: var(--chip-lock); color: var(--chip-lock); }
+  .hm-chip:hover { border-color: color-mix(in srgb, var(--text) 22%, var(--border)); }
 
-/* Glass: frosted secondary pills and floating bars. */
-.hm-glass {
-  background: rgba(255, 255, 255, 0.72);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  box-shadow: 0 0 0 1px rgba(14, 15, 18, 0.06), 0 4px 14px rgba(15, 23, 42, 0.06);
-}
+  /* Glass: frosted secondary pills and floating bars. */
+  .hm-glass {
+    background: rgba(255, 255, 255, 0.72);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: 0 0 0 1px rgba(14, 15, 18, 0.06), 0 4px 14px rgba(15, 23, 42, 0.06);
+  }
 
-/* Cards: white, 16px radius, hairline ring, soft shadow. */
-.hm-card {
-  background: var(--panel);
-  border-radius: 16px;
-  box-shadow: 0 0 0 1px var(--border), var(--shadow-card);
-}
+  /* Cards: white, 16px radius, hairline ring, soft shadow. */
+  .hm-card {
+    background: var(--panel);
+    border-radius: 16px;
+    box-shadow: 0 0 0 1px var(--border), var(--shadow-card);
+  }
 
-/* Pills: black = primary, glass = secondary. */
-.hm-pill {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  border-radius: 999px;
-  font-weight: 500;
-  white-space: nowrap;
-  transition: background-color 180ms var(--ease-hover), box-shadow 180ms var(--ease-hover), color 180ms var(--ease-hover),
-    opacity 180ms var(--ease-hover);
+  /* Pills: black = primary, glass = secondary. */
+  .hm-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    border-radius: 999px;
+    font-weight: 500;
+    white-space: nowrap;
+    transition: background-color 180ms var(--ease-hover), box-shadow 180ms var(--ease-hover), color 180ms var(--ease-hover),
+      opacity 180ms var(--ease-hover);
+  }
+  .hm-pill-primary { background: var(--text); color: #fff; }
+  .hm-pill-primary:hover { background: #2a2c31; }
+  .hm-pill-glass { color: var(--text); }
+  .hm-pill-glass:hover { background: rgba(255, 255, 255, 0.92); }
 }
-.hm-pill-primary { background: var(--text); color: #fff; }
-.hm-pill-primary:hover { background: #2a2c31; }
-.hm-pill-glass { color: var(--text); }
-.hm-pill-glass:hover { background: rgba(255, 255, 255, 0.92); }
 
 /* Motion: only when state changes (approve, new activity, a new cell in the hive). */
 @keyframes hm-flash {

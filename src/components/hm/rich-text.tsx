@@ -3,9 +3,10 @@
 import { Fragment, useMemo } from "react";
 import { Lock } from "lucide-react";
 import { useHivemind } from "./store";
+import { useGo } from "./nav";
 import { tokenize, type Token } from "./utils";
 
-/** Renders body text with live #scope @person [[slug]] 🔒 chips; click opens in the inspector. */
+/** Renders body text with #scope @person [[slug]] 🔒 chips; a [[lesson]] chip opens that lesson. */
 export function RichText({
   text,
   className,
@@ -16,16 +17,16 @@ export function RichText({
   /** Render chips as spans (use inside buttons/links). */
   inert?: boolean;
 }) {
-  const { people, memoryBySlug, openMemory, select } = useHivemind();
+  const { people, memoryBySlug, openMemory } = useHivemind();
+  const go = useGo();
   const personIds = useMemo(() => new Set(people.map((p) => p.id)), [people]);
   const tokens = useMemo(() => tokenize(text, personIds), [text, personIds]);
 
   const onClick = (t: Token) => {
-    if (t.kind === "link") {
-      const m = memoryBySlug(t.id);
-      if (m) openMemory(m.id);
-    } else if (t.kind === "person") select({ kind: "person", id: t.id });
-    else if (t.kind !== "lock") select({ kind: "scope", id: t.id });
+    const m = memoryBySlug(t.id);
+    if (!m) return;
+    openMemory(m.id);
+    go("/");
   };
 
   const parts: React.ReactNode[] = [];
@@ -34,13 +35,11 @@ export function RichText({
     if (t.from > last) parts.push(<Fragment key={`t${i}`}>{renderInline(text.slice(last, t.from))}</Fragment>);
     if (t.kind === "lock") {
       parts.push(
-        <span key={`c${i}`} className="hm-chip inline-flex items-center gap-0.5 align-[-1px]" data-kind="lock">
-          <Lock className="size-3" />
-        </span>,
+        <Lock key={`c${i}`} aria-label="Locked" className="inline size-3.5 align-[-2px] text-lock" />,
       );
     } else {
       const label = t.kind === "link" ? (memoryBySlug(t.id)?.title ?? t.id) : t.text;
-      if (inert) {
+      if (inert || t.kind !== "link") {
         parts.push(
           <span key={`c${i}`} className="hm-chip" data-kind={t.kind} data-id={t.id}>
             {label}

@@ -1,7 +1,7 @@
-import { Learning } from "@/components/hm/learning";
+import { Results } from "@/components/hm/results";
 
 export const instant = false;
 
-export default function LearningPage() {
-  return <Learning />;
+export default function ResultsPage() {
+  return <Results />;
 }

@@ -196,10 +196,10 @@ export function Hive({ className }: { className?: string }) {
       </svg>
       <div className="pointer-events-none absolute inset-x-0 bottom-0 min-h-10 text-center">
         {hover ? (
-          <div className="inline-block max-w-full rounded-md border border-line bg-elevated px-2.5 py-1.5 text-left text-[12px] shadow-none">
+          <div className="hm-card inline-block max-w-full rounded-[10px] px-3 py-2 text-left text-[12px]">
             <div className="truncate font-medium text-fg">{hover.title}</div>
             <div className="text-muted">
-              {scopeLabel(hover.scopeId)}, {hover.locked ? "locked" : hover.status === "active" ? `${Math.round(confidence(hover) * 100)}% confidence` : hover.status}
+              {scopeLabel(hover.scopeId)}, {hover.locked ? "locked rule" : hover.status === "active" ? "approved" : hover.status === "pending" ? "waiting for approval" : hover.status}
             </div>
           </div>
         ) : null}

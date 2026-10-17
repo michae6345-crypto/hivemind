@@ -11,17 +11,12 @@ import {
   type ReactNode,
 } from "react";
 import * as mock from "@/mocks";
-import type { ActivityItem, FeedEvent, Memory, Metrics, Person, Role, Scope } from "@/mocks/types";
+import type { ActivityItem, EvalDetail, FeedEvent, Memory, Metrics, Person, Role, Scope } from "@/mocks/types";
 import { approverFor, canApprove, scopeLabel } from "./utils";
-
-export type Selection =
-  | { kind: "memory"; id: string }
-  | { kind: "person"; id: string }
-  | { kind: "scope"; id: string };
 
 export const ROLE_USERS: { role: Role; userId: string; label: string }[] = [
   { role: "security", userId: "maya", label: "Security" },
-  { role: "lead", userId: "jordan", label: "Data Pipelines Lead" },
+  { role: "lead", userId: "jordan", label: "Lead" },
   { role: "engineer", userId: "alex", label: "Engineer" },
 ];
 
@@ -47,17 +42,16 @@ interface HivemindState {
   feed: FeedEvent[];
   activity: ActivityItem[];
   metrics: Metrics;
+  /** The replay eval's detail (placebo arm, held-out tasks), from GET /api/metrics; a snapshot until it answers. */
+  evalDetail: EvalDetail;
   metricsLive: boolean;
   user: Person | undefined;
   role: Role;
   setRole: (role: Role) => void;
   headers: Record<string, string>;
-  selection: Selection | null;
-  select: (s: Selection | null) => void;
-  openTabs: string[];
-  activeTab: string | null;
+  /** The lesson shown on the Lessons screen. */
+  openId: string | null;
   openMemory: (id: string) => void;
-  closeTab: (id: string) => void;
   approve: (id: string) => Promise<ActionResult>;
   reject: (id: string) => Promise<ActionResult>;
   restore: (m: Memory) => void;
@@ -163,10 +157,9 @@ export function HivemindProvider({ children }: { children: ReactNode }) {
   const [liveFeed, setLiveFeed] = useState<FeedEvent[] | null>(null);
   const [activity, setActivity] = useState<ActivityItem[]>(mock.activity);
   const [metrics, setMetrics] = useState<Metrics>(mock.metrics);
+  const [evalDetail, setEvalDetail] = useState<EvalDetail>(mock.evalDetail);
   const [role, setRole] = useState<Role>("lead");
-  const [selection, setSelection] = useState<Selection | null>(null);
-  const [openTabs, setOpenTabs] = useState<string[]>(["mem-export-assert-single-customer", "mem-sec-lab-isolation"]);
-  const [activeTab, setActiveTab] = useState<string | null>("mem-export-assert-single-customer");
+  const [openId, setOpenId] = useState<string | null>(null);
   const [recentlyChanged, setRecentlyChanged] = useState<Set<string>>(new Set());
   const [composerOpen, setComposerOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
@@ -224,10 +217,12 @@ export function HivemindProvider({ children }: { children: ReactNode }) {
     });
 
     loop("metrics", async () => {
-      const r = await getJSON<Metrics>("/api/metrics", headersRef.current);
-      if (stop || !r || !Array.isArray(r.curve) || r.curve.length === 0) return false;
-      setMetrics(r);
-      return true;
+      // The eval answers even without the database (curve empty), and it is what Results leads with.
+      const r = await getJSON<Metrics & { evalDetail?: EvalDetail }>("/api/metrics", headersRef.current);
+      if (stop || !r || (!r.eval && !(Array.isArray(r.curve) && r.curve.length))) return false;
+      setMetrics((m) => ({ ...m, ...r, curve: r.curve?.length ? r.curve : m.curve }));
+      if (r.evalDetail?.targetViolations) setEvalDetail(r.evalDetail);
+      return !!r.eval;
     });
 
     return () => {
@@ -253,22 +248,7 @@ export function HivemindProvider({ children }: { children: ReactNode }) {
     }, 2400);
   }, []);
 
-  const select = useCallback((s: Selection | null) => setSelection(s), []);
-
-  const openMemory = useCallback((id: string) => {
-    setOpenTabs((tabs) => (tabs.includes(id) ? tabs : [...tabs, id]));
-    setActiveTab(id);
-    setSelection({ kind: "memory", id });
-  }, []);
-
-  const closeTab = useCallback(
-    (id: string) => {
-      const next = openTabs.filter((t) => t !== id);
-      setOpenTabs(next);
-      if (activeTab === id) setActiveTab(next.at(-1) ?? null);
-    },
-    [openTabs, activeTab],
-  );
+  const openMemory = useCallback((id: string) => setOpenId(id), []);
 
   const replaceLocal = useCallback((m: Memory) => {
     setMemories((ms) => ms.map((x) => (x.id === m.id ? m : x)));
@@ -391,17 +371,14 @@ export function HivemindProvider({ children }: { children: ReactNode }) {
     feed,
     activity,
     metrics,
+    evalDetail,
     metricsLive: live.metrics,
     user,
     role,
     setRole,
     headers,
-    selection,
-    select,
-    openTabs,
-    activeTab,
+    openId,
     openMemory,
-    closeTab,
     approve,
     reject,
     restore,

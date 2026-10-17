@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { BookOpen, FileText, Inbox, LineChart, Lock, PenLine, Search, User, UserCog, Users } from "lucide-react";
+import { BookOpen, FileText, Inbox, LineChart, Lock, PenLine, Search, UserCog } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { ROLE_USERS, useHivemind } from "./store";
 import { useGo, type Route } from "./nav";
@@ -16,9 +16,9 @@ interface Item {
   run: () => void;
 }
 
-/** ⌘K: jump to any lesson, person or scope, or run an action. */
+/** ⌘K (hidden): jump to any lesson, or run an action. */
 export function Palette() {
-  const { paletteOpen, setPaletteOpen, memories, people, scopes, openMemory, select, setRole, setComposerOpen } = useHivemind();
+  const { paletteOpen, setPaletteOpen, memories, people, openMemory, setRole, setComposerOpen } = useHivemind();
   const navigate = useGo();
   const [q, setQ] = useState("");
   const [cursor, setCursor] = useState(0);
@@ -37,13 +37,13 @@ export function Palette() {
     };
     const all: Item[] = [
       { id: "a-rule", group: "Actions", label: "Write a rule", icon: PenLine, run: () => { setComposerOpen(true); close(); } },
-      { id: "a-vault", group: "Actions", label: "Open the vault", icon: BookOpen, run: go("/") },
-      { id: "a-review", group: "Actions", label: "Open the review queue", icon: Inbox, run: go("/approvals") },
-      { id: "a-learning", group: "Actions", label: "See how agents are learning", icon: LineChart, run: go("/learning") },
+      { id: "a-vault", group: "Actions", label: "Open Lessons", icon: BookOpen, run: go("/") },
+      { id: "a-review", group: "Actions", label: "Open Approvals", icon: Inbox, run: go("/approvals") },
+      { id: "a-learning", group: "Actions", label: "Open Results", icon: LineChart, run: go("/learning") },
       ...ROLE_USERS.map((r) => ({
         id: `role-${r.role}`,
         group: "Actions",
-        label: `View as ${r.label}`,
+        label: `View as ${people.find((p) => p.id === r.userId)?.name.split(" ")[0] ?? r.userId} (${r.label})`,
         icon: UserCog,
         run: () => {
           setRole(r.role);
@@ -64,39 +64,13 @@ export function Palette() {
             close();
           },
         })),
-      ...people.map((p) => ({
-        id: `p-${p.id}`,
-        group: "People",
-        label: p.name,
-        detail: p.title,
-        icon: User,
-        run: () => {
-          select({ kind: "person", id: p.id });
-          navigate("/");
-          close();
-        },
-      })),
-      ...scopes
-        .filter((s) => s.level !== "personal")
-        .map((s) => ({
-          id: `s-${s.id}`,
-          group: "Teams and repos",
-          label: s.level === "org" ? s.name : `#${s.id}`,
-          detail: s.level,
-          icon: Users,
-          run: () => {
-            select({ kind: "scope", id: s.id });
-            navigate("/");
-            close();
-          },
-        })),
     ];
     const needle = q.trim().toLowerCase();
     if (!needle) return all.filter((i) => i.group === "Actions" || i.group === "Lessons").slice(0, 14);
     return all.filter((i) => `${i.label} ${i.detail ?? ""}`.toLowerCase().includes(needle)).slice(0, 30);
     // close/navigate are stable enough for a palette list
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [q, memories, people, scopes]);
+  }, [q, memories, people]);
 
   useEffect(() => {
     listRef.current?.querySelector<HTMLElement>(`[data-index="${cursor}"]`)?.scrollIntoView({ block: "nearest" });
@@ -178,11 +152,11 @@ export function Palette() {
                           {my === cursor ? (
                             <motion.span
                               layoutId="hm-palette-cursor"
-                              className="absolute inset-0 bg-accent/12"
+                              className="absolute inset-0 bg-elevated"
                               transition={{ type: "spring", stiffness: 700, damping: 48 }}
                             />
                           ) : null}
-                          <Icon className={cn("relative size-4 shrink-0", my === cursor ? "text-accent" : "text-muted")} />
+                          <Icon className={cn("relative size-4 shrink-0", my === cursor ? "text-fg" : "text-muted")} />
                           <span className="relative truncate">{i.label}</span>
                           {i.detail ? <span className="relative ml-auto shrink-0 truncate text-[12px] text-muted">{i.detail}</span> : null}
                         </button>

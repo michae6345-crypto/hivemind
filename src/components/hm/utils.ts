@@ -124,10 +124,3 @@ export const STATUS_META: Record<
   rejected: { label: "Rejected", className: "text-muted bg-fg/5" },
   invalid: { label: "Invalidated", className: "text-muted bg-fg/5 line-through" },
 };
-
-export const SOURCE_LABEL: Record<Memory["source"], string> = {
-  human: "Written by a person",
-  correction: "Learned from a correction",
-  review: "Learned from a PR review",
-  agent: "Proposed by an agent",
-};
