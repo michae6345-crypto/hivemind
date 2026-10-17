@@ -84,7 +84,8 @@ export type Violation = {
 };
 
 /** POST /api/vscode/check { repo, file, text } */
-export type CheckRequest = { repo: string; file: string; text: string };
+/** fast: deterministic detectors only, no Haiku pass (hivemind watch / statusline / check without --deep drop LLM hits anyway). */
+export type CheckRequest = { repo: string; file: string; text: string; fast?: boolean };
 /** pending: the deterministic pass answered within the latency budget and the LLM pass is still running — ask again in ~2s (it lands in the cache). */
 export type CheckResponse = { violations: Violation[]; cached: boolean; ms: number; pending?: boolean };
 

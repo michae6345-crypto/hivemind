@@ -200,7 +200,8 @@ export function makeApi(cfg, getState) {
     /** The same pack the SessionStart banner counts ("Loaded 11 team rules"): { rules, locked, memoryIds, … }. */
     pack: () => c.get(`/api/context-pack?${new URLSearchParams({ repo, user: getState().actor ?? cfg.actor, log: "0" })}`),
     rules: (file = "") => c.get(`/api/vscode/rules?${new URLSearchParams({ repo, file, user: cfg.actor })}`),
-    check: (file, text) => c.post("/api/vscode/check", { repo, file, text }, { timeout: 30000 }),
+    // fast: detectors only (watch shows no LLM hits), so the server answers in ~100ms instead of waiting ~1s for Haiku.
+    check: (file, text) => c.post("/api/vscode/check", { repo, file, text, fast: true }, { timeout: 30000 }),
     approve: (id) => c.post(`/api/memories/${encodeURIComponent(id)}/approve`, {}, { role: role() }),
     reject: (id) => c.post(`/api/memories/${encodeURIComponent(id)}/reject`, {}, { role: role() }),
     /**

@@ -132,12 +132,16 @@ export async function POST(req: Request) {
   try {
     const ctx = await loadRules(String(body.repo ?? ""), a.user, file);
     const rules = ctx.all.filter((r) => r.kind !== "owner");
+    const fast = body.fast === true;
     const key = sha256(ctx.repo, file, body.text, ctx.sig);
     const hit = cache.get(key);
     if (hit) return json({ ...hit, cached: true, ms: Date.now() - t0 } satisfies CheckResponse);
 
     const lines = body.text.split("\n").map((s) => s.replace(/\r$/, ""));
     const regex = detect(lines, rules);
+    // fast (watch, statusline, `check` without --deep): those callers drop LLM hits, so don't wait up to BUDGET_MS for one.
+    // Not cached, so a later full check still runs the LLM pass.
+    if (fast && rules.length && llmEnabled()) return json({ violations: merge(regex, [], rules), cached: false, ms: Date.now() - t0 } satisfies CheckResponse);
     if (!rules.length || !llmEnabled()) {
       const res: CheckResponse = { violations: merge(regex, [], rules), cached: false, ms: Date.now() - t0 };
       cache.set(key, res);

@@ -189,7 +189,7 @@ function stagedFiles(root) {
  * --deep also waits for the Haiku pass (the API answers pending:true first, then serves the full result from its cache).
  */
 async function checkOne(cfg, file, text) {
-  const ask = () => post(cfg, "/api/vscode/check", { repo: cfg.repo, file, text }, { timeout: 30000 });
+  const ask = () => post(cfg, "/api/vscode/check", { repo: cfg.repo, file, text, fast: !cfg.flags.deep }, { timeout: 30000 });
   const [first, rules] = await Promise.all([
     ask(),
     api(cfg, `/api/vscode/rules?${new URLSearchParams({ repo: cfg.repo, file })}`).then((r) => r.data.rules ?? []).catch(() => []),

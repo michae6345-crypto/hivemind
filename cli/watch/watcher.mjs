@@ -1,5 +1,5 @@
 // File watching → POST /api/vscode/check → state.flags (owner: J). startWatcher({ root, cfg, state, api, actions, hooks }) → stop().
-// Catches you typing/saving and agents (Claude Code, Cursor, Codex…) writing files: recursive fs.watch, ~500ms debounce
+// Catches you typing/saving and agents (Claude Code, Cursor, Codex…) writing files: recursive fs.watch, ~250ms debounce
 // per file, unchanged text skipped. The server's own deterministic detectors run locally first (vendor/detectors.mjs,
 // a few ms), then the server's answer (~1-2s) confirms with the same slug/line/columns. No LLM guesses on screen.
 // A NEW locked-rule hit jumps to Here and raises one notice (in-app toast + --notify OS toast), at most one a minute:
@@ -14,7 +14,7 @@ import { detect } from "./vendor/detectors.mjs";
 const CODE = /\.(m?[jt]sx?|cjs|cts|py|go|rb|java|kt|rs|sql|cs|php|swift|scala|sh)$/i;
 // Tool/agent state dirs too (.paseo worktrees, .claude, caches): a watch started too high must never flag those.
 const SKIP = /(^|[\\/])(node_modules|\.git|\.next|dist|build|out|coverage|\.vscode-test|\.paseo|\.claude|\.cache|\.turbo|\.vercel)([\\/]|$)/;
-const DEBOUNCE_MS = 500;
+const DEBOUNCE_MS = 250; // write → flag on screen in ~300ms (QA2); a save that lands in chunks is re-checked, the text guard dedupes
 const NOTICE_GAP_MS = 60 * 1000;
 const AGENT_WINDOW_MS = 3 * 60 * 1000;
 
