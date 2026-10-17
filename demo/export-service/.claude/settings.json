@@ -89,5 +89,10 @@
       "mcp__hivemind__search_memory",
       "mcp__hivemind__propose_memory"
     ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "node \"${CLAUDE_PROJECT_DIR:-.}/../../cli/hivemind.mjs\" statusline",
+    "refreshInterval": 5
   }
 }
