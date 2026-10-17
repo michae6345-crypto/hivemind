@@ -83,7 +83,7 @@ export async function GET() {
         feed.push({
           ...base,
           type: "session_start",
-          text: `started a session: ${p.lessons ?? n} lessons and ${p.locked ?? 0} 🔒 rules loaded (${tok >= 1000 ? (tok / 1000).toFixed(1) + "k" : tok} tokens)`,
+          text: `started a session: ${p.lessons ?? n} lessons and ${p.locked ?? 0} locked rules loaded (${tok >= 1000 ? (tok / 1000).toFixed(1) + "k" : tok} tokens)`,
         });
       } else if (e.type === "correction") {
         feed.push({ ...base, type: "correction", memoryId, text: `corrected an agent: “${clip(p.text ?? p.prompt)}”` });
@@ -102,7 +102,7 @@ export async function GET() {
       const changed = new Date(m.updatedAt).getTime() - new Date(m.createdAt).getTime() > 1000;
       const base = { id: `mem-${m.id}-${m.status}`, actor: m.author, at: m.updatedAt, memoryId: m.id };
       if (m.status === "blocked") {
-        feed.push({ ...base, type: "blocked", text: `proposed [[${m.slug}]] — 🚫 blocked by a 🔒 rule${m.blockedReason ? `: ${clip(m.blockedReason, 80)}` : ""}` });
+        feed.push({ ...base, type: "blocked", text: `proposed [[${m.slug}]], blocked by a locked rule${m.blockedReason ? `: ${clip(m.blockedReason, 80)}` : ""}` });
       } else if (m.status === "rejected") {
         feed.push({ ...base, type: "rejection", text: `had [[${m.slug}]] rejected` });
       } else if (m.status === "active" && changed && m.source !== "human") {

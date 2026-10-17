@@ -30,7 +30,7 @@ export async function POST(req: Request) {
     const heads = warnings.filter((w) => w.startsWith(COLLISION_PREFIX));
     return NextResponse.json({
       ...(heads.length ? { systemMessage: heads.join("\n") } : {}),
-      hookSpecificOutput: { hookEventName: "PostToolUse", additionalContext: `Hivemind:\n${warnings.join("\n")}` },
+      hookSpecificOutput: { hookEventName: "PostToolUse", additionalContext: warnings.join("\n") },
     });
   } catch {
     return NextResponse.json({}); // never disrupt the agent

@@ -68,7 +68,7 @@ export const CARD_HTML = `<!doctype html>
   }
   function proposalCard(d) {
     if (d.status === "blocked") {
-      return '<div class="prop blocked"><div class="t">' + HEX + " Blocked: conflicts with a 🔒 locked rule</div>" +
+      return '<div class="prop blocked"><div class="t">' + HEX + " Blocked: conflicts with a locked rule</div>" +
         '<p class="q">“' + esc(d.title) + "”</p>" + (d.reason ? '<p class="w">' + esc(d.reason) + "</p>" : "") + "</div>";
     }
     return '<div class="prop"><div class="t">' + HEX + " Teach Hivemind: lesson proposed for #" + esc(d.scopeId) + "</div>" +

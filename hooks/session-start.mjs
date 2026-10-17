@@ -73,4 +73,4 @@ async function main() {
   emit(pack.markdown.slice(0, 9500), banner); // Claude Code caps additionalContext at 10,000 chars
 }
 
-main().catch((e) => emit(`(Hivemind team memory unavailable: ${e?.message ?? e}. Proceed using the repo's own docs.)`));
+main().catch((e) => emit(`Hivemind · Team memory unavailable (${e?.message ?? e}). Proceed using the repo's own docs.`));

@@ -2,7 +2,7 @@ import "server-only";
 import { db } from "@/lib/db";
 import { scopeChain, toMemory } from "@/lib/map";
 import type { AgentKind, Memory } from "@/contracts";
-import { minutesAgo, normRepo, whoseAgent } from "@/lib/engine/pack";
+import { HM, headsUp, normRepo, noEmoji } from "@/lib/engine/pack";
 
 // Shared by POST /api/activity and POST /api/hooks/tool: record an edit, return collision + rule-hit warnings.
 export const COLLISION_WINDOW_MIN = 10;
@@ -31,8 +31,7 @@ export async function recordActivity(input: { sessionId: string; actor: string; 
   for (const a of prior ?? []) {
     if (a.session_id === input.sessionId || seen.has(a.actor) || seen.size >= 3) continue;
     seen.add(a.actor);
-    const who = a.actor === input.actor ? "another of your agent sessions" : whoseAgent(a.actor, a.agent);
-    warnings.push(`${COLLISION_PREFIX}${who} edited ${file} ${minutesAgo(a.created_at)}.`);
+    warnings.push(headsUp(a.actor, a.agent, file, a.created_at, a.actor === input.actor));
   }
 
   // (b) rule hits: only on this session's first touch of the file, so the agent isn't nagged on every edit
@@ -44,10 +43,10 @@ export async function recordActivity(input: { sessionId: string; actor: string; 
 async function ruleHits(repo: string, file: string): Promise<string[]> {
   return (await rulesForFile(repo, file))
     .slice(0, 3)
-    .map((m) => `${m.locked ? "🔒" : "📌"} Hivemind rule for ${base(file)}: ${m.title} (#${m.scopeId}).`);
+    .map((m) => `${HM}${m.locked ? "Locked rule" : "Team lesson"} for ${file}: ${noEmoji(m.title)} (#${m.scopeId}).`);
 }
 
-/** Active memories in the repo's scope chain that mention this file (path, name, or distinctive stem); 🔒 first. */
+/** Active memories in the repo's scope chain that mention this file (path, name, or distinctive stem); locked first. */
 export async function rulesForFile(repo: string, file: string): Promise<Memory[]> {
   const sb = db();
   const { data: scopeRows } = await sb.from("scopes").select("id, parent_id");

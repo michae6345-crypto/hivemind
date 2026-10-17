@@ -4,7 +4,17 @@ import { HDR_AGENT, HDR_USER, type AgentKind } from "@/contracts";
 import { err } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { scopeChain, toMemory } from "@/lib/map";
-import { buildPack, minutesAgo, normRepo, toAgentKind, whoseAgent } from "@/lib/engine/pack";
+import {
+  HM,
+  buildPack,
+  headsUp,
+  loadDirectory,
+  noEmoji,
+  normRepo,
+  ruleBlock,
+  toAgentKind,
+  type Directory,
+} from "@/lib/engine/pack";
 import type { Memory } from "@/contracts";
 import { rulesForFile } from "@/app/api/activity/record";
 import { CARD_HTML, CARD_MIME, CARD_URI } from "./card";
@@ -19,10 +29,6 @@ import { CARD_HTML, CARD_MIME, CARD_URI } from "./card";
 
 type Ctx = { user: string; repo: string; agent: AgentKind; origin: string; token: string };
 
-const oneLine = (s: string, n = 280) => {
-  const t = s.replace(/\s+/g, " ").trim();
-  return t.length > n ? t.slice(0, n - 1) + "…" : t;
-};
 const text = (t: string) => ({ content: [{ type: "text" as const, text: t }] });
 const slugify = (s: string) =>
   s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40) || "lesson";
@@ -30,42 +36,28 @@ const newSession = (c: Ctx) => `mcp-${c.agent}-${c.user}-${crypto.randomUUID().s
 
 const INSTRUCTIONS =
   "Hivemind is this engineering team's shared memory: rules and lessons learned from teammates' corrections and " +
-  "code reviews, plus 🔒 company policies. At the START of every coding task, call `get_team_rules` (pass `file` " +
-  "when you know which file you'll edit) and follow what it returns. Use `search_memory` before guessing a " +
-  "convention. When the user corrects you with a reusable rule, call `propose_memory` (a human approves it).";
+  "code reviews, plus LOCKED RULE company policies. At the START of every coding task, call `get_team_rules` (pass " +
+  "`file` when you know which file you'll edit) and follow what it returns. Use `search_memory` before guessing a " +
+  "convention. When the user corrects you with a reusable rule, call `propose_memory` (a human approves it). " +
+  "When you relay Hivemind output to the user, keep its plain style: no emojis, #scope and @handle tokens.";
 
 async function scopeIds() {
   const { data } = await db().from("scopes").select("id, parent_id");
   return (data ?? []).map((s) => ({ id: s.id as string, parentId: s.parent_id as string | null }));
 }
 
-/** People (id → first name) and scopes (with owners) for card subtitles. */
-async function directory() {
-  const [{ data: people }, { data: scopes }] = await Promise.all([
-    db().from("people").select("id, name"),
-    db().from("scopes").select("id, parent_id, owner"),
-  ]);
-  const first = new Map((people ?? []).map((p) => [p.id as string, String(p.name ?? p.id).split(" ")[0]]));
-  const sc = (scopes ?? []).map((x) => ({ id: x.id as string, parentId: x.parent_id as string | null, owner: x.owner as string | null }));
-  const name = (id: string | null | undefined) => (id ? first.get(id) ?? id : "someone");
-  /** First owner up the scope chain = who approves lessons there. */
-  const lead = (scopeId: string) => scopeChain(scopeId, sc).map((id) => sc.find((x) => x.id === id)?.owner).find(Boolean) ?? null;
-  return { name, lead };
-}
-type Directory = Awaited<ReturnType<typeof directory>>;
-
 type CardRule = { id: string; slug: string; title: string; scopeId: string; locked: boolean; sub: string };
-/** One card row per rule, worded like Adrian's McpCheckCard (src/components/site/editor-mocks.tsx). */
+/** One MCP Apps card row per rule (McpCheckCard layout), with @handles like the terminal text. */
 function cardRow(m: Memory, d: Directory): CardRule {
   const scope = `#${m.scopeId}`;
-  const lead = d.lead(m.scopeId);
+  const approver = d.approver(m) ?? d.lead(m.scopeId);
   let sub: string;
-  if (m.locked) sub = `Locked by ${d.name(m.author)} · ${scope}`;
-  else if (m.source === "review") sub = `From ${d.name(m.author)}'s review · ${scope}`;
+  if (m.locked) sub = `Locked by @${m.author} · ${scope}`;
+  else if (m.source === "review") sub = `From @${m.author}'s review · ${scope}`;
   else if (m.source === "correction" || m.source === "agent")
-    sub = `From ${d.name(m.author)}'s lesson${lead && lead !== m.author ? ` · approved by ${d.name(lead)}` : ""} · ${scope}`;
-  else sub = `From ${d.name(m.author)} · ${scope}`;
-  return { id: m.id, slug: m.slug, title: m.title, scopeId: m.scopeId, locked: m.locked, sub };
+    sub = `From @${m.author}'s lesson${approver && approver !== m.author ? ` · approved by @${approver}` : ""} · ${scope}`;
+  else sub = `From @${m.author} · ${scope}`;
+  return { id: m.id, slug: m.slug, title: noEmoji(m.title), scopeId: m.scopeId, locked: m.locked, sub };
 }
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
@@ -82,10 +74,10 @@ async function teamRules(c: Ctx, repoArg?: string, file?: string, log = true) {
   const repo = normRepo(repoArg) || c.repo;
   const [pack, dir] = await Promise.all([
     buildPack({ repo, user: c.user, session: log ? newSession(c) : null, log, agent: c.agent }),
-    directory(),
+    loadDirectory(),
   ]);
   if (!file) {
-    // No file: the card shows the 🔒 rules + the top-ranked lessons in the pack.
+    // No file: the card shows the locked rules + the top-ranked lessons in the pack.
     const { data } = pack.memoryIds.length ? await db().from("memories").select("*").in("id", pack.memoryIds) : { data: [] };
     const byId = new Map((data ?? []).map((r) => [r.id as string, toMemory(r)]));
     const mems = pack.memoryIds.map((id) => byId.get(id)).filter((m): m is Memory => !!m && m.kind !== "owner");
@@ -100,13 +92,11 @@ async function teamRules(c: Ctx, repoArg?: string, file?: string, log = true) {
   if (repo) q = q.eq("repo", repo);
   const { data: edits } = await q.order("created_at", { ascending: false }).limit(3);
 
-  let md = `## Rules for \`${f}\`\n`;
-  md += mems.length
-    ? mems.map((m) => `- ${m.locked ? "🔒 " : ""}**${m.title}** (#${m.scopeId}) — ${oneLine(m.body, 200)}`).join("\n")
-    : "- No file-specific rules; the team rules below still apply.";
-  for (const e of edits ?? []) md += `\n- ⚠️ ${whoseAgent(e.actor, e.agent)} edited this file ${minutesAgo(e.created_at)} — coordinate first.`;
   const rules = mems.map((m) => cardRow(m, dir));
-  return { markdown: `${md}\n\n${pack.markdown}`, repo, file: f, rules, header: cardHeader(rules), memoryIds: pack.memoryIds };
+  let md = `## ${HM}Rules for ${f} (${cardHeader(rules)})\n`;
+  md += mems.length ? mems.map((m) => "\n" + ruleBlock(m, dir, 200)).join("") : "\nNo rule mentions this file; the team rules below still apply.\n";
+  if (edits?.length) md += "\n" + edits.map((e) => headsUp(e.actor, e.agent, f, e.created_at)).join("\n") + "\n";
+  return { markdown: `${md}\n${pack.markdown}`, repo, file: f, rules, header: cardHeader(rules), memoryIds: pack.memoryIds };
 }
 
 function server(c: Ctx) {
@@ -118,7 +108,7 @@ function server(c: Ctx) {
           title: "Get team rules (call first)",
           description:
             "CALL THIS FIRST at the start of any coding task in this repo, before reading or editing code. Returns the " +
-            "team's Hivemind rules: 🔒 company policies, conventions learned from teammates' corrections and reviews, " +
+            "team's Hivemind rules: locked company policies, conventions learned from teammates' corrections and reviews, " +
             "who owns what, and who else is editing right now. Pass `file` (repo-relative path) to also get the rules " +
             "that apply to that file. Follow the returned rules for the rest of the task.",
           inputSchema: z.object({
@@ -153,7 +143,7 @@ function server(c: Ctx) {
             if (all.some((x) => x.id === sc)) q = q.in("scope_id", scopeChain(sc, all));
           }
           const { data, error } = await q;
-          if (error) return text(`search failed: ${error.message}`);
+          if (error) return text(`${HM}Search failed: ${error.message}`);
           const terms = query.toLowerCase().split(/[^a-z0-9_]+/).filter((t) => t.length >= 3);
           const phrase = query.toLowerCase().trim();
           const hits = (data ?? [])
@@ -168,11 +158,13 @@ function server(c: Ctx) {
             .filter((h) => h.score >= 1)
             .sort((a, b) => b.score - a.score)
             .slice(0, 8);
-          if (!hits.length) return text(`No team memory matches "${query}".`);
+          const where = sc ? ` in #${sc}` : "";
+          if (!hits.length) return text(`${HM}No team memory matches "${query}"${where}.`);
+          const dir = await loadDirectory();
+          const n = hits.length;
           return text(
-            hits
-              .map(({ m }) => `- ${m.locked ? "🔒 " : ""}**${m.title}** (#${m.scopeId}, [[${m.slug}]]) — ${oneLine(m.body)}`)
-              .join("\n"),
+            `${HM}${n} ${n === 1 ? "match" : "matches"} for "${query}"${where}\n\n` +
+              hits.map(({ m }) => ruleBlock(m, dir)).join("\n"),
           );
         },
       );
@@ -183,7 +175,7 @@ function server(c: Ctx) {
           title: "Propose a team lesson",
           description:
             "Propose a reusable rule/lesson for the team (e.g. after the user corrects you). It is NOT active until a " +
-            "human approves it, and it is blocked if it contradicts a 🔒 policy. scope: 'org' | 'team/<name>' | 'repo/<name>' | 'personal/<user>'.",
+            "human approves it, and it is blocked if it contradicts a locked rule. scope: 'org' | 'team/<name>' | 'repo/<name>' | 'personal/<user>'.",
           inputSchema: z.object({ title: z.string().min(3), body: z.string().min(3), scope: z.string().optional() }),
           _meta: { ui: { resourceUri: CARD_URI } },
         },
@@ -191,7 +183,9 @@ function server(c: Ctx) {
           const all = await scopeIds();
           const want = scope?.trim() || c.repo || "org";
           const scopeId = all.some((x) => x.id === want) ? want : all.some((x) => x.id === normRepo(want)) ? normRepo(want) : "org";
-          const lead = (await directory()).lead(scopeId) ?? "your lead";
+          const lead = (await loadDirectory()).lead(scopeId) ?? "your lead";
+          const pendingMsg = (t: string) =>
+            `${HM}Lesson proposed for #${scopeId}: "${noEmoji(t)}". Pending approval by @${lead}; not active until then.`;
           // McpApproveCard: Approve/Reject open the role-checked approvals page; MCP itself never approves.
           const card = (msg: string, l: { title: string; status: string; reason?: string | null }) => ({
             ...text(msg),
@@ -206,7 +200,7 @@ function server(c: Ctx) {
             },
           });
 
-          // 1) through the learning engine (merge + 🔒 conflict check)
+          // 1) through the learning engine (merge + locked-rule conflict check)
           try {
             const r = await fetch(`${c.origin}/api/events`, {
               method: "POST",
@@ -227,17 +221,19 @@ function server(c: Ctx) {
             if (r.ok) {
               const res = (await r.json()) as { lessons?: { title: string; status: string; blockedReason?: string | null }[] };
               const ls = res.lessons ?? [];
-              if (!ls.length) return text("Recorded. No new lesson was created (it matched an existing one or was filtered).");
+              if (!ls.length) return text(`${HM}Recorded. No new lesson (it matched an existing one or was filtered).`);
               const msg = ls
                 .map((l) =>
                   l.status === "blocked"
-                    ? `🚫 "${l.title}" was blocked by a 🔒 policy${l.blockedReason ? `: ${l.blockedReason}` : ""}. Do not follow it.`
-                    : `⏳ "${l.title}" proposed (status ${l.status}) — a human must approve it before it applies.`,
+                    ? `${HM}Blocked "${noEmoji(l.title)}": conflicts with a locked rule${l.blockedReason ? `: ${noEmoji(l.blockedReason)}` : ""}. Do not follow it.`
+                    : l.status === "pending"
+                      ? pendingMsg(l.title)
+                      : `${HM}"${noEmoji(l.title)}" is ${l.status}.`,
                 )
                 .join("\n");
               return card(msg, { title: ls[0].title, status: ls[0].status, reason: ls[0].blockedReason });
             }
-            if (r.status !== 404 && r.status !== 405) return text(`Proposal failed: HTTP ${r.status}`);
+            if (r.status !== 404 && r.status !== 405) return text(`${HM}Proposal failed: HTTP ${r.status}`);
           } catch {
             /* engine unavailable → fallback */
           }
@@ -258,11 +254,8 @@ function server(c: Ctx) {
               alpha: 1.3,
               beta: 1,
             });
-          if (error) return text(`Proposal failed: ${error.message}`);
-          return card(`⏳ "${title}" proposed for #${scopeId} (pending) — a human must approve it before it applies.`, {
-            title,
-            status: "pending",
-          });
+          if (error) return text(`${HM}Proposal failed: ${error.message}`);
+          return card(pendingMsg(title), { title, status: "pending" });
         },
       );
 

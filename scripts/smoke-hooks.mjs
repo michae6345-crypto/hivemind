@@ -31,11 +31,15 @@ const ss = spawnSync(process.execPath, [join(root, "hooks", "session-start.mjs")
   encoding: "utf8",
 });
 let ctx = "";
+let ssOut = {};
 try {
-  ctx = JSON.parse(ss.stdout).hookSpecificOutput.additionalContext;
+  ssOut = JSON.parse(ss.stdout);
+  ctx = ssOut.hookSpecificOutput.additionalContext;
 } catch {}
 check(ss.status === 0, "session-start exits 0");
-check(/🔒/.test(ctx) && /lab customers/i.test(ctx), "pack has the 🔒 lab-isolation rule", `${ctx.length} chars`);
+check(/LOCKED RULE · #org\nNever mix data from different lab customers/.test(ctx), "pack has the locked lab-isolation rule", `${ctx.length} chars`);
+check(!/\p{Extended_Pictographic}/u.test(ctx), "pack has no emojis");
+check(/^Hivemind · Loaded \d+ team rules for #repo\/export-service \(\d+ locked\)$/.test(ssOut.systemMessage ?? ""), "banner", ssOut.systemMessage);
 check(ctx.length <= 10000, "pack under the 10k additionalContext cap");
 
 // 2. PostToolUse from two sessions on the same file → collision warning
@@ -62,7 +66,10 @@ console.log("   first edit →", JSON.stringify(first).slice(0, 200));
 const second = await tool(`smoke-b-${stamp}`, "michael");
 const warn = second?.hookSpecificOutput?.additionalContext ?? "";
 console.log("   second edit →", warn.replace(/\n/g, " | "));
-check(/@adrian's Cursor agent edited export\.ts/.test(warn), "second session gets a collision warning naming the tool");
+check(
+  /^Hivemind · Heads up: @adrian's Cursor agent edited src\/export\.ts (just now|\d+ min ago)\.$/m.test(warn),
+  "second session gets the collision line (tool + path)",
+);
 const noop = await fetch(`${BASE}/api/hooks/tool`, {
   method: "POST",
   headers: { "content-type": "application/json", Authorization: `Bearer ${TOKEN}`, "x-hm-user": "michael" },
@@ -98,11 +105,11 @@ check(["get_team_rules", "search_memory", "propose_memory"].every((n) => names.i
 const rules = await mcp("tools/call", { name: "get_team_rules", arguments: { file: "src/export.ts" } }, 4);
 const rtext = rules.body.result?.content?.[0]?.text ?? JSON.stringify(rules.body);
 const chips = rules.body.result?.structuredContent?.rules ?? [];
-check(/Rules for `src\/export\.ts`/.test(rtext) && /lab customers/i.test(rtext), "get_team_rules returns file rules + pack", `${rtext.length} chars, ${chips.length} rule chips`);
+check(/Hivemind · Rules for src\/export\.ts/.test(rtext) && /lab customers/i.test(rtext) && !/\p{Extended_Pictographic}/u.test(rtext), "get_team_rules returns file rules + pack", `${rtext.length} chars, ${chips.length} rule chips`);
 const prompts = await mcp("prompts/list", {}, 5);
 check((prompts.body.result?.prompts ?? []).some((p) => p.name === "hivemind_briefing"), "MCP lists prompt hivemind_briefing");
 const res = await mcp("resources/read", { uri: "hivemind://context-pack" }, 6);
-check(/Locked policies/.test(res.body.result?.contents?.[0]?.text ?? ""), "MCP resource hivemind://context-pack reads the pack");
+check(/Locked rules/.test(res.body.result?.contents?.[0]?.text ?? ""), "MCP resource hivemind://context-pack reads the pack");
 const qs = `?token=${encodeURIComponent(TOKEN)}&user=noor&repo=export-service&agent=claude-ai`;
 const viaQuery = await mcp("tools/list", {}, 7, { query: qs, auth: false });
 check(viaQuery.status === 200 && (viaQuery.body.result?.tools ?? []).length >= 3, "MCP accepts ?token= for header-less clients");
