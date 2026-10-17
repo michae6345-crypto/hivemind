@@ -2,6 +2,7 @@
 // Sources: GET /api/activity/live (edits, collisions, sessions, corrections, approvals), GET /api/memories (the queue and
 // lesson titles for this repo's chain), GET /api/vscode/rules (counts, approver), POST /api/vscode/check (flags).
 import { plain, toolName } from "./theme.mjs";
+import { permalink } from "./git.mjs";
 
 export function client(cfg) {
   const headers = (extra = {}) => ({
@@ -177,6 +178,19 @@ export function makeApi(cfg, getState) {
     check: (file, text) => c.post("/api/vscode/check", { repo, file, text }, { timeout: 30000 }),
     approve: (id) => c.post(`/api/memories/${encodeURIComponent(id)}/approve`, {}, { role: role() }),
     reject: (id) => c.post(`/api/memories/${encodeURIComponent(id)}/reject`, {}, { role: role() }),
+    /**
+     * A code fix the engine can learn from (EventType "fix", contracts 4e9ad92). Carries a GitHub permalink:
+     * fix({ file, line, endLine?, diff, before?, after?, previousAuthor?, violationRuleId? }) → { lessons, actions }
+     */
+    fix: ({ file, line, endLine, ...rest }) =>
+      c.post(
+        "/api/events",
+        { type: "fix", actor: cfg.actor, repo, sessionId: `watch-${process.pid}`, payload: { file, line, url: permalink(file, line, endLine, { root: cfg.root }), via: "cli", ...rest } },
+        { timeout: 60000 },
+      ),
+    /** "I (a human, in the terminal) edited this file": collisions for the agents. activity({ file, line? }) → { warnings } */
+    activity: ({ file, line }) =>
+      c.post("/api/activity", { sessionId: `watch-${process.pid}`, actor: cfg.actor, repo, file, line, url: permalink(file, line, undefined, { root: cfg.root }), agent: "cli" }),
     /** A correction through the learning engine (same as `hivemind teach`). → { lessons, actions } */
     teach: (text) =>
       c.post("/api/events", { type: "correction", actor: cfg.actor, repo, sessionId: `watch-${Date.now()}`, payload: { text, via: "cli" } }, { timeout: 60000 }),

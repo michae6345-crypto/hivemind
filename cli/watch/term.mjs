@@ -34,7 +34,10 @@ export function clip(s, w, ellipsis = "…") {
     used += cw(ch);
     i += ch.length;
   }
-  return out + ellipsis + (s.includes("\x1b") ? "\x1b[0m" : ""); // no stray reset under NO_COLOR
+  // Close an OSC 8 hyperlink the cut left open (otherwise the rest of the screen becomes clickable).
+  const openLink = (out.match(/\x1b\]8;;[^\x07]*\x07/g) ?? []).at(-1);
+  const close = openLink && openLink !== "\x1b]8;;\x07" ? "\x1b]8;;\x07" : "";
+  return out + close + ellipsis + (s.includes("\x1b") ? "\x1b[0m" : ""); // no stray reset under NO_COLOR
 }
 export const padEnd = (s, w) => {
   const c = clip(s, w);

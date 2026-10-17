@@ -6,6 +6,7 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { colsFor, explanation } from "../../lib/check.mjs";
+import { linkFile } from "../git.mjs";
 
 const CHIP_BG = "#2A2A2E";
 const SEL_BG = "#232A45";
@@ -129,8 +130,7 @@ function broken(th, ch, v, lines, file, rule, state, ctx, selected) {
   const code = w - gw - 3;
   const g = (s) => t.faint(s);
   const tint = bg(mix(v.locked ? P.locked : P.lesson, "#1C1C1E", v.locked ? 0.16 : 0.13));
-  const [sc] = colsFor(v, v.startLine, lines[v.startLine] ?? "", rule);
-  out.push(clip(`${" ".repeat(gw - 1)}${g("╭─[")}${t.muted(`${file}:${v.startLine + 1}:${sc + 1}`)}${g("]")}`, w));
+  out.push(clip(`${" ".repeat(gw - 1)}${g("╭─[")}${linkFile(file, v.startLine + 1, v.endLine > v.startLine ? v.endLine + 1 : undefined, { root: state.workspace?.root })}${g("]")}`, w));
   for (let i = first; i <= last; i++) {
     const text = expand(lines[i]);
     const hit = i >= v.startLine && i <= v.endLine;

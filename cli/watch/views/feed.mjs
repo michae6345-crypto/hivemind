@@ -11,6 +11,7 @@
 // Newest first. NOW = the last 10 minutes. A row that just arrived starts on the selected wash and steps back to the
 // background over 3 frames, 100 ms apart (spec §6). ↑↓ move the selection (selected row on the wash); enter opens the
 // lesson behind a card. Empty: "No agents working right now." (editor-spec wording).
+import { linkFile } from "../git.mjs";
 const NOW_MS = 10 * 60000;
 const EDIT_WINDOW_MS = 30 * 60000; // edits older than this are noise
 const WASH = ["#232A45", "#21263A", "#1F222F"]; // selected wash, then two steps back (pre-blended on #1C1C1E)
@@ -85,7 +86,10 @@ export default {
       const tool = th.t.faint(` ${th.toolName(c.agent) || (c.kind === "approved" || c.kind === "rejected" ? "Hivemind" : "")}`.padEnd(TOOL_CELLS));
       const [verb, obj] = words(c);
       const v = c.kind === "blocked" ? th.t.lockedText(verb) : th.t.text(verb);
-      const line = ` ${chip}${pad}${tool}${v}${obj ? th.t.muted(` ${obj}`) : ""}  ${th.t.faint(ago(c.at, now))}`;
+      // Edits link to the file on GitHub (OSC 8), at the line watch flagged in it if any.
+      const flagged = c.kind === "edit" && c.file ? (state.flags?.[c.file] ?? [])[0] : null;
+      const object = c.kind === "edit" && c.file ? ` ${linkFile(c.file, flagged ? flagged.startLine + 1 : undefined, undefined, { root: state.workspace?.root })}` : obj ? th.t.muted(` ${obj}`) : "";
+      const line = ` ${chip}${pad}${tool}${v}${object}  ${th.t.faint(ago(c.at, now))}`;
       const age = c.born ? Math.floor((now - c.born) / 100) : Infinity;
       const wash = i === sel ? WASH[0] : age < WASH.length ? WASH[age] : null;
       return washed(th, th.clip(line, w), wash, w);

@@ -5,6 +5,7 @@
 // Locked rules: ○ Set by @greg → ● Locked → ● Blocked N lessons → ● now in every agent's context.
 // Then the facts (scope · owner · status · in context · related · broken right now).
 import { wrap } from "../term.mjs";
+import { linkFile } from "../git.mjs";
 import {
   age, agentOf, allMemories, approval, approverOf, atoms, canDecide, findMemory, inContext, isAgentActor, origin,
   ownerHandle, quoteOf, reachOf, ROLE,
@@ -191,7 +192,7 @@ export default {
       for (const f of list ?? []) if (f.ruleId === m.id) hits.push({ file, f, text: (state.files?.[file]?.text ?? "").split(/\r?\n/)[f.startLine] ?? "" });
     if (hits.length) {
       out.push("", th.bold(t.lockedText("BROKEN RIGHT NOW")) + t.faint(` · ${hits.length}`));
-      for (const { file, f, text } of hits.slice(0, 5)) out.push(`${(m.locked ? t.lockedText : t.lessonText)(`${file}:${f.startLine + 1}`)}  ${t.muted(text.trim())}`);
+      for (const { file, f, text } of hits.slice(0, 5)) out.push(`${linkFile(file, f.startLine + 1, f.endLine > f.startLine ? f.endLine + 1 : undefined, { root: state.workspace?.root })}  ${t.muted(text.trim())}`);
     } else if (m.status === "active") out.push(fact("Broken now", t.faint("nowhere in the files you've changed")));
 
     const room = Math.max(3, ctx.height);
