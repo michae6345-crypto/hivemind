@@ -174,6 +174,8 @@ export function makeApi(cfg, getState) {
     scopes: () => c.get("/api/scopes"), // { scopes, people }
     memories: (q = {}) => c.get(`/api/memories?${new URLSearchParams({ scope: repo, chain: "1", ...q })}`).then((r) => r.memories ?? []),
     live: () => c.get("/api/activity/live"),
+    /** The same pack the SessionStart banner counts ("Loaded 11 team rules"): { rules, locked, memoryIds, … }. */
+    pack: () => c.get(`/api/context-pack?${new URLSearchParams({ repo, user: getState().actor ?? cfg.actor, log: "0" })}`),
     rules: (file = "") => c.get(`/api/vscode/rules?${new URLSearchParams({ repo, file, user: cfg.actor })}`),
     check: (file, text) => c.post("/api/vscode/check", { repo, file, text }, { timeout: 30000 }),
     approve: (id) => c.post(`/api/memories/${encodeURIComponent(id)}/approve`, {}, { role: role() }),

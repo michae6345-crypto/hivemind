@@ -60,7 +60,8 @@ function model(state, ctx) {
 export default {
   id: "rules",
   title: "Rules",
-  count: (state) => (state.memories ?? []).filter((m) => m.status === "active" && m.kind !== "owner").length || null,
+  // The context pack's count, so the tab matches the agents' "Loaded N team rules" banner.
+  count: (state) => state.pack?.rules ?? ((state.memories ?? []).filter((m) => m.status === "active" && m.kind !== "owner").length || null),
   keys: (state) =>
     view(state).filtering ? [["enter", "done"], ["esc", "clear"]] : [["j/k", "move"], ["enter", "open"], ["/", "filter"], ["p", "persona"]],
 

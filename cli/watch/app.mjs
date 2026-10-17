@@ -82,7 +82,7 @@ export async function cmdWatch(cfg) {
       if (id && celebrated.has(id)) return;
       if (id) celebrated.add(id);
       // lesson.approver = who approved it (the approved card's actor); rules = the count that ticks 10 → 11.
-      state.celebration = celebration(lesson, { now: Date.now(), reduced: REDUCED, me: state.actor, rules: state.rules.length });
+      state.celebration = celebration(lesson, { now: Date.now(), reduced: REDUCED, me: state.actor, rules: state.pack?.rules ?? state.rules.length });
       actions.animate(1700); // the motion is 1.6s; the card then holds until a key (or its duration) without redraws
     },
     /** Keep redrawing at ~20fps for `ms` (eases, the seal). Nothing loops forever. */
@@ -130,11 +130,12 @@ export async function cmdWatch(cfg) {
   async function poll(force = false) {
     try {
       const slow = force || Date.now() - lastSlow > SLOW_MS;
-      const [live, memories, rulesRes, sc] = await Promise.all([
+      const [live, memories, rulesRes, sc, pack] = await Promise.all([
         api.live(),
         api.memories(),
         slow ? api.rules(state.lastFile ?? "") : null,
         slow ? api.scopes() : null,
+        slow ? api.pack().catch(() => null) : null,
       ]);
       if (sc) {
         state.scopes = sc.scopes ?? [];
@@ -144,6 +145,8 @@ export async function cmdWatch(cfg) {
         state.role = typeof cfg.flags.role === "string" ? cfg.flags.role : (state.me?.role ?? "engineer");
         state.chain = chainOf(cfg.repo, state.scopes);
       }
+      // One count everywhere: the context pack's (what the SessionStart banner says agents loaded).
+      if (pack) state.pack = { rules: pack.rules ?? pack.memoryIds?.length ?? 0, locked: pack.locked ?? 0, memoryIds: pack.memoryIds ?? [] };
       if (rulesRes) {
         lastSlow = Date.now();
         state.rules = rulesRes.rules ?? [];
@@ -257,7 +260,7 @@ export async function cmdWatch(cfg) {
     }
     const chipText = scopeChip(cfg.repo);
     const right = tt.sending ? t.faint("sending") : t.blueText("enter");
-    const bottom = `${b("╰─ ")}${chipText} ${b("─".repeat(Math.max(0, w - 12 - width(chipText) - width(right))))} ${right} ${b("─╯")}`;
+    const bottom = `${b("╰─ ")}${chipText} ${b("─".repeat(Math.max(0, w - 8 - width(chipText) - width(right))))} ${right} ${b("─╯")}`;
     return { lines: [clip(top, w, ""), `${b("│")} ${padEnd(mid, inner)} ${b("│")}`, clip(bottom, w, "")], caret };
   }
 
