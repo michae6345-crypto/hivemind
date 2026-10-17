@@ -21,22 +21,28 @@ export async function recordActivity(input: { sessionId: string; actor: string; 
 
   let recent = sb.from("activity").select("*").eq("file", file).gte("created_at", since).order("created_at", { ascending: false });
   if (repo) recent = recent.eq("repo", repo);
-  const { data: prior } = await recent.limit(50);
-  await sb.from("activity").insert({ session_id: input.sessionId, actor: input.actor, agent: input.agent ?? "claude-code", repo: repo || null, file });
+  // One round of parallel queries (PostToolUse latency): the prior edits, our insert, and the file's rules (used on first
+  // touch only). The select may or may not see our own row, so it is excluded by id.
+  const [{ data: prior0 }, { data: mine }, hits] = await Promise.all([
+    recent.limit(50),
+    sb.from("activity").insert({ session_id: input.sessionId, actor: input.actor, agent: input.agent ?? "claude-code", repo: repo || null, file }).select("id").single(),
+    ruleHits(repo, file).catch(() => [] as string[]),
+  ]);
+  const prior = (prior0 ?? []).filter((a) => a.id !== mine?.id);
 
   const warnings: string[] = [];
 
   // (a) collisions: other sessions on the same file in the window (latest per actor, max 3)
   const seen = new Set<string>();
-  for (const a of prior ?? []) {
+  for (const a of prior) {
     if (a.session_id === input.sessionId || seen.has(a.actor) || seen.size >= 3) continue;
     seen.add(a.actor);
     warnings.push(headsUp(a.actor, a.agent, file, a.created_at, a.actor === input.actor));
   }
 
   // (b) rule hits: only on this session's first touch of the file, so the agent isn't nagged on every edit
-  const firstTouch = !(prior ?? []).some((a) => a.session_id === input.sessionId);
-  if (firstTouch) warnings.push(...(await ruleHits(repo, file)));
+  const firstTouch = !prior.some((a) => a.session_id === input.sessionId);
+  if (firstTouch) warnings.push(...hits);
   return { warnings, repo, file };
 }
 
