@@ -6,6 +6,7 @@
 // `Claude Code's edit breaks a locked rule: Never mix data from different lab customers. Locked by @maya.`
 import { readFileSync, statSync, watch } from "node:fs";
 import { join } from "node:path";
+import { fixTracker } from "./fixes.mjs";
 import { notify } from "./notify.mjs";
 import { plain, toolName } from "./theme.mjs";
 import { detect } from "./vendor/detectors.mjs";
@@ -52,11 +53,17 @@ export function startWatcher({ root, cfg, state, api, actions }) {
   } catch {
     return () => {};
   }
+  // Fixes as learning events: a human rewriting an agent's lines, or making a flag go away (fixes.mjs).
+  const mtimes = new Map(); // file → mtime last checked (seeded at start, so existing files only count once written)
+  const tracker = fixTracker({ root, cfg, state, actions, skip: SKIP, code: CODE, onSeed: (file, mtime) => mtimes.set(file, mtime) });
 
   async function check(file) {
     let text;
     try {
-      if (!statSync(join(root, file)).isFile()) return;
+      const st = statSync(join(root, file));
+      // Windows reports reads (last-access) as changes too: only a new mtime is a write.
+      if (!st.isFile() || mtimes.get(file) === st.mtimeMs) return;
+      mtimes.set(file, st.mtimeMs);
       text = readFileSync(join(root, file), "utf8");
     } catch {
       return; // deleted or mid-write; the next event retries
@@ -66,12 +73,17 @@ export function startWatcher({ root, cfg, state, api, actions }) {
     state.lastFile = file;
     state.files[file] = { text, at: Date.now(), checking: true, checkedAt: prev?.checkedAt };
     const lines = text.split(/\r?\n/);
+    const flagsBefore = state.flags[file] ?? [];
+    let tracked = false;
 
     // Instant: the server's detectors, locally, with the rules the shell already loaded.
     const rules = (state.rules ?? []).filter((r) => r.kind !== "owner");
     if (rules.length) {
       try {
-        publish(file, lines, detect(lines, rules));
+        const local = detect(lines, rules);
+        publish(file, lines, local);
+        void tracker.onChange(file, text, flagsBefore, local);
+        tracked = true;
       } catch {
         actions.render(); // the vendored copy can't run a detector the server changed: wait for the server
       }
@@ -85,11 +97,13 @@ export function startWatcher({ root, cfg, state, api, actions }) {
     } catch (e) {
       if (state.files[file]?.text === text) state.files[file].checking = false;
       if (!rules.length) actions.toast(actions.plainError(e), "locked");
+      if (!tracked) void tracker.onChange(file, text, flagsBefore, flagsBefore);
       return actions.render();
     }
     if (state.files[file]?.text !== text) return; // a newer write is already being checked
     state.files[file] = { ...state.files[file], checking: false, checkedAt: Date.now() };
     publish(file, lines, vs);
+    if (!tracked) void tracker.onChange(file, text, flagsBefore, vs);
   }
 
   /** Show a file's hits; NEW ones flash in and jump to Here, and a new locked one raises the notice. */
@@ -111,9 +125,13 @@ export function startWatcher({ root, cfg, state, api, actions }) {
     const locked = fresh.find((v) => v.locked);
     if (!locked || Date.now() - lastNotice < NOTICE_GAP_MS) return;
     lastNotice = Date.now();
-    const sentence = breakSentence(locked, writerOf(state, file));
-    actions.toast(sentence, "locked", 6000);
-    if (cfg?.flags?.notify) notify("Hivemind", sentence);
+    // The shell's live poll can lag the write by a couple of seconds: ask the hooks' activity directly if needed.
+    const wrote = writerOf(state, file);
+    void (wrote ? Promise.resolve(wrote) : tracker.agentWriter(file).then((a) => (a ? toolName(a.slice("agent:".length)) : ""))).then((tool) => {
+      const sentence = breakSentence(locked, tool);
+      actions.toast(sentence, "locked", 6000);
+      if (cfg?.flags?.notify) notify("Hivemind", sentence);
+    });
   }
 
   return () => {

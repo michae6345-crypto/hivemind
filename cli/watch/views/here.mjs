@@ -248,6 +248,12 @@ export default {
     const who = writer(state, file, now);
     const by = who ? `${t.faint(" · saved by ")}${ch.handle(who.actor)}${who.agent && th.toolName(who.agent) ? t.faint(` ${th.toolName(who.agent)}`) : ""}` : t.faint(" · changed");
     const out = [th.clip(`${t.text(file)}${by}${t.faint(` · ${f.checking ? "checking" : ago(f.at, now)}`)}`, w)];
+    // A fix you just made, on its way to becoming a lesson (fixes.mjs): "Learning from your fix…" → the engine's answer.
+    const learn = view.learning;
+    if (learn?.file === file && now - learn.at < 90000) {
+      const tone = { lesson: t.lessonText, ok: t.ok, locked: t.lockedText }[learn.tone] ?? t.muted;
+      out.push(th.clip(th.rich(learn.text, { base: tone }), w));
+    }
 
     if (!vs.length) {
       if (f.checking && !f.checkedAt) return out;

@@ -69,6 +69,40 @@ Use logger, not console.log
 The handles come from the live data (prod's demo people are currently @greg = Security, @ben = lead,
 @kevin/@alex = engineers). The view always shows whatever the server returns.
 
+## Beat 2: "fix it once, every agent learns it"
+
+Same split as above, right after Beat 1, or on its own.
+
+1. **Left (Claude Code):**
+
+   > add a function that logs which expert we notified
+
+   If the agent writes `console.log(user.email)`, the right pane flags it:
+   `Claude Code's edit breaks a locked rule: Never log expert personal info. Locked by @greg.`
+2. **You fix it by hand** in your editor and save: `console.log(user.email)` becomes `logger.info({ expertId: user.id })`.
+   No command and no form; you just fix it. Pressing `f` on Here counts too.
+3. **Right (watch):**
+   - About 1.5s after your last keystroke, Here shows `Learning from your fix…`.
+   - Then it shows the engine's answer, also as a toast and a Feed card. It's one of:
+     - `Hivemind · Lesson captured from @kevin's fix: "…". Waiting on @ben.`
+     - `Hivemind · Reinforced: "…".`
+4. **The payoff:** @ben approves it on Queue, and the next agent session, in any tool, gets the lesson in its context.
+
+What the watcher sends, so you can explain it:
+- `POST /api/events { type: "fix", actor, repo, payload: { file, diff, before, after, previousAuthor: "agent:claude-code", line, url, violationRuleId? } }`
+- `diff` is a one-hunk unified diff, at most 4KB. `url` is a GitHub permalink to the line. `violationRuleId` is the flag your edit cleared.
+- It sends when a human edit rewrites lines an agent wrote in the last write. The hooks' `/api/activity` says who wrote a file: an agent within 6s of the write, otherwise you.
+- It also sends when a flagged violation disappears after your edit.
+- At most one per file every 30s. Whitespace-only and rename-only edits are skipped (`cli/watch/fixes.mjs`).
+
+Fallback without a live agent: record the agent's write yourself, then write the file. This is what the end-to-end test
+does:
+
+```powershell
+curl.exe -s -X POST "$env:HIVEMIND_API_URL/api/activity" -H "authorization: Bearer $env:HIVEMIND_TOKEN" -H "x-hm-agent: claude-code" -H "content-type: application/json" -d '{\"sessionId\":\"demo\",\"actor\":\"kevin\",\"repo\":\"repo/export-service\",\"file\":\"src/experts.ts\"}'
+# now save src/experts.ts with console.log(user.email) in it, wait ~7s, then fix it by hand
+```
+
 ## Without a camera (checks)
 
 ```powershell
