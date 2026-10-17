@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "hooks": {
+    "sessionStart": [
+      {
+        "command": "node \"../../hooks/adapters/cursor.mjs\" sessionStart",
+        "timeout": 15
+      }
+    ],
+    "beforeSubmitPrompt": [
+      {
+        "command": "node \"../../hooks/adapters/cursor.mjs\" beforeSubmitPrompt",
+        "timeout": 10
+      }
+    ],
+    "afterFileEdit": [
+      {
+        "command": "node \"../../hooks/adapters/cursor.mjs\" afterFileEdit",
+        "timeout": 10
+      }
+    ],
+    "sessionEnd": [
+      {
+        "command": "node \"../../hooks/adapters/cursor.mjs\" sessionEnd",
+        "timeout": 10
+      }
+    ]
+  }
+}

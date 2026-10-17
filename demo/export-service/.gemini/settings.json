@@ -7,7 +7,66 @@
         "x-hm-user": "$HIVEMIND_USER",
         "x-hm-repo": "repo/export-service",
         "x-hm-agent": "gemini-cli"
-      }
+      },
+      "timeout": 15000
     }
+  },
+  "context": {
+    "fileName": [
+      "GEMINI.md",
+      "AGENTS.md"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear",
+        "hooks": [
+          {
+            "type": "command",
+            "name": "hivemind-briefing",
+            "command": "node \"../../hooks/adapters/gemini.mjs\" SessionStart",
+            "timeout": 15000
+          }
+        ]
+      }
+    ],
+    "BeforeAgent": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "name": "hivemind-corrections",
+            "command": "node \"../../hooks/adapters/gemini.mjs\" BeforeAgent",
+            "timeout": 10000
+          }
+        ]
+      }
+    ],
+    "AfterTool": [
+      {
+        "matcher": "write_file|replace",
+        "hooks": [
+          {
+            "type": "command",
+            "name": "hivemind-edits",
+            "command": "node \"../../hooks/adapters/gemini.mjs\" AfterTool",
+            "timeout": 10000
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "name": "hivemind-session-end",
+            "command": "node \"../../hooks/adapters/gemini.mjs\" SessionEnd",
+            "timeout": 10000
+          }
+        ]
+      }
+    ]
   }
 }

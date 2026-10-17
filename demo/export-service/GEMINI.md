@@ -2,22 +2,19 @@
 <!-- Managed by `hivemind sync`. Edits inside this block are overwritten; propose changes in Hivemind instead. -->
 # Hivemind — team memory for repo/export-service
 These are this repo's working rules, synced from Hivemind team memory. They come from teammates' corrections and code reviews, approved by team leads. Follow them, and treat 🔒 rules as company policy that always applies.
+Call the Hivemind `get_team_rules` MCP tool at the start of every task for the live version; when the user corrects you, call `propose_memory`.
 
 ## 🔒 Locked policies (always apply)
 - 🔒 **Never mix data from different lab customers** (#org) — 🔒 Never combine **Lab A** and **Lab B** data in one export, dataset, eval set or pipeline run. Every export must pass `assertSingleCustomer(rows)` before it writes. Test fixtures included. Owner: @maya. Applies to #org and everything below it.
 - 🔒 **Never log expert personal info** (#org) — 🔒 Expert names, emails and payout details live only in the `pii` schema. Never write them to logs, traces, error messages or analytics events. Log the `expert_id` instead. Owner: @maya.
 
-## Team directives
-- **API test: retries use exponential backoff** (#team/data-pipelines) — Retry with backoff. #team/data-pipelines
-
 ## How this team works
-- **Export jobs are idempotent, keyed by job_id** (#repo/export-service, confidence 57%) — Re-running an export with the same `job_id` must produce the same files and never duplicate rows. See [[money-integer-cents]] for totals.
-- **Tag every row with lab_customer_id** (#team/data-pipelines, confidence 65%) — Every row that enters a pipeline carries `lab_customer_id`. Pipelines reject untagged rows instead of guessing. Makes 🔒 [[sec-lab-isolation]] checkable in code.
-- **Money and payouts are integer cents** (#org, confidence 68%) — Store and compute every payout as integer cents (`amount_cents`). Never floats, never dollars. Learned from @jordan's review on #repo/export-service. Related: [[export-idempotent]].
-- **Stream uploads; never buffer a full export** (#repo/export-service, confidence 44%) — Stream export files to storage in chunks. Buffering a full export OOM-killed the worker twice.
-- **Use logger, not console.log** (#org, confidence 62%) — Use the shared `logger` (structured, PII-scrubbed). `console.log` bypasses scrubbing and breaks 🔒 [[sec-no-pii-logs]]. First taught by @alex, confirmed by @riley on #team/evals.
-- **Migrations are append-only** (#org, confidence 61%) — Never edit a migration that has run anywhere. Add a new one. Owner: @jordan.
-- **Every export calls assertSingleCustomer()** (#team/data-pipelines, confidence 44%) — Call `assertSingleCustomer(rows)` before writing any export file. It throws if rows from more than one lab customer are present. Enforces 🔒 [[sec-lab-isolation]] in #repo/export-service and #repo/dataset-builder.
+- **Export jobs are idempotent, keyed by job_id** (#repo/export-service, confidence 61%) — Re-running an export with the same `job_id` must produce the same files and never duplicate rows. See [[money-integer-cents]] for totals.
+- **Tag every row with lab_customer_id** (#team/data-pipelines, confidence 68%) — Every row that enters a pipeline carries `lab_customer_id`. Pipelines reject untagged rows instead of guessing. Makes 🔒 [[sec-lab-isolation]] checkable in code.
+- **Stream uploads; never buffer a full export** (#repo/export-service, confidence 51%) — Stream export files to storage in chunks. Buffering a full export OOM-killed the worker twice.
+- **Money and payouts are integer cents** (#org, confidence 70%) — Store and compute every payout as integer cents (`amount_cents`). Never floats, never dollars. Learned from @jordan's review on #repo/export-service. Related: [[export-idempotent]].
+- **Use logger, not console.log** (#org, confidence 65%) — Use the shared `logger` (structured, PII-scrubbed). `console.log` bypasses scrubbing and breaks 🔒 [[sec-no-pii-logs]]. First taught by @alex, confirmed by @riley on #team/evals.
+- **Migrations are append-only** (#org, confidence 65%) — Never edit a migration that has run anywhere. Add a new one. Owner: @jordan.
 
 ## Who to ask
 - Ask @jordan about export-service — @jordan owns #repo/export-service. Ping before changing the export format or schedule.
