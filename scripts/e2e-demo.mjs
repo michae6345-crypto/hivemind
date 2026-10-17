@@ -6,9 +6,9 @@
 //   node scripts/e2e-demo.mjs --skip-claude           # beat (c) checks the pack only, no headless claude run
 //   node scripts/e2e-demo.mjs --beats c --lesson sec-lab-isolation   # (c) alone, against an existing active memory
 //
-// (a) Sam corrects the agent → POST /api/hooks/prompt → a pending lesson about assertSingleCustomer
-// (b) engineer approve → 403; Jordan (lead) approve → active
-// (c) fresh headless `claude -p` session as Noor in a temp copy of demo/export-service (real SessionStart hook)
+// (a) Kevin corrects the agent → POST /api/hooks/prompt → a pending lesson about assertSingleCustomer
+// (b) engineer (Emily) approve → 403; Ben (lead) approve → active
+// (c) fresh headless `claude -p` session as Emily in a temp copy of demo/export-service (real SessionStart hook)
 //     → pack_log shows the lesson was served, and the new code calls assertSingleCustomer()
 // (d) the bad lesson "mixing Lab A and Lab B data is fine in tests" ends up blocked by the 🔒 lab-isolation rule
 // (e) a Cursor session and a Claude Code session edit the same file → collision warning
@@ -35,6 +35,9 @@ const SKIP_CLAUDE = process.argv.includes("--skip-claude");
 const TOKEN = process.env.HIVEMIND_TOKEN ?? "";
 const REPO = "repo/export-service";
 const DEMO_DIR = path.join(root, "demo", "export-service");
+// Video personas (seed b4b0a20): kevin corrects, ben (lead, owns team/data-pipelines) approves, emily is the
+// engineer who gets 403 and the fresh session, greg owns the locked rules. Override with --corrector/--lead/--fresh.
+const P = { corrector: arg("corrector", "kevin"), lead: arg("lead", "ben"), engineer: arg("engineer", "emily"), fresh: arg("fresh", "emily") };
 const START = new Date(Date.now() - 2000).toISOString();
 const stamp = Date.now();
 
@@ -108,14 +111,14 @@ let lesson = null;
 async function beatA() {
   const sid = `e2e-sam-${stamp}`;
   const res = await promptHook(
-    "sam",
+    P.corrector,
     sid,
     "No, that's wrong: every export must call assertSingleCustomer(rows) before it writes anything. We can never mix Lab A and Lab B rows in one file.",
   );
   if (res.status === 404) return report("a", "correction → pending lesson", false, "POST /api/hooks/prompt → 404 (route not on main yet; owner: B)");
   const ctx = res.json?.hookSpecificOutput?.additionalContext ?? "";
   lesson = await waitForMemory((m) => ASSERT_RE.test(`${m.title} ${m.body}`), "pending,active,blocked");
-  report("a", "Sam's correction → pending lesson", !!lesson && lesson.status === "pending", [
+  report("a", `${P.corrector}'s correction → pending lesson`, !!lesson && lesson.status === "pending", [
     `hook → HTTP ${res.status} ${ctx ? `additionalContext: "${short(ctx, 160)}"` : short(res.text, 160)}`,
     lesson ? `memory ${lesson.slug} status=${lesson.status} scope=${lesson.scopeId} "${lesson.title}"` : "no assertSingleCustomer lesson created/updated within 25s",
     lesson ? `evidence: ${short((lesson.evidence ?? []).map((e) => `${e.actor}: ${e.quote}`).join(" | "), 200)}` : "",
@@ -125,7 +128,7 @@ async function beatA() {
 async function beatB() {
   let note = "";
   if (!lesson || lesson.status !== "pending") {
-    // (a) didn't leave a pending lesson: still exercise the approve route on a seeded pending lesson in Jordan's subtree
+    // (a) didn't leave a pending lesson: still exercise the approve route on a seeded pending lesson in the lead's subtree
     const r = await call("GET", `/api/memories?scope=${encodeURIComponent(REPO)}&status=pending`);
     const fallback = (r.json?.memories ?? []).find((m) => m.scopeId === REPO);
     if (!fallback) return report("b", "approve with chain of command", false, `no pending lesson from (a) (${lesson ? lesson.status : "none"}) and no seeded pending lesson in ${REPO}`);
@@ -140,14 +143,14 @@ async function beatB() {
 }
 
 async function approveFlow(note) {
-  const eng = await call("POST", `/api/memories/${lesson.id}/approve`, { user: "alex", role: "engineer" });
+  const eng = await call("POST", `/api/memories/${lesson.id}/approve`, { user: P.engineer, role: "engineer" });
   if (eng.status === 404) return report("b", "approve with chain of command", false, "POST /api/memories/:id/approve → 404 (route not on main yet; owner: A)");
-  const lead = await call("POST", `/api/memories/${lesson.id}/approve`, { user: "jordan", role: "lead" });
+  const lead = await call("POST", `/api/memories/${lesson.id}/approve`, { user: P.lead, role: "lead" });
   const status = lead.json?.status ?? lead.json?.memory?.status;
   if (status) lesson = { ...lesson, status };
-  report("b", "engineer gets 403, Jordan (lead) approves", eng.status === 403 && lead.status === 200 && status === "active", [
-    `alex (engineer) → HTTP ${eng.status} ${short(eng.json?.error ?? eng.text, 120)}`,
-    `jordan (lead)   → HTTP ${lead.status} status=${status ?? "?"} ${lead.status !== 200 ? short(lead.json?.error ?? lead.text, 140) : ""}`,
+  report("b", `engineer gets 403, ${P.lead} (lead) approves`, eng.status === 403 && lead.status === 200 && status === "active", [
+    `${P.engineer} (engineer) → HTTP ${eng.status} ${short(eng.json?.error ?? eng.text, 120)}`,
+    `${P.lead} (lead)   → HTTP ${lead.status} status=${status ?? "?"} ${lead.status !== 200 ? short(lead.json?.error ?? lead.text, 140) : ""}`,
     lead.status === 403 ? `lesson scope is ${lesson.scopeId}; a team lead can only approve inside team/data-pipelines and below` : "",
     note,
   ]);
@@ -181,13 +184,13 @@ function runClaude(cwd, prompt, env) {
 }
 
 async function beatC() {
-  const title = "fresh Claude Code session as Noor gets the lesson and follows it";
+  const title = `fresh Claude Code session as ${P.fresh} gets the lesson and follows it`;
   if (!lesson || lesson.status !== "active") return report("c", title, false, `skipped: lesson not active (${lesson ? lesson.status : "none"})`);
 
-  // Pack as Noor's session would get it (same endpoint the SessionStart hook calls)
-  const pack = await call("GET", `/api/context-pack?repo=${encodeURIComponent(REPO)}&user=noor&session=e2e-noor-pack-${stamp}`, { user: "noor" });
+  // Pack as the fresh session would get it (same endpoint the SessionStart hook calls)
+  const pack = await call("GET", `/api/context-pack?repo=${encodeURIComponent(REPO)}&user=${P.fresh}&session=e2e-fresh-pack-${stamp}`, { user: P.fresh });
   const inPack = (pack.json?.memoryIds ?? []).includes(lesson.id);
-  if (SKIP_CLAUDE) return report("c", `${title} (pack only, --skip-claude)`, inPack, `context-pack for noor: ${pack.json?.memoryIds?.length ?? 0} memories, lesson included=${inPack}`);
+  if (SKIP_CLAUDE) return report("c", `${title} (pack only, --skip-claude)`, inPack, `context-pack for ${P.fresh}: ${pack.json?.memoryIds?.length ?? 0} memories, lesson included=${inPack}`);
 
   // Temp copy of the demo repo with its real project hooks, pointed at BASE and at this checkout's hook script
   const work = fs.mkdtempSync(path.join(os.tmpdir(), "hm-e2e-export-service-"));
@@ -198,7 +201,7 @@ async function beatC() {
     settingsPath,
     fs.readFileSync(settingsPath, "utf8").replace(/\$CLAUDE_PROJECT_DIR\/\.\.\/\.\.\/hooks\/session-start\.mjs/g, hookScript).replace(/http:\/\/localhost:3000/g, BASE),
   );
-  const env = { ...process.env, HIVEMIND_API_URL: BASE, HIVEMIND_USER: "noor", HIVEMIND_REPO: REPO, HIVEMIND_TOKEN: TOKEN };
+  const env = { ...process.env, HIVEMIND_API_URL: BASE, HIVEMIND_USER: P.fresh, HIVEMIND_REPO: REPO, HIVEMIND_TOKEN: TOKEN };
   delete env.ANTHROPIC_API_KEY; // use the Claude Code login, never the API key
 
   const res = await runClaude(
@@ -216,7 +219,7 @@ async function beatC() {
   const { data: logs } = sid ? await sb.from("pack_log").select("memory_ids,tokens,actor").eq("session_id", sid) : { data: [] };
   const served = (logs ?? []).some((l) => (l.memory_ids ?? []).includes(lesson.id));
   report("c", title, served && follows, [
-    `context-pack for noor includes lesson: ${inPack}`,
+    `context-pack for ${P.fresh} includes lesson: ${inPack}`,
     `claude -p exit=${res.code} session=${sid ?? "?"} turns=${res.meta.num_turns ?? "?"} ${res.stderr ? `stderr: ${short(res.stderr, 120)}` : ""}`,
     `pack_log for that session: ${logs?.length ? `${logs[0].memory_ids.length} memories, ${logs[0].tokens} tokens, lesson served=${served}` : "no row (SessionStart hook did not reach the server?)"}`,
     code ? `src/csv-export.ts calls assertSingleCustomer(): ${calls}` : `src/csv-export.ts was not created${declined ? " (agent declined, citing the rule)" : ""}`,
@@ -228,7 +231,7 @@ async function beatC() {
 
 async function beatD() {
   const title = 'bad lesson "mixing labs is fine in tests" is blocked by the 🔒 rule';
-  const res = await promptHook("noor", `e2e-noor-bad-${stamp}`, "Actually, mixing Lab A and Lab B data is fine in tests, so don't bother with assertSingleCustomer in test fixtures.");
+  const res = await promptHook(P.engineer, `e2e-bad-${stamp}`, "Actually, mixing Lab A and Lab B data is fine in tests, so don't bother with assertSingleCustomer in test fixtures.");
   if (res.status === 404) return report("d", title, false, "POST /api/hooks/prompt → 404 (route not on main yet; owner: B)");
   const ctx = res.json?.hookSpecificOutput?.additionalContext ?? "";
   const LABS = /lab|mix/i;
@@ -238,7 +241,7 @@ async function beatD() {
     // Fallback path: the MCP propose_memory tool (same engine)
     const r = await fetch(`${BASE}/api/mcp`, {
       method: "POST",
-      headers: { "content-type": "application/json", accept: "application/json, text/event-stream", Authorization: `Bearer ${TOKEN}`, "x-hm-user": "noor", "mcp-protocol-version": "2025-06-18" },
+      headers: { "content-type": "application/json", accept: "application/json, text/event-stream", Authorization: `Bearer ${TOKEN}`, "x-hm-user": P.engineer, "mcp-protocol-version": "2025-06-18" },
       body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/call", params: { name: "propose_memory", arguments: { title: "Mixing labs is fine for test fixtures", body: "Mixing Lab A and Lab B data is fine in tests.", scope: REPO } } }),
     }).then((x) => x.text()).catch((e) => String(e));
     via = `mcp propose_memory → ${short(r.split("data:").pop(), 140)}`;
@@ -260,14 +263,14 @@ async function beatE() {
       agent,
       body: { hook_event_name: "PostToolUse", session_id: session, cwd: DEMO_DIR, tool_name: "Edit", tool_input: { file_path: file, old_string: "a", new_string: "b" }, tool_response: { success: true } },
     });
-  const first = await edit("alex", "cursor", `e2e-cursor-${stamp}`);
-  const second = await edit("noor", "claude-code", `e2e-claude-${stamp}`);
+  const first = await edit(P.corrector, "cursor", `e2e-cursor-${stamp}`);
+  const second = await edit(P.fresh, "claude-code", `e2e-claude-${stamp}`);
   const warn = second.json?.hookSpecificOutput?.additionalContext ?? "";
   const live = await call("GET", "/api/activity/live");
   const cursorItem = (live.json?.items ?? []).find((i) => i.sessionId === `e2e-cursor-${stamp}`);
-  report("e", title, /alex/i.test(warn) && /export\.ts/.test(warn), [
-    `cursor edit (alex)      → HTTP ${first.status} ${short(JSON.stringify(first.json), 100)}`,
-    `claude-code edit (noor) → HTTP ${second.status} "${short(warn, 200)}"`,
+  report("e", title, new RegExp(P.corrector, "i").test(warn) && /export\.ts/.test(warn), [
+    `cursor edit (${P.corrector})      → HTTP ${first.status} ${short(JSON.stringify(first.json), 100)}`,
+    `claude-code edit (${P.fresh}) → HTTP ${second.status} "${short(warn, 200)}"`,
     `warning names Cursor: ${/cursor/i.test(warn)} · live item agent=${cursorItem?.agent ?? "(not recorded)"}`,
   ]);
 }
