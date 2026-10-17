@@ -75,6 +75,17 @@
         "command": "hivemind.showLog",
         "title": "Show log",
         "category": "Hivemind"
+      },
+      {
+        "command": "hivemind.focusSidebar",
+        "title": "Open the Hivemind panel",
+        "category": "Hivemind"
+      },
+      {
+        "command": "hivemind.sidebar.refresh",
+        "title": "Refresh",
+        "category": "Hivemind",
+        "icon": "$(refresh)"
       }
     ],
     "menus": {
@@ -82,6 +93,10 @@
         {
           "command": "hivemind.teach",
           "when": "editorHasSelection"
+        },
+        {
+          "command": "hivemind.sidebar.refresh",
+          "when": "false"
         }
       ],
       "editor/context": [
@@ -89,6 +104,13 @@
           "command": "hivemind.teach",
           "when": "editorHasSelection",
           "group": "9_hivemind"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "hivemind.sidebar.refresh",
+          "when": "view == hivemind.sidebar",
+          "group": "navigation"
         }
       ]
     },
@@ -139,8 +161,31 @@
           "type": "boolean",
           "default": true,
           "markdownDescription": "Tell Hivemind when you save a file, so other agents get a collision warning."
+        },
+        "hivemind.workspaceName": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Workspace name in the Hivemind panel header, e.g. `Meridian Data`. Default: the org name from the server."
         }
       }
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "hivemind",
+          "title": "Hivemind",
+          "icon": "media/sidebar/hive.svg"
+        }
+      ]
+    },
+    "views": {
+      "hivemind": [
+        {
+          "type": "webview",
+          "id": "hivemind.sidebar",
+          "name": "Team memory"
+        }
+      ]
     }
   },
   "scripts": {

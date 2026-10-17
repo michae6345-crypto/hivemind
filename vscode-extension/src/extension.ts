@@ -8,6 +8,7 @@ import { registerLens } from "./lens";
 import { initLog, log, showLog } from "./log";
 import { openDashboard, pickRules } from "./picker";
 import { clearRules, peekRules, rulesFor } from "./rules";
+import { registerSidebar } from "./sidebar";
 import { registerStatus } from "./status";
 import { registerTeach, teach } from "./teach";
 
@@ -25,6 +26,7 @@ export function activate(ctx: vscode.ExtensionContext) {
   const inline = registerInline(ctx);
   const collisions = registerCollisions(ctx);
   registerTeach(ctx);
+  registerSidebar(ctx);
 
   const activeDoc = () => {
     const d = vscode.window.activeTextEditor?.document;
