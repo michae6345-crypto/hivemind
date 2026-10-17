@@ -7,8 +7,9 @@ import { pathToFileURL } from "node:url";
 import { brand, handleChip, label, useColor } from "./style.mjs";
 import { api, c, plain, post } from "./util.mjs";
 
-// Code-frame headers are clickable: permalink() from agent K's watch/git.mjs (remote blob URL at the current commit),
-// else a file:// URL, wrapped in an OSC 8 hyperlink and labelled `path#Lnn`.
+// Code-frame headers are clickable `path#Lnn` links: agent K's watch/git.mjs linkFile() (GitHub blob permalink at HEAD,
+// else the branch, else file://; OSC 8 when colour is on), so `check` and `watch` link the same way. Without watch/,
+// a local file:// OSC 8 link with the same label.
 let git = null;
 try {
   git = await import("../watch/git.mjs");
@@ -16,18 +17,17 @@ try {
   /* watch/ not installed, or git.mjs not landed yet */
 }
 const linkable = process.env.FORCE_HYPERLINK === "1" || (useColor && !!process.stdout.isTTY && !process.env.NO_HYPERLINKS);
-const osc8 = (url, text) => (linkable ? `\x1b]8;;${url}\x1b\\${text}\x1b]8;;\x1b\\` : text);
-const hyperlink = git?.hyperlink ?? git?.osc8 ?? osc8;
+const osc8 = (url, text) => (linkable ? `\x1b]8;;${url}\x07${text}\x1b]8;;\x07` : text);
 
-function permalinkFor(abs, root, line) {
+/** `demo/violations.ts#L13` (or `#L11-L13`), clickable. Lines are 1-based. */
+function fileLink(abs, root, file, line, endLine) {
+  const label = `${file}#L${line}${endLine > line ? `-L${endLine}` : ""}`;
   try {
-    const r = git?.permalink?.(abs, line, { root });
-    const url = typeof r === "string" ? r : r?.url;
-    if (url) return url;
+    if (git?.linkFile) return git.linkFile(abs, line, endLine > line ? endLine : undefined, { root, label });
   } catch {
-    /* not a git repo, no remote, … */
+    /* not a git repo, no remote, … → local link below */
   }
-  return `${pathToFileURL(abs).href}#L${line}`;
+  return osc8(`${pathToFileURL(abs).href}#L${line}`, c.link(label));
 }
 
 const CODE_EXT = /\.(m?[jt]sx?|cjs|cts|py|go|rb|java|kt|rs|sql|cs|php|swift|scala|sh)$/i;
@@ -107,7 +107,7 @@ function frame(file, lines, v, rule, loc) {
   const badge = label(v.locked ? "locked" : "lesson"); // "LOCKED RULE" / "TEAM LESSON", same as hivemind watch
   const out = [
     `${badge}  ${c.bold(plain(v.ruleTitle))}`,
-    `${" ".repeat(width)} ${c.gray("╭─[")}${hyperlink(permalinkFor(loc.abs, loc.root, v.startLine + 1), c.cyan(`${file}#L${v.startLine + 1}`))}${c.gray(`:${sc + 1}]`)}`,
+    `${" ".repeat(width)} ${c.gray("╭─[")}${fileLink(loc.abs, loc.root, file, v.startLine + 1, v.endLine + 1)}${c.gray(`:${sc + 1}]`)}`,
     bar,
   ];
   const why = explanation(v) || (v.locked ? "breaks a locked rule" : "doesn't follow a team lesson");
