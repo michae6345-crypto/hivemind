@@ -5,6 +5,13 @@
 // spawned and the pane (hivemind watch) fetches its own data. Every other command loads the full CLI (lib/main.mjs).
 
 const argv = process.argv.slice(2);
+
+// Keep a checkout-linked install current without `git pull` (lib/update.mjs). Never blocks: a background fetch, and a
+// fast-forward only when that fetch already found new commits. Silent where output must stay clean.
+if (argv[0] !== "update") {
+  const quiet = argv[0] === "statusline" || argv.includes("--json") || argv.includes("--auto");
+  (await import("./lib/update.mjs")).autoUpdate({ quiet });
+}
 const first = argv[0] ?? "";
 const noCommand = !first || (first.startsWith("--") && !["--help", "--version"].includes(first));
 const wantsOpen =

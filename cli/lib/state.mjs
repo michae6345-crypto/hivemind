@@ -11,7 +11,8 @@ const MAX = 10;
 export function readState() {
   try {
     const s = JSON.parse(readFileSync(STATE_FILE, "utf8"));
-    return { default: typeof s.default === "string" ? s.default : undefined, recent: Array.isArray(s.recent) ? s.recent : [] };
+    // Keep every other key (e.g. `update`, owned by lib/update.mjs) so writing recent repos never drops it.
+    return { ...s, default: typeof s.default === "string" ? s.default : undefined, recent: Array.isArray(s.recent) ? s.recent : [] };
   } catch {
     return { recent: [] };
   }

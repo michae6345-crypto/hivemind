@@ -429,6 +429,7 @@ function help() {
     group("Keep in sync"),
     cmd("sync", "[--dry-run]", "refresh rules files for agents without hooks"),
     cmd("status", "", "API, rules, pending lessons, wired agents"),
+    cmd("update", "", "pull the latest CLI now (it also updates itself every 15 min)"),
     "",
     group("Flags"),
     `    ${c.gray("--repo repo/<name>  --user <id>  --agent <kind>  --url <api>  --dir <path>  --dry-run  --json")}`,
@@ -436,6 +437,7 @@ function help() {
     "",
     group("Env"),
     `    ${c.gray("HIVEMIND_TOKEN  HIVEMIND_USER  HIVEMIND_REPO  HIVEMIND_API_URL")} ${c.faint(`(default ${SITE})`)}`,
+    `    ${c.gray("HIVEMIND_NO_UPDATE=1")} ${c.faint("freeze the CLI: no background fetch, no self-update (e.g. while recording)")}`,
     "",
     `  ${c.faint("Docs")}  ${c.link(SITE)}`,
     "",
@@ -493,7 +495,23 @@ const repoIdOf = (found) => {
   const raw = String(found.saved?.repo || basename(found.root));
   return raw.includes("/") ? raw : `repo/${raw}`;
 };
-const commands = { use: cmdUse, watch: watchCmd("index.mjs"), statusline: watchCmd("statusline.mjs"), open: (cfg) => cmdOpen(cfg, fail), why: async (cfg, pos) => (await import("./why.mjs")).cmdWhy(cfg, pos, fail), init: cmdInit, sync: cmdSync, status: cmdStatus, teach: cmdTeach, rules: cmdRules, check: (cfg, pos) => cmdCheck(cfg, pos, fail) };
+// `hivemind update`: check origin/main now and fast-forward this checkout if it's safe (same rules as the auto-update).
+async function cmdUpdate() {
+  const u = await import("./update.mjs");
+  console.log(`${brand()} ${c.gray("· update")}  ${u.checkoutRoot}`);
+  if (!u.isCheckout()) return console.log(`  this install isn't a git checkout; reinstall with ${c.cyan("npm i -g ./cli")} from your hivemind clone`);
+  if (process.env.HIVEMIND_NO_UPDATE === "1") console.log(c.gray("  HIVEMIND_NO_UPDATE=1 is set: auto-update is off, but you asked, so checking now"));
+  const m = u.fetchAndMeasure();
+  if (!m) fail("couldn't fetch origin/main (offline?). Details in ~/.hivemind/update.log");
+  const r = u.fastForward({ verbose: true });
+  if (!r) return;
+  console.log(`  ${c.green("✓")} updated to ${c.bold(r.sha)} ${c.gray(`(${r.n} new commit${r.n === 1 ? "" : "s"})`)}`);
+  for (const line of r.subjects.slice(0, 8)) console.log(`    ${c.gray(line.slice(0, 7))} ${line.slice(8, 100)}`);
+  if (r.subjects.length > 8) console.log(c.gray(`    … and ${r.subjects.length - 8} more`));
+  const cliFiles = r.files.filter((f) => f.startsWith("cli/"));
+  console.log(c.gray(`  ${r.files.length} file${r.files.length === 1 ? "" : "s"} changed, ${cliFiles.length} in cli/${r.files.includes("cli/package.json") ? " (cli/package.json changed: pnpm install started)" : ""}`));
+}
+const commands = { update: cmdUpdate, use: cmdUse, watch: watchCmd("index.mjs"), statusline: watchCmd("statusline.mjs"), open: (cfg) => cmdOpen(cfg, fail), why: async (cfg, pos) => (await import("./why.mjs")).cmdWhy(cfg, pos, fail), init: cmdInit, sync: cmdSync, status: cmdStatus, teach: cmdTeach, rules: cmdRules, check: (cfg, pos) => cmdCheck(cfg, pos, fail) };
 if (cmd === "--version" || cmd === "-v" || cmd === "version" || (flags.version && cmd !== "watch")) {
   console.log(`hivemind ${VERSION}`);
   process.exit(0);
@@ -514,7 +532,7 @@ if (FALLBACK.has(cmd) && typeof flags.dir !== "string" && !findRepoRoot(process.
   cfg0 = resolveConfig({ ...flags, dir: found.root });
 }
 // Remember every successful run inside a repo, so `hivemind` from anywhere knows where to go next time.
-const NO_REMEMBER = new Set(["statusline", "use", "watch"]); // watch remembers itself (it never returns while running)
+const NO_REMEMBER = new Set(["statusline", "use", "watch", "update"]); // watch remembers itself (it never returns while running)
 commands[cmd](cfg0, positional)
   .then(() => {
     if (NO_REMEMBER.has(cmd) || cfg0.dryRun) return;

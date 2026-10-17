@@ -21,6 +21,27 @@ templates in `integrations/` stay available. You can also run it without install
 `node cli/hivemind.mjs <command>`. The package layout is publish-ready (`npm pack` gives a 26 kB tarball), but a
 published tarball has no `hooks/` or `integrations/`, so `init` falls back to MCP + rules files.
 
+### Staying up to date (no `git pull`)
+
+You never need to pull for server changes. The hooks, engine and MCP server auto-deploy on Render with every push. The
+CLI updates itself:
+
+- **In the background.** When `hivemind` runs from a git checkout (which `npm i -g ./cli` links to), and the last check
+  was more than 15 minutes ago, it starts a detached `git fetch origin main` and carries on. A lock file in
+  `~/.hivemind/` keeps two launches from fetching at once.
+- **On the next launch,** if that fetch found new commits, it fast-forwards the checkout and prints one line:
+  `⬢ Hivemind · updated to 3ce2324 (2 new commits)`.
+- **Safely:**
+  - It updates only when the checkout is on `main` and hasn't diverged.
+  - It only fast-forwards: it never merges, rebases, stashes or commits.
+  - It never updates when an incoming commit changes a file you have uncommitted edits in. Your demo and playground
+    edits stay as they are.
+  - Everything it skips is logged to `~/.hivemind/update.log`.
+  - It re-runs `CI=true pnpm install` only when `cli/package.json` changed. That's rare, since the CLI has no
+    dependencies.
+- **Now:** `hivemind update` checks and updates right away, and prints the new commits.
+- **Frozen:** `HIVEMIND_NO_UPDATE=1` turns all of it off. Set it while recording a demo so nothing changes under you.
+
 ## 20-second quickstart
 
 ```bash
@@ -111,6 +132,7 @@ Either way it prints one line and carries on:
 | `status` | Pings the API, then shows the rules in the pack, pending lessons, and each agent's MCP, hooks and rules files |
 | `teach "<rule>" [--scope repo/x|team/x]` | Sends the rule to `/api/events` as a correction, so it gets the same extract, merge and 🔒 checks as any other correction. Prints `Lesson proposed — waiting on @<owner>`, or `Blocked by a locked rule`. A `team/…` scope is sent as a proposal for that scope |
 | `rules [--file path]` | Prints the rules that apply now. With `--file`, it prints that file's rules plus live edits, using MCP `get_team_rules`. Output is colored on a TTY and plain markdown when piped |
+| `update` | Checks `origin/main` and fast-forwards this checkout now, using the same safety rules as the automatic update, then prints the new commits |
 | `use [<path> | --clear]` | Sets the default repo for runs outside a repo, such as from your home folder or with `!hivemind` in Claude Code. With no argument, it lists the recent repos from `~/.hivemind/state.json` |
 | `why [--last | <rule words> | <file>:<line>]` | The history behind one rule, in about 12 lines: who set or taught it and the quote, the evidence (PRs as clickable links), approvals, whether it's in every agent's session pack, how often it was reinforced, and what it blocked. `--last` (the default) picks your most recent block, or the most recent `hivemind check` flag. In Claude Code: `/hivemind why` |
 | `check <file…>` / `check --staged` `[--fix] [--deep]` | Checks files against the team's rules via `POST /api/vscode/check`, the same regex + Haiku engine as the VS Code squiggles. Each violation prints as a code frame. Its header is a clickable `path#Lnn` link (OSC 8 → `permalink()` from `watch/git.mjs`, else `file://`; `NO_HYPERLINKS=1` turns it off), followed by 2 lines of context, the range underlined `~~~~` (rose for locked rules, honey for lessons), the rule, the owner's `@handle` and the quick fix as a diff. `--fix` applies the quick fixes (deduped, bottom-up) and re-checks. Exits 1 while a locked rule is broken, so `hivemind check --staged` works as a pre-commit hook |
