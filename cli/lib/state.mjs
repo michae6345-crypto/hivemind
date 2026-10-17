@@ -1,7 +1,7 @@
 // ~/.hivemind/state.json: the repos you've used, so `hivemind` works from anywhere (home folder, Claude Code's `!`).
 // { default?: "<path>", recent: [{ path, repo, user, lastUsed }] }, newest first, at most 10.
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { homedir } from "node:os";
+import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 
 export const STATE_DIR = join(homedir(), ".hivemind");
@@ -31,7 +31,9 @@ const same = (a, b) => String(a).toLowerCase() === String(b).toLowerCase();
 
 /** Record a successful run in a repo (moves it to the front). */
 export function remember({ path, repo, user }) {
-  if (!path) return;
+  if (!path || process.env.HIVEMIND_NO_REMEMBER === "1") return;
+  // Test runs (e2e temp copies, scratch clones) must not crowd your real repos out of the list.
+  if (String(path).toLowerCase().startsWith(tmpdir().toLowerCase())) return;
   const s = readState();
   const prev = s.recent.find((r) => same(r.path, path));
   const entry = { path, repo: repo || prev?.repo, user: user || prev?.user || undefined, lastUsed: new Date().toISOString() };

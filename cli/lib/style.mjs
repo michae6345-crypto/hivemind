@@ -18,11 +18,19 @@ export const SPEC = {
   repo: "#2DD4BF", // files, paths
   handle: "#E0A955", // @handles
   hair: "#2E2E32", // card borders, rails
-  pill: "#2A2A2E", // chip / pill background
+  pill: "#2A2A2E", // chip / pill background (Adrian: chipBg)
   bg: "#1C1C1E",
+  // Adrian's v2 washes (public/brand/terminal/tui-reference.mjs), pre-blended on #1C1C1E
+  sel: "#232A45",
+  okWash: "#1D3A2B",
+  lockedBg: "#3A2023",
+  lessonBg: "#3A2F1D",
+  codeBg: "#232326",
+  boxBorder: "#3A3A40", // rounded boxes for things that float
+  boxBg: "#202024",
 };
 /** Our painter names → theme token names. */
-const ALIAS = { link: "blueText", teal: "repo", warn: "lesson" };
+const ALIAS = { link: "blueText", teal: "repo", warn: "lesson", chipBg: "pill", selBg: "sel", okBg: "okWash", chrome: "blue", chromeText: "blueText" };
 
 let external = null;
 try {
