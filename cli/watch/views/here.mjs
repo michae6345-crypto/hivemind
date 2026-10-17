@@ -131,15 +131,23 @@ function broken(th, ch, v, lines, file, rule, state, ctx, selected) {
   const g = (s) => t.faint(s);
   const tint = bg(mix(v.locked ? P.locked : P.lesson, "#1C1C1E", v.locked ? 0.16 : 0.13));
   out.push(clip(`${" ".repeat(gw - 1)}${g("╭─[")}${linkFile(file, v.startLine + 1, v.endLine > v.startLine ? v.endLine + 1 : undefined, { root: state.workspace?.root })}${g("]")}`, w));
+  // Scroll the frame sideways (every line by the same amount, so they stay aligned) when the offending expression
+  // starts past the code column: it sits about a third in, with a leading "…" saying the line goes on to the left.
+  // Without this the ~~~~ was clamped to the last column while the expression itself was cut off.
+  const [hs, he] = colsFor(v, v.startLine, lines[v.startLine] ?? "", rule);
+  const off = he <= code ? 0 : Math.max(0, Math.min(hs, Math.max(he - code + 1, hs - Math.floor(code / 3))));
+  const view = (s) => (!off ? s : s.length > off + 1 ? `…${s.slice(off + 1)}` : ""); // a line that ends before the scroll shows blank
   for (let i = first; i <= last; i++) {
-    const text = expand(lines[i]);
+    const text = view(expand(lines[i]));
     const hit = i >= v.startLine && i <= v.endLine;
     const num = g(`${String(i + 1).padStart(gw)} │ `);
     if (!hit) {
       out.push(clip(`${num}${t.muted(text)}`, w));
       continue;
     }
-    const [s, e] = colsFor(v, i, lines[i] ?? "", rule);
+    const [s0, e0] = colsFor(v, i, lines[i] ?? "", rule);
+    const s = Math.max(off ? 1 : 0, s0 - off); // columns in the (scrolled) view
+    const e = e0 - off;
     const a = Math.min(s, Math.max(0, code - 1));
     const b = Math.min(Math.max(e, a + 1), code);
     out.push(clip(`${num}${t.text(text.slice(0, a))}${tint(t.text(text.slice(a, b)))}${t.text(text.slice(b))}`, w));
@@ -148,7 +156,14 @@ function broken(th, ch, v, lines, file, rule, state, ctx, selected) {
       const note = shortNote(v);
       const n = Math.max(1, b - a);
       const squiggle = tone("~".repeat(n));
-      const marks = a + n + 1 + note.length <= code || a < note.length + 1 ? `${" ".repeat(a)}${squiggle} ${tone(note)}` : `${" ".repeat(a - note.length - 1)}${tone(note)} ${squiggle}`;
+      const after = code - (a + n + 1); // room for the note after the ~~~~
+      const before = a - 1; // room before it
+      const marks =
+        note.length <= after || (after >= before && after > 0)
+          ? `${" ".repeat(a)}${squiggle} ${tone(clip(note, Math.max(1, after)))}`
+          : before > 0
+            ? `${" ".repeat(Math.max(0, a - Math.min(note.length, before) - 1))}${tone(clip(note, before))} ${squiggle}`
+            : `${" ".repeat(a)}${squiggle}`;
       out.push(clip(`${" ".repeat(gw)}${g(" │ ")}${marks}`, w));
     }
   }
