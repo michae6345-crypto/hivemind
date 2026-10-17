@@ -24,7 +24,7 @@ const arg = (name, def) => {
   const i = process.argv.indexOf(`--${name}`);
   return i >= 0 ? process.argv[i + 1] : def;
 };
-const BASE = arg("base", "https://hivemind-beta-virid.vercel.app").replace(/\/+$/, "");
+const BASE = arg("base", "https://hivemind-q17i.onrender.com").replace(/\/+$/, "");
 const USER = arg("user", "emily");
 const CLI = path.join(root, "cli", "hivemind.mjs");
 const RULE = /Never log expert personal info/;

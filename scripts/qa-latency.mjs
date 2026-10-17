@@ -14,7 +14,7 @@ const arg = (k, d) => {
   const i = process.argv.indexOf(`--${k}`);
   return i >= 0 ? process.argv[i + 1] : d;
 };
-const BASE = arg("base", "https://hivemind-beta-virid.vercel.app").replace(/\/+$/, "");
+const BASE = arg("base", "https://hivemind-q17i.onrender.com").replace(/\/+$/, "");
 const N = Number(arg("n", 5));
 const ONLY = arg("only", "pack,hook,prompt,tool,live,memories,rules,check,statusline,open").split(",");
 const TOKEN = process.env.HIVEMIND_TOKEN ?? "";

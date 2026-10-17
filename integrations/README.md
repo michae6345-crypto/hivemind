@@ -47,7 +47,7 @@ no-op output (`{}`, `{"continue":true}`, or an "unavailable" briefing) and exits
 `HIVEMIND_DEBUG=1` prints errors to stderr.
 
 Env (same rules as `hooks/session-start.mjs`):
-`HIVEMIND_API_URL` (default production `https://hivemind-beta-virid.vercel.app`; set `http://localhost:3000` for a local server), `HIVEMIND_TOKEN`, `HIVEMIND_USER` (default `sam`), `HIVEMIND_REPO` (default `repo/<workspace folder>`). Only `HIVEMIND_TOKEN` is read from `.env.local`.
+`HIVEMIND_API_URL` (default production `https://hivemind-q17i.onrender.com`; set `http://localhost:3000` for a local server), `HIVEMIND_TOKEN`, `HIVEMIND_USER` (default `sam`), `HIVEMIND_REPO` (default `repo/<workspace folder>`). Only `HIVEMIND_TOKEN` is read from `.env.local`.
 
 ## Templates (for `hivemind init`)
 
@@ -56,7 +56,7 @@ Copy each folder's contents into the target repo root (except Windsurf's `mcp_co
 | Placeholder | Value |
 |---|---|
 | `{{HIVEMIND_DIR}}` | absolute path to the hivemind checkout, **forward slashes** (e.g. `C:/Users/me/hivemind`) |
-| `{{HIVEMIND_API_URL}}` | `http://localhost:3000` or the Vercel URL |
+| `{{HIVEMIND_API_URL}}` | `http://localhost:3000` or the Render URL (`https://hivemind-q17i.onrender.com`) |
 | `{{HIVEMIND_REPO}}` | scope id, e.g. `repo/export-service` |
 
 `HIVEMIND_TOKEN` / `HIVEMIND_USER` stay as env-var references (secret / per-person). VS Code prompts for them once via `inputs`.

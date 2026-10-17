@@ -11,7 +11,7 @@
 - [ ] **A 2-minute demo + pitch video** (YouTube or Loom link). Hard cap 2:00. Script: `docs/pitch/video-script.md`.
 - [ ] **GitHub project link.** The repo is **private** right now, and judging says "ensure your project AND GitHub
   links work". Make it public (or add the judges) before submitting.
-- [ ] **Project link:** https://hivemind-beta-virid.vercel.app (check it loads in a logged-out browser).
+- [ ] **Project link:** https://hivemind-q17i.onrender.com (check it loads in a logged-out browser).
 - [ ] **Team of 4 or fewer:** Adrian Erlikhman, Michael Tarekegn. Built during the hackathon (Oct 16 5 PM onward).
 - [ ] **Opt in to every prize** on the submission form (cross-eligibility is allowed):
   Grand Tech Winner · Grand Tech Runner-Up · Best Visual Design · Most Scalable To $1B · Continual Failure Detection.
@@ -25,7 +25,7 @@
 **Tagline (≤200 chars):** Correct one AI coding agent and every agent at your company learns it. Lessons are approved
 by a lead, locked rules can't be overridden, and an eval shows the difference: 39% → 100% pass.
 
-**Try it out:** https://hivemind-beta-virid.vercel.app · GitHub: https://github.com/michae6345-crypto/hivemind
+**Try it out:** https://hivemind-q17i.onrender.com · GitHub: https://github.com/michae6345-crypto/hivemind
 
 **Prizes entered (all five):** Grand Tech Winner · Grand Tech Runner-Up (Continual Learning: AfterQuery + SideShift) ·
 Continual Failure Detection (Lemma) · Most Scalable To $1B (Outcast Ventures) · Best Visual Design (Figma)
@@ -133,7 +133,7 @@ What that means in practice:
   the approved lessons, with who taught them and why, become a company asset that builds up over months.
 - **Fits inside the agents' limits.** The pack respects Claude Code's 10,000-character hook cap, a correction is
   captured within the 5-second hook timeout, and anything slower finishes in the background so the agent never waits.
-- **Plain, horizontal parts.** One Next.js app on Vercel (UI, API and MCP server) and Postgres. Scopes (org → team →
+- **Plain, horizontal parts.** One Next.js app on Render (UI, API and MCP server) and Postgres. Scopes (org → team →
   repo → personal) match how companies are already organized, so a new team is a new row, not a new deployment.
 
 We built Hivemind for AI training-data teams like AfterQuery's, so the demo company is **Meridian Data**, a fictional
@@ -266,7 +266,7 @@ per-task table and reproduction commands: `docs/eval.md`.
 
 `next.js` · `typescript` · `react` · `tailwindcss` · `shadcn/ui` · `motion` · `codemirror` · `supabase` ·
 `postgresql` · `anthropic` · `claude-code` · `claude-haiku` · `claude-sonnet` · `model-context-protocol` ·
-`mcp-handler` · `zod` · `node.js` · `vercel` · `pnpm` · `cursor` · `gemini-cli` · `codex` · `github-copilot` · `windsurf`
+`mcp-handler` · `zod` · `node.js` · `render` · `pnpm` · `cursor` · `gemini-cli` · `codex` · `github-copilot` · `windsurf`
 
 ---
 
@@ -300,5 +300,5 @@ the video or on Devpost. ⏳ rows are roadmap until they land. ✅ means the cod
 | `hivemind check <file…>` / `--staged [--fix]` (code frames, exits 1 on a locked rule) | ✅ | `cli/lib/check.mjs` |
 | Hook lines in plain "Hivemind · …" wording, no emoji | ✅ cee7840 | `src/lib/engine/pipeline.ts`, `hooks/` |
 | MCP chat cards for `get_team_rules` / `propose_memory` (MCP Apps) | ✅ | `src/app/api/mcp/` |
-| Vercel deploy (live link): https://hivemind-beta-virid.vercel.app | ✅ auto-deploys from main | `docs/deploy.md` |
+| Render deploy (live link): https://hivemind-q17i.onrender.com | ✅ auto-deploys from main | `docs/deploy.md` |
 | Decay, invalidation, PR-comment importer | roadmap | |

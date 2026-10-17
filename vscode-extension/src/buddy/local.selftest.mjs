@@ -8,7 +8,7 @@ import * as esbuild from "esbuild";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const ext = join(here, "..", "..");
-const api = process.argv[2] || "https://hivemind-beta-virid.vercel.app";
+const api = process.argv[2] || "https://hivemind-q17i.onrender.com";
 const token = process.env.HIVEMIND_TOKEN || "hm-dev-token";
 const out = join(mkdtempSync(join(tmpdir(), "hm-buddy-")), "local.mjs");
 await esbuild.build({ entryPoints: [join(here, "local.ts")], bundle: true, format: "esm", platform: "node", outfile: out, logLevel: "error" });

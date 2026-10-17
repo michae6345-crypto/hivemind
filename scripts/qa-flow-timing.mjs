@@ -18,7 +18,7 @@ const arg = (k, d) => {
   const i = process.argv.indexOf(`--${k}`);
   return i >= 0 ? process.argv[i + 1] : d;
 };
-const BASE = arg("base", "https://hivemind-beta-virid.vercel.app").replace(/\/+$/, "");
+const BASE = arg("base", "https://hivemind-q17i.onrender.com").replace(/\/+$/, "");
 const RUNS = Number(arg("runs", 3));
 const POLL = Number(arg("poll", 2000));
 const imp = (p) => import(pathToFileURL(path.join(root, p)).href);

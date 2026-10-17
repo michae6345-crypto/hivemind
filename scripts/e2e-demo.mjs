@@ -2,7 +2,7 @@
 // End-to-end rehearsal of the 2-minute video beats against a running server. Prints PASS/FAIL + evidence per beat.
 //
 //   node scripts/e2e-demo.mjs                         # all beats against http://localhost:3104
-//   node scripts/e2e-demo.mjs --base https://<app>.vercel.app --beats a,b,d,e
+//   node scripts/e2e-demo.mjs --base https://<app>.onrender.com --beats a,b,d,e
 //   node scripts/e2e-demo.mjs --skip-claude           # beat (c) checks the pack only, no headless claude run
 //   node scripts/e2e-demo.mjs --beats c --lesson sec-lab-isolation   # (c) alone, against an existing active memory
 //

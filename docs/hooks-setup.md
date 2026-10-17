@@ -20,7 +20,7 @@ Hook commands and http hook headers read these from the environment Claude Code 
 |---|---|---|---|
 | `HIVEMIND_USER` | `michael` | `adrian` | Shown as "@michael's agent" in collision warnings and the live feed |
 | `HIVEMIND_TOKEN` | from `.env.local` | from `.env.local` | Must match the server's `HIVEMIND_TOKEN` |
-| `HIVEMIND_API_URL` | leave unset | leave unset | Defaults to production (`https://hivemind-beta-virid.vercel.app`). Set `http://localhost:3000` only to use a local server (see §4). Used by the SessionStart script and `.mcp.json` |
+| `HIVEMIND_API_URL` | leave unset | leave unset | Defaults to production (`https://hivemind-q17i.onrender.com`). Set `http://localhost:3000` only to use a local server (see §4). Used by the SessionStart script and `.mcp.json` |
 | `HIVEMIND_REPO` | optional | optional | Defaults to `repo/<folder name>`; set it if the folder name ≠ scope (e.g. `repo/export-service`) |
 
 PowerShell (persists for new terminals):
@@ -62,7 +62,7 @@ keep the quotes. Copy `demo/export-service/.mcp.json` next to it (or run
 
 ## 4. Production vs a local server
 
-The demo configs point at **production, `https://hivemind-beta-virid.vercel.app`** (auto-deploys from `main`):
+The demo configs point at **production, `https://hivemind-q17i.onrender.com`** (auto-deploys from `main`):
 `.claude/settings.json` (three http hook URLs), `.mcp.json`, `.vscode/mcp.json`, and the SessionStart script's default.
 The server needs the same `HIVEMIND_TOKEN` you use locally.
 
@@ -81,4 +81,4 @@ To work against a **local server** instead (`pnpm dev`, port 3000):
   If it prints "Hivemind team memory unavailable…", the server is down or the URL is wrong. The hook always exits 0, so it never blocks a session.
 - **Http hooks return 401:** `HIVEMIND_TOKEN` isn't in the environment Claude Code was launched from.
 - **`HTTP 404` from `/api/hooks/prompt` or `/api/hooks/session-end`:** those routes haven't been deployed yet. `onFailure: "continue"` keeps the session running.
-- **Smoke test:** `node scripts/smoke-hooks.mjs https://hivemind-beta-virid.vercel.app` (or `http://localhost:3000`) (add `--propose` to also create a pending test lesson).
+- **Smoke test:** `node scripts/smoke-hooks.mjs https://hivemind-q17i.onrender.com` (or `http://localhost:3000`) (add `--propose` to also create a pending test lesson).

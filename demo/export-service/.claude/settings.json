@@ -20,7 +20,7 @@
         "hooks": [
           {
             "type": "http",
-            "url": "https://hivemind-beta-virid.vercel.app/api/hooks/prompt",
+            "url": "https://hivemind-q17i.onrender.com/api/hooks/prompt",
             "headers": {
               "Authorization": "Bearer $HIVEMIND_TOKEN",
               "x-hm-user": "$HIVEMIND_USER",
@@ -43,7 +43,7 @@
         "hooks": [
           {
             "type": "http",
-            "url": "https://hivemind-beta-virid.vercel.app/api/hooks/tool",
+            "url": "https://hivemind-q17i.onrender.com/api/hooks/tool",
             "headers": {
               "Authorization": "Bearer $HIVEMIND_TOKEN",
               "x-hm-user": "$HIVEMIND_USER",
@@ -65,7 +65,7 @@
         "hooks": [
           {
             "type": "http",
-            "url": "https://hivemind-beta-virid.vercel.app/api/hooks/session-end",
+            "url": "https://hivemind-q17i.onrender.com/api/hooks/session-end",
             "headers": {
               "Authorization": "Bearer $HIVEMIND_TOKEN",
               "x-hm-user": "$HIVEMIND_USER",

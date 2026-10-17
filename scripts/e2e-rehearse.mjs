@@ -19,7 +19,7 @@ const arg = (n, d) => {
   const i = process.argv.indexOf(`--${n}`);
   return i >= 0 ? process.argv[i + 1] : d;
 };
-const BASE = arg("base", "https://hivemind-beta-virid.vercel.app").replace(/\/+$/, "");
+const BASE = arg("base", "https://hivemind-q17i.onrender.com").replace(/\/+$/, "");
 const BEATS = arg("beats", "1,2,3,4,6,8").split(",");
 const TOKEN = process.env.HIVEMIND_TOKEN ?? "";
 const REPO = "repo/export-service";

@@ -5,7 +5,7 @@ The product shot is one Windows Terminal window split in two:
 - **Left:** `claude` running in `demo/export-service`, as one persona.
 - **Right:** `hivemind watch`, showing what the hive sees.
 
-Everything runs against **production** (`https://hivemind-beta-virid.vercel.app`). The demo repo's hooks
+Everything runs against **production** (`https://hivemind-q17i.onrender.com`). The demo repo's hooks
 (`demo/export-service/.claude/settings.json`) and `.hivemind.json` already point there.
 
 > Status (Sat Oct 17, ~3 AM, main `4a50d1f`): rehearsed against prod with `node scripts/e2e-rehearse.mjs`. Every
@@ -241,7 +241,7 @@ The Here view doesn't show hook-only edits; it reacts to files changing on disk.
 
 ### Beat 7 (1:20): proof
 
-Cut to `https://hivemind-beta-virid.vercel.app/app/results`. It shows the eval: without Hivemind 22/36 runs broke a
+Cut to `https://hivemind-q17i.onrender.com/app/results`. It shows the eval: without Hivemind 22/36 runs broke a
 team rule, with Hivemind 0/36, placebo 21/36.
 
 ### Beat 8 (1:30): fix it once, every agent learns it
@@ -317,7 +317,7 @@ Known nits (not blocking):
 
 ```powershell
 node scripts\reset-demo.mjs
-node scripts\e2e-demo.mjs --base https://hivemind-beta-virid.vercel.app   # beats 1–4 + collision, real claude -p (~3 min)
+node scripts\e2e-demo.mjs --base https://hivemind-q17i.onrender.com   # beats 1–4 + collision, real claude -p (~3 min)
 node scripts\e2e-terminal.mjs                                             # watch Here view + hivemind check vs prod
 node scripts\e2e-rehearse.mjs                                             # every beat's right pane as snapshots (diff vs this doc)
 node scripts\reset-demo.mjs                                               # e2e writes rows: reset again before the take

@@ -1,7 +1,7 @@
 // Snapshot prod data for the standalone sidebar preview: node src/sidebar/preview/snapshot.mjs
 // Env: HIVEMIND_API_URL (default prod), HIVEMIND_TOKEN.
 import { readFileSync, writeFileSync } from "node:fs";
-const api = (process.env.HIVEMIND_API_URL || "https://hivemind-beta-virid.vercel.app").replace(/\/+$/, "");
+const api = (process.env.HIVEMIND_API_URL || "https://hivemind-q17i.onrender.com").replace(/\/+$/, "");
 const headers = { authorization: `Bearer ${process.env.HIVEMIND_TOKEN || "hm-dev-token"}`, "x-hm-agent": "vscode", "x-hm-user": "jordan" };
 const get = (p) => fetch(api + p, { headers }).then((r) => r.json());
 const [scopes, chain, all, metrics, live, here] = await Promise.all([

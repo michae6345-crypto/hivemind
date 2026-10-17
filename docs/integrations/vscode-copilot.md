@@ -13,7 +13,7 @@ The demo repo already has the config: `demo/export-service/.vscode/mcp.json`.
   "servers": {
     "hivemind": {
       "type": "http",
-      "url": "https://hivemind-beta-virid.vercel.app/api/mcp",
+      "url": "https://hivemind-q17i.onrender.com/api/mcp",
       "headers": {
         "Authorization": "Bearer ${input:hivemind-token}",
         "x-hm-user": "${input:hivemind-user}",

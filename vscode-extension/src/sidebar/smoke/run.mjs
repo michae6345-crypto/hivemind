@@ -23,7 +23,7 @@ await runTests({
   extensionTestsPath: join(here, "suite.js"),
   launchArgs: [ws, "--user-data-dir", join(tmp, "user"), "--extensions-dir", join(tmp, "exts"), "--disable-extensions", "--disable-workspace-trust"],
   extensionTestsEnv: {
-    HIVEMIND_API_URL: process.argv[2] || "https://hivemind-beta-virid.vercel.app",
+    HIVEMIND_API_URL: process.argv[2] || "https://hivemind-q17i.onrender.com",
     HIVEMIND_TOKEN: process.env.HIVEMIND_TOKEN || "hm-dev-token",
     HIVEMIND_USER: "jordan",
     HM_TEST_RESULTS: results,

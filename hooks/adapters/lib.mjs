@@ -2,7 +2,7 @@
 // Each adapter reads its tool's hook payload from stdin, maps it onto the Claude-Code-shaped Hivemind hook
 // endpoints, and translates the answer back. Node 18+, no dependencies.
 //
-// Env: HIVEMIND_API_URL (default: production, https://hivemind-beta-virid.vercel.app; set http://localhost:3000 for a
+// Env: HIVEMIND_API_URL (default: production, https://hivemind-q17i.onrender.com; set http://localhost:3000 for a
 //      local server), HIVEMIND_TOKEN, HIVEMIND_USER (default sam), HIVEMIND_REPO (default repo/<basename of workspace>).
 //      A missing HIVEMIND_TOKEN is read from <hivemind>/.env.local (only the token: that file's HIVEMIND_API_URL is the
 //      server's local setting and must not pull hooks off production). Same rules as hooks/session-start.mjs.
@@ -13,7 +13,7 @@ import { readFileSync } from "node:fs";
 import { basename, dirname, isAbsolute, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const DEFAULT_API = "https://hivemind-beta-virid.vercel.app";
+const DEFAULT_API = "https://hivemind-q17i.onrender.com";
 const FROM_ENV_FILE = new Set(["HIVEMIND_TOKEN"]);
 const TIMEOUT_MS = 8000; // prompt / edit / session-end
 const BRIEFING_TIMEOUT_MS = 12000; // host start hooks are configured with 15s

@@ -2,7 +2,7 @@
 
 **Persistent memory across your team's AI agents.** Correct one agent, and every agent on the team learns it.
 
-**[Website](https://hivemind-beta-virid.vercel.app)** · **[Open the app](https://hivemind-beta-virid.vercel.app/app)** ·
+**[Website](https://hivemind-q17i.onrender.com)** · **[Open the app](https://hivemind-q17i.onrender.com/app)** ·
 [Eval](docs/eval.md) · [Devpost write-up](docs/pitch/devpost.md)
 
 ![Hivemind: correct one agent, every agent learns](docs/img/hivemind.png)
@@ -72,8 +72,8 @@ flowchart LR
 
 ## Try it
 
-**Online:** the [website](https://hivemind-beta-virid.vercel.app) plays the whole story, and the
-[app](https://hivemind-beta-virid.vercel.app/app) is the live approvals inbox and dashboard for the fictional company
+**Online:** the [website](https://hivemind-q17i.onrender.com) plays the whole story, and the
+[app](https://hivemind-q17i.onrender.com/app) is the live approvals inbox and dashboard for the fictional company
 *Meridian Data*. Switch roles in the top right to see what an engineer, a lead and Security can each do.
 
 **Connect a repo** ([`cli/README.md`](cli/README.md)):

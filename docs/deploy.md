@@ -1,6 +1,36 @@
-# Deploying Hivemind to Vercel
+# Deploying Hivemind
 
-Status (Fri Oct 16, ~11:00 PM): **deployed** at https://hivemind-beta-virid.vercel.app, connected to GitHub, so every push to `main` deploys.
+Status (Sat Oct 17, ~4:00 AM PT): **production is on Render** at https://hivemind-q17i.onrender.com (service `srv-db9l4vu1egvs73fmc5dg`, workspace
+`tea-d9mu9bbm8hqs73d5vcrg`). Every push to `main` auto-deploys, with no daily deploy cap.
+
+History: the first production deploy was the **old Vercel deploy**, https://hivemind-beta-virid.vercel.app (Fri Oct 16,
+~11:00 PM, Michael's Hobby account). It hit Vercel's daily deploy cap, so it is **old and frozen**: don't point anything
+at it. Sections 1–4 below are the original Vercel notes. The env-var table applies to Render too.
+
+## 0. Render (current production)
+
+| Setting | Value |
+|---|---|
+| URL | https://hivemind-q17i.onrender.com |
+| Plan / region | `starter` (no idle sleep, so no cold start blowing the 5 s hook timeout) / `oregon` (near Supabase us-west-1) |
+| Build | `corepack enable && pnpm install --frozen-lockfile && pnpm build` |
+| Start | `pnpm start` (`next start`, binds Render's `$PORT`) |
+| Health check | `/api/metrics` |
+| Env vars | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `ANTHROPIC_API_KEY`, `HIVEMIND_TOKEN`, `HIVEMIND_API_URL=https://hivemind-q17i.onrender.com`, `NODE_VERSION=24`, `NEXT_TELEMETRY_DISABLED=1` |
+
+`render.yaml` is the Blueprint with the same settings. The service was created with the Render REST API
+(`POST /v1/services`, key in `~/.render-api-key`). Env vars are changed with
+`PUT /v1/services/<id>/env-vars/<KEY>`, then a redeploy (`POST /v1/services/<id>/deploys`).
+
+Read-only smoke checks (all 200): `/`, `/app`, `/app/results`, `/api/metrics`,
+`/api/context-pack?repo=repo/playground&user=kevin&session=preview` (Bearer `HIVEMIND_TOKEN` + `x-hm-user`), and a
+JSON-RPC `initialize` POST to `/api/mcp`. The hooks, CLI, MCP configs and demo/playground configs all default to the
+Render URL. Override with `HIVEMIND_API_URL=http://localhost:3000` for a local server.
+
+Serverless notes from section 4 that no longer apply on Render: `maxDuration` and the function region are ignored. It
+is one long-running Node process, so `after()` work simply finishes in-process.
+
+# Original Vercel notes (old deploy)
 The Vercel project is on Michael's Hobby account, so only he can change its settings or env vars.
 
 ## 1. Environment variables

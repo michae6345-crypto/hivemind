@@ -2,7 +2,7 @@
 // Claude Code SessionStart hook (type "command"): fetch the Hivemind context pack and inject it as additionalContext.
 // Never breaks the session: any failure prints a short fallback and exits 0.
 //
-// Env: HIVEMIND_API_URL (default: production, https://hivemind-beta-virid.vercel.app; set http://localhost:3000 for a
+// Env: HIVEMIND_API_URL (default: production, https://hivemind-q17i.onrender.com; set http://localhost:3000 for a
 //      local server), HIVEMIND_TOKEN, HIVEMIND_USER (default sam), HIVEMIND_REPO (default repo/<basename of cwd>).
 //      A missing HIVEMIND_TOKEN is read from <hivemind>/.env.local (only the token: that file's HIVEMIND_API_URL is the
 //      server's local setting and must not pull hooks off production).
@@ -10,7 +10,7 @@ import { readFileSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const DEFAULT_API = "https://hivemind-beta-virid.vercel.app";
+const DEFAULT_API = "https://hivemind-q17i.onrender.com";
 const FROM_ENV_FILE = new Set(["HIVEMIND_TOKEN"]);
 const TIMEOUT_MS = 12000; // settings.json gives the hook 15s; a cold dev server can take ~10s
 

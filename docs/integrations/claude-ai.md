@@ -12,7 +12,7 @@ Activity is attributed as `claude-ai`: from `?agent=claude-ai`, or else from Ant
 ## 1. The URL must be public
 
 claude.ai connects to connectors **from Anthropic's cloud**, so `localhost` won't work. That's documented. Use either:
-- production: `https://hivemind-beta-virid.vercel.app/api/mcp`
+- production: `https://hivemind-q17i.onrender.com/api/mcp`
 - a tunnel to your dev server, e.g. `cloudflared tunnel --url http://localhost:3000`, which gives
   `https://<random>.trycloudflare.com`. Some networks block trycloudflare; see "Tunnels" below.
 
@@ -30,7 +30,7 @@ Fill in the dialog:
 | Field | Value |
 |---|---|
 | Name | `Hivemind` |
-| MCP server URL | `https://hivemind-beta-virid.vercel.app/api/mcp?token=<CONNECTOR_TOKEN>&user=<your id>&repo=export-service&agent=claude-ai` |
+| MCP server URL | `https://hivemind-q17i.onrender.com/api/mcp?token=<CONNECTOR_TOKEN>&user=<your id>&repo=export-service&agent=claude-ai` |
 | Authentication | **No sign-in** |
 | Request headers *(only if your org has this beta)* | `Authorization: Bearer <HIVEMIND_TOKEN>`. Then leave `token=` out of the URL. |
 
@@ -54,7 +54,7 @@ Anthropic's connector docs say not to accept credentials in the URL, and the MCP
 tokens. We accept them anyway as a **hackathon trade-off**, because the headers beta isn't available to every org. What this means:
 
 - **Where it leaks:** the URL is stored in the connector config, and it shows up in server/proxy request logs
-  (Vercel, the tunnel) and in anything that logs full URLs.
+  (Render, the tunnel) and in anything that logs full URLs.
 - **What a leaked URL can do:** read the team's memory (`get_team_rules`, `search_memory`) and file **pending**
   proposals. It can't approve, lock, edit or create active memories. That needs the UI's role-checked routes.
 - **Mitigations:**
@@ -71,4 +71,4 @@ tokens. We accept them anyway as a **hackathon trade-off**, because the headers 
 Our server answers each POST with a short `text/event-stream` body that closes right away, not a long-lived stream.
 If `api.trycloudflare.com` is blocked on your network (the connection gets reset, as happened on the hackathon wifi),
 use an SSH tunnel instead: `ssh -R 80:localhost:3000 nokey@localhost.run`. It prints an `https://….lhr.life` URL.
-Or deploy to Vercel.
+Or use the Render deploy (`https://hivemind-q17i.onrender.com`).

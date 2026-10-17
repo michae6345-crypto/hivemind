@@ -23,7 +23,7 @@ import { END, START, api, banner, c, callerAgent, mcpCall, mergeJson, onPath, po
 
 const HM_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..", ".."); // <hivemind>/cli/lib → <hivemind>
 const CONFIG = ".hivemind.json";
-const DEFAULT_URL = "https://hivemind-beta-virid.vercel.app";
+const DEFAULT_URL = "https://hivemind-q17i.onrender.com";
 const GENERIC = { id: "other", label: "Any MCP agent", rules: { file: "AGENTS.md" }, mcpFile: null };
 const agentOf = (id) => byId[id] ?? (id === "other" ? GENERIC : null);
 
@@ -401,7 +401,7 @@ async function cmdRules(cfg) {
 // ---------- main ----------
 // ---------- help / version (styled like the website hero) ----------
 const VERSION = JSON.parse(read(join(dirname(fileURLToPath(import.meta.url)), "..", "package.json")) ?? "{}").version ?? "0.0.0";
-const SITE = "https://hivemind-beta-virid.vercel.app";
+const SITE = "https://hivemind-q17i.onrender.com";
 
 function help() {
   const cmd = (name, args, what) => `    ${c.cyan(name.padEnd(9))}${c.gray(args.padEnd(33))}${what}`;

@@ -1,7 +1,7 @@
 {
   "mcpServers": {
     "hivemind": {
-      "httpUrl": "https://hivemind-beta-virid.vercel.app/api/mcp",
+      "httpUrl": "https://hivemind-q17i.onrender.com/api/mcp",
       "headers": {
         "Authorization": "Bearer $HIVEMIND_TOKEN",
         "x-hm-user": "$HIVEMIND_USER",

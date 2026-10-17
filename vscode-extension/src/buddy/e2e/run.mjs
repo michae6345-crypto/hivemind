@@ -12,7 +12,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 const ext = resolve(here, "..", "..", "..");
 const root = resolve(ext, "..");
 const args = process.argv.slice(2);
-const apiUrl = args.find((a) => !a.startsWith("--")) || "https://hivemind-beta-virid.vercel.app";
+const apiUrl = args.find((a) => !a.startsWith("--")) || "https://hivemind-q17i.onrender.com";
 const tmp = join(tmpdir(), "hm-buddy-e2e");
 const ws = join(tmp, "export-service");
 rmSync(tmp, { recursive: true, force: true });

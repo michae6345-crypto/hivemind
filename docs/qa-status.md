@@ -1,7 +1,7 @@
 # QA status (agent D)
 
 _Last updated: Sat Oct 17, ~3:45 AM PT. All 8 runbook beats rehearsed against prod (`docs/demo-terminal.md`)._
-Re-run after each big merge: `pnpm typecheck` · `pnpm build` · `node cli/hivemind.mjs watch --help` · `node scripts/e2e-terminal.mjs` · `node scripts/e2e-demo.mjs --base https://hivemind-beta-virid.vercel.app` (then `reset-demo`)
+Re-run after each big merge: `pnpm typecheck` · `pnpm build` · `node cli/hivemind.mjs watch --help` · `node scripts/e2e-terminal.mjs` · `node scripts/e2e-demo.mjs --base https://hivemind-q17i.onrender.com` (then `reset-demo`)
 
 ## Build
 
@@ -27,7 +27,7 @@ Re-run after each big merge: `pnpm typecheck` · `pnpm build` · `node cli/hivem
 in the full run and (c) ✅ re-run alone. In the full run, (c) failed with `claude -p exit=1` at the same moment a local
 build OOMed, which points to machine memory pressure with 12 Claude sessions open. Watch it.
 
-## Demo beats: `node scripts/e2e-demo.mjs --base https://hivemind-beta-virid.vercel.app` (PRODUCTION, ~12:15 AM, on `b6475d1`)
+## Demo beats: `node scripts/e2e-demo.mjs --base https://hivemind-beta-virid.vercel.app` (PRODUCTION at the time, the old Vercel deploy, ~12:15 AM, on `b6475d1`)
 
 **5/5 PASS.**
 
@@ -89,5 +89,5 @@ build OOMed, which points to machine memory pressure with 12 Claude sessions ope
 
 ## Deploy
 
-- Production: https://hivemind-beta-virid.vercel.app (functions in sfo1). The env list and serverless notes are in `docs/deploy.md`. `/api/hooks/prompt` uses
-  `after()` + `maxDuration = 60`; both build under `cacheComponents` and work on Vercel.
+- Production: https://hivemind-q17i.onrender.com (Render, Oregon, starter plan; moved off the old Vercel deploy `hivemind-beta-virid.vercel.app`, which is frozen). The env list and serverless notes are in `docs/deploy.md`. `/api/hooks/prompt` uses
+  `after()` + `maxDuration = 60`; both build under `cacheComponents` and work on Render (`next start`) as they did on Vercel.

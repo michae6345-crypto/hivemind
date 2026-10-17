@@ -3,7 +3,7 @@
   "version": "0.2.0",
   "description": "Persistent memory across your team's AI agents. Correct one agent; every agent learns. Wires Claude Code, Cursor, Gemini CLI, Copilot, Codex and Windsurf to Hivemind, and watches it live in your terminal.",
   "keywords": ["ai", "agents", "claude-code", "cursor", "codex", "gemini-cli", "copilot", "mcp", "team-memory", "cli"],
-  "homepage": "https://hivemind-beta-virid.vercel.app",
+  "homepage": "https://hivemind-q17i.onrender.com",
   "type": "module",
   "bin": {
     "hivemind": "hivemind.mjs"

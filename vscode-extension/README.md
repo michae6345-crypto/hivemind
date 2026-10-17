@@ -33,7 +33,7 @@ Open **Settings → search "hivemind"**, or add this to your user `settings.json
 
 ```jsonc
 {
-  "hivemind.apiUrl": "http://localhost:3000",   // or the Vercel URL
+  "hivemind.apiUrl": "http://localhost:3000",   // or the Render URL, https://hivemind-q17i.onrender.com
   "hivemind.token": "<HIVEMIND_TOKEN from .env.local>",
   "hivemind.user": "alex"                        // who you are in Hivemind: alex, noor, jordan, maya…
   // "hivemind.repo": "repo/export-service"      // default: repo/<workspace folder name>

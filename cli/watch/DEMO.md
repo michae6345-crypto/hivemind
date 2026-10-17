@@ -7,7 +7,7 @@ function that mixes two lab customers' data, and the right pane flags it within 
 
 ```powershell
 cd demo/export-service
-$env:HIVEMIND_API_URL = "https://hivemind-beta-virid.vercel.app"
+$env:HIVEMIND_API_URL = "https://hivemind-q17i.onrender.com"
 $env:HIVEMIND_TOKEN   = "hm-dev-token"
 $env:HIVEMIND_USER    = "alex"
 git checkout -- src/export.ts        # start from the clean file (no violations)

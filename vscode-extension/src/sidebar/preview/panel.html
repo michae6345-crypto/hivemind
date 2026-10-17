@@ -34,7 +34,7 @@
       { id: "a0", sessionId: "s-riley", actor: "riley", repo: "eval-harness", file: "graders/rubric.py", createdAt: iso(6), agent: "gemini-cli" },
     ];
   D.live.feed.forEach((f, i) => { if (!f.agent && i % 3 === 0) f.agent = ["claude-code", "codex", "copilot"][i % 3]; });
-  const ctx = { type: "ctx", me: P.get("as") || "jordan", repo: "repo/export-service", workspaceName: "", dashboardUrl: "#", apiUrl: "https://hivemind-beta-virid.vercel.app" };
+  const ctx = { type: "ctx", me: P.get("as") || "jordan", repo: "repo/export-service", workspaceName: "", dashboardUrl: "#", apiUrl: "https://hivemind-q17i.onrender.com" };
   const line = 14;
   const here = { type: "here", file: "src/export.ts", line, ok: true, org: D.here.org, repo: D.here.repo, approver: "jordan",
     rules: D.hereRules.map((r) => ({ ...r, atCursor: r.lines.includes(line) })).sort((a, b) => b.atCursor - a.atCursor) };

@@ -106,7 +106,7 @@ Each command falls back to this CLI when MCP isn't available.
 
 Settings are resolved in this order: flags, then `HIVEMIND_API_URL` / `HIVEMIND_TOKEN` / `HIVEMIND_USER` /
 `HIVEMIND_REPO`, then `.hivemind.json`. After that the URL defaults to production
-(`https://hivemind-beta-virid.vercel.app`), and the token falls back to the hivemind checkout's `.env.local`. Every request sends
+(`https://hivemind-q17i.onrender.com`), and the token falls back to the hivemind checkout's `.env.local`. Every request sends
 `Authorization: Bearer $HIVEMIND_TOKEN` and `x-hm-agent: <agent>`.
 
 ## `hivemind why`

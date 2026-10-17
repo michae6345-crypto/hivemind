@@ -439,7 +439,7 @@ function BrowserChrome({ active }: { active: boolean }) {
       <ChevronRight className="size-3.5 opacity-40" />
       <div className="mx-auto flex h-6 w-[58%] items-center justify-center gap-1.5 rounded-[6px] bg-black/[0.055] text-[10.5px] text-fg/75">
         <Lock className="size-2.5" />
-        hivemind-beta-virid.vercel.app/app/approvals
+        hivemind-q17i.onrender.com/app/approvals
         <RotateCw className="ml-auto mr-2 size-2.5 opacity-60" />
       </div>
       <Share className="size-3.5" />
