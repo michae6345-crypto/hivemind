@@ -32,7 +32,9 @@ const env = process.env;
 export const COLOR = !env.NO_COLOR && env.FORCE_COLOR !== "0" && (!!process.stdout.isTTY || !!env.FORCE_COLOR);
 const TRUE =
   /truecolor|24bit/i.test(env.COLORTERM ?? "") || !!env.WT_SESSION || env.TERM_PROGRAM === "vscode" || env.FORCE_COLOR === "3";
-export const REDUCED = !!env.HIVEMIND_REDUCED_MOTION || !!env.NO_MOTION || !COLOR;
+// A live binding: `--no-motion` is parsed after this module has loaded (other commands import the palette early).
+export let REDUCED = !!env.HIVEMIND_REDUCED_MOTION || !!env.NO_MOTION || !COLOR;
+export const setReduced = (on) => (REDUCED = !!on || !COLOR);
 
 const rgb = (hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
 const toHex = (c) => "#" + c.map((v) => Math.round(Math.max(0, Math.min(255, v))).toString(16).padStart(2, "0")).join("");

@@ -19,6 +19,8 @@ import { writeWatchState } from "./statusline.mjs";
 
 const TABS = [here, rules, queue, feed];
 const POLL_MS = 2000;
+const SWITCH_MS = 120; // tab switch ease-in
+const SPIN = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
 const SLOW_MS = 15000;
 
 export async function cmdWatch(cfg) {
@@ -63,9 +65,13 @@ export async function cmdWatch(cfg) {
   let timer = null;
   const actions = {
     setTab: (id) => {
+      const changed = id !== state.tab || state.detail;
       if (TABS.some((v) => v.id === id)) state.tab = id;
       state.detail = null;
-      render();
+      if (changed && !REDUCED) {
+        state.switchedAt = Date.now(); // the new tab eases in over ~3 frames
+        actions.animate(SWITCH_MS + 40);
+      } else render();
     },
     openDetail: (id) => {
       state.detail = id;
@@ -96,12 +102,13 @@ export async function cmdWatch(cfg) {
     },
     busy: async (labelText, fn) => {
       state.busy = { label: labelText, since: Date.now() };
-      const later = setTimeout(render, 420); // the word appears after 400ms; no spinner
+      const later = setTimeout(() => actions.animate(60000), 420); // the spinner appears only after 400ms (quick calls never show it)
       try {
         return await fn();
       } finally {
         clearTimeout(later);
         state.busy = null;
+        animUntil = Math.min(animUntil, Date.now() + 400); // stop the spinner's redraws (let a toast's fade finish)
         render();
       }
     },
@@ -293,7 +300,10 @@ export async function cmdWatch(cfg) {
       : state.teach.focus
         ? [H("enter", "send"), H("esc", "cancel")]
         : [...own, ...(!state.detail && v?.why?.(state) ? [H("w", "why")] : []), H("t", "teach"), H("?", "rules here"), H("h", "help"), H("tab", "switch"), H("q", "quit")];
-    if (state.busy && now - state.busy.since > 400) hints = [{ k: null, s: t.muted(`${state.busy.label}…`) }]; // a word, not a spinner
+    if (state.busy && now - state.busy.since > 400) {
+      const spin = REDUCED ? "" : `${t.blue(SPIN[Math.floor((now - state.busy.since) / 90) % SPIN.length])} `;
+      hints = [{ k: null, s: `${spin}${t.muted(`${state.busy.label}…`)}` }];
+    }
     // Fit whole pairs, never a cut "tab switc…". When they don't all fit, the rest fold into one "h keys" cap (the
     // help lists everything); `q quit` always stays last. One column of air on the right.
     const quit = hints.at(-1);
@@ -357,7 +367,10 @@ export async function cmdWatch(cfg) {
     const view = state.detail ? detail : TABS.find((v) => v.id === state.tab);
     const bodyStart = body.length;
     try {
-      const rendered = state.palette ? paletteLines(w, bodyH) : state.help ? helpLines(w) : view.render(state, ctx);
+      // A tab switch eases in: ~35% → 80% → full over SWITCH_MS (theme.faded mixes every colour toward the background).
+      const since = now - (state.switchedAt ?? 0);
+      const draw = () => (state.palette ? paletteLines(w, bodyH) : state.help ? helpLines(w) : view.render(state, ctx));
+      const rendered = !REDUCED && since < SWITCH_MS ? theme.faded(0.35 + 0.65 * theme.ease(since / SWITCH_MS), draw) : draw();
       // The shell already leaves one quiet line under the tabs; a view's own leading blank would make it two.
       if (!body.length && rendered.length && !strip(rendered[0]).trim() && !ROW_MARK_RE.test(rendered[0])) rendered.shift();
       body.push(...rendered);

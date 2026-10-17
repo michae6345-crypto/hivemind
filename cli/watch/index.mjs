@@ -1,5 +1,6 @@
 // Entry for `hivemind watch` (dispatched from cli/hivemind.mjs): run(argv, ctx), ctx = { url, repo, token, actor, root }.
 import { cmdWatch } from "./app.mjs";
+import { setReduced } from "./theme.mjs";
 
 const BOOL = new Set(["once", "snapshot", "notify", "no-motion", "no-mouse", "invert-scroll", "help"]);
 
@@ -49,6 +50,9 @@ export function parseFlags(argv) {
 export async function run(argv, ctx) {
   const flags = { ...(ctx.flags ?? {}), ...parseFlags(argv) };
   if (flags.help) return console.log(HELP);
-  if (flags["no-motion"]) process.env.HIVEMIND_REDUCED_MOTION = "1";
+  if (flags["no-motion"]) {
+    process.env.HIVEMIND_REDUCED_MOTION = "1";
+    setReduced(true);
+  }
   return cmdWatch({ ...ctx, flags });
 }
