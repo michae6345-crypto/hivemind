@@ -60,9 +60,9 @@ export interface Scene {
 export const SCENES: Scene[] = [
   {
     who: "alex",
-    rules: 12,
+    rules: 10,
     steps: [
-      { kind: "hook", text: HIVE.sessionLoaded(12, 2), tone: "honey" },
+      { kind: "hook", text: HIVE.sessionLoaded(10, 2), tone: "honey" },
       { kind: "prompt", text: PROMPTS.alexAsk },
       { kind: "tool", name: "Read", arg: "src/export.ts", result: "Read 48 lines" },
       { kind: "spinner", text: "Editing…", ms: 1500 },
@@ -103,9 +103,9 @@ export const SCENES: Scene[] = [
   },
   {
     who: "noor",
-    rules: 13,
+    rules: 11,
     steps: [
-      { kind: "hook", text: HIVE.sessionLoaded(13, 2), tone: "honey" },
+      { kind: "hook", text: HIVE.sessionLoaded(11, 2), tone: "honey" },
       { kind: "prompt", text: PROMPTS.noorAsk },
       { kind: "spinner", text: "Editing…", ms: 1300 },
       { kind: "tool", name: "Update", arg: "src/export.ts", result: "Updated src/export.ts with 5 additions" },

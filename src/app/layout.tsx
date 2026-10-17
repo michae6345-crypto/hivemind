@@ -7,6 +7,14 @@ export const metadata: Metadata = {
   title: "Hivemind",
   description:
     "Every correction any engineer gives any AI agent becomes a lesson every agent at the company learns, safely, with a chain of command.",
+  openGraph: {
+    title: "Hivemind: correct one agent, every agent learns",
+    description:
+      "Shared memory for AI coding agents. A correction becomes a lesson, a lead approves it, and every agent on the team starts its next session knowing it.",
+    siteName: "Hivemind",
+    type: "website",
+  },
+  twitter: { card: "summary_large_image" },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
