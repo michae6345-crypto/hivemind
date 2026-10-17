@@ -1,0 +1,541 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hivemind editor mock</title>
+<!--
+  Hivemind in your editor: every surface, drawn. Spec: editor-spec.md. Strings: wording.md ("Editor, 17 Oct").
+  The "SIDEBAR" block of the CSS is written for the webview: it reads VS Code's theme variables and falls back
+  to Dark Modern values here, so it ports 1:1. Everything outside it only fakes the editor around it.
+-->
+<style>
+/* ============================== SIDEBAR (port this into the webview) ============================== */
+:root {
+  --hm-blue: #4C6EF5;        /* chrome only: primary button, active tab, focus */
+  --hm-blue-text: #7C93FA;   /* links on dark */
+  --hm-rose: #FB7185;        /* locked rules, blocks */
+  --hm-honey: #F5A524;       /* lessons */
+  --hm-team: #8B93FF;
+  --hm-repo: #2DD4BF;
+  --hm-org: #E4E4E7;
+  --hm-you: #A1A1AA;         /* drawn as a ring */
+  --hm-text: var(--vscode-foreground, #E4E4E7);
+  --hm-muted: var(--vscode-descriptionForeground, #A1A1AA);
+  --hm-faint: #71717A;
+  --hm-line: rgba(255,255,255,.07);
+  --hm-hover: rgba(255,255,255,.04);
+  --hm-bg: var(--vscode-sideBar-background, #181818);
+  --hm-input: var(--vscode-input-background, #222225);
+  --hm-ui: var(--vscode-font-family, -apple-system, "Segoe UI", system-ui, sans-serif);
+  --hm-mono: var(--vscode-editor-font-family, "SF Mono", "Cascadia Code", Consolas, monospace);
+}
+body.vscode-light {
+  --hm-rose: #E5484D; --hm-honey: #E09A2B; --hm-team: #5B5BD6; --hm-repo: #0E9384; --hm-org: #3F3F46;
+  --hm-line: rgba(0,0,0,.08); --hm-hover: rgba(0,0,0,.04); --hm-faint: #8A8A93;
+}
+.hm { position: relative; display: flex; flex-direction: column; height: 100%; overflow: hidden;
+  background: var(--hm-bg); color: var(--hm-text); font: 13px/1.45 var(--hm-ui); }
+.hm *, .hm *::before, .hm *::after { box-sizing: border-box; }
+.hm button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+.hm :focus-visible { outline: 1px solid var(--hm-blue); outline-offset: 1px; border-radius: 4px; }
+
+/* header */
+.hm-head { padding: 12px 12px 0; }
+.hm-brand { display: flex; align-items: center; gap: 7px; font-weight: 600; }
+.hm-brand svg { width: 16px; height: 16px; }
+.hm-dot-on { margin-left: auto; width: 6px; height: 6px; border-radius: 50%; background: #4ADE80; }
+.hm-where { margin-top: 2px; font: 11.5px/1.4 var(--hm-mono); color: var(--hm-muted); }
+.hm-where b { font-weight: 400; color: var(--hm-text); }
+
+/* tabs */
+.hm-tabs { display: flex; gap: 16px; padding: 0 12px; margin-top: 10px; border-bottom: 1px solid var(--hm-line); }
+.hm-tab { position: relative; padding: 6px 0 8px; color: var(--hm-muted); font-size: 12.5px; }
+.hm-tab[aria-selected="true"] { color: var(--hm-text); }
+.hm-tab[aria-selected="true"]::after { content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; background: var(--hm-blue); border-radius: 2px; }
+.hm-count { margin-left: 4px; font: 11px var(--hm-mono); color: var(--hm-faint); }
+.hm-tab[aria-selected="true"] .hm-count { color: var(--hm-blue-text); }
+
+.hm-body { flex: 1; overflow: auto; padding-bottom: 8px; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.15) transparent; }
+.hm-cap { padding: 10px 12px 2px; font-size: 11.5px; color: var(--hm-muted); }
+.hm-cap code { font: 11.5px var(--hm-mono); color: var(--hm-text); }
+
+/* section heads */
+.hm-sec { display: flex; align-items: center; gap: 6px; padding: 14px 12px 4px; font-size: 11px; font-weight: 600;
+  letter-spacing: .06em; text-transform: uppercase; color: var(--hm-faint); }
+.hm-sec .chev { width: 10px; height: 10px; flex: none; transition: transform .15s; }
+.hm-sec .n { font: 11px var(--hm-mono); }
+
+/* rule row: the one row component */
+.hm-row { position: relative; display: block; width: 100%; text-align: left; padding: 8px 12px 8px 14px; }
+.hm-row::before { content: ""; position: absolute; left: 0; top: 8px; bottom: 8px; width: 2px; border-radius: 2px; }
+.hm-row.locked::before { background: var(--hm-rose); }
+.hm-row.lesson::before { background: var(--hm-honey); }
+.hm-row:hover { background: var(--hm-hover); }
+.hm-row.sel { background: rgba(76,110,245,.14); }
+.hm-row.flash { animation: hm-flash 1.2s ease-out; }
+@keyframes hm-flash { 0% { background: rgba(245,165,36,.18); } 100% { background: transparent; } }
+.hm-title { display: block; color: var(--hm-text); }
+.hm-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 5px; font-size: 11.5px; color: var(--hm-muted); }
+
+/* chips + tokens */
+.chip { display: inline-flex; align-items: center; gap: 5px; height: 18px; padding: 0 7px; border-radius: 999px;
+  font: 11px/1 var(--hm-mono); color: var(--hm-text); white-space: nowrap;
+  background: rgba(255,255,255,.06); box-shadow: inset 0 0 0 1px rgba(255,255,255,.08); }
+.chip i { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex: none; }
+.chip.org i { background: var(--hm-org); } .chip.team i { background: var(--hm-team); }
+.chip.repo i { background: var(--hm-repo); } .chip.you i { background: none; box-shadow: inset 0 0 0 1.5px var(--hm-you); }
+.chip.h { padding-left: 2px; }
+.chip.wrap { white-space: normal; height: auto; min-height: 18px; padding: 3px 8px; line-height: 1.3; border-radius: 9px; }
+.chip.wrap i { align-self: flex-start; margin-top: 4px; }
+.chip.h i { width: 14px; height: 14px; display: grid; place-items: center; font: 700 9px/1 var(--hm-ui); font-style: normal; color: #111; }
+.chip.h.org i { background: var(--hm-org); } .chip.h.team i { background: var(--hm-team); } .chip.h.repo i { background: var(--hm-repo); }
+.tok { font-family: var(--hm-mono); font-size: .92em; text-decoration: underline; text-decoration-color: rgba(245,165,36,.55);
+  text-decoration-thickness: 1px; text-underline-offset: 2px; }
+.locked .tok, .tok.lk { text-decoration-color: rgba(251,113,133,.6); }
+
+/* rule detail */
+.hm-detail { position: absolute; inset: 0; background: var(--hm-bg); display: flex; flex-direction: column;
+  transform: translateX(100%); transition: transform .18s ease-out; z-index: 2; }
+.hm-detail.open { transform: none; }
+.hm-back { align-self: flex-start; margin: 10px 8px 0; padding: 2px 4px; color: var(--hm-muted); font-size: 12px; }
+.hm-back:hover { color: var(--hm-text); }
+.hm-d { padding: 8px 12px 16px; overflow: auto; }
+.hm-kind { font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; display: flex; gap: 6px; align-items: center; }
+.hm-kind.locked { color: var(--hm-rose); } .hm-kind.lesson { color: var(--hm-honey); }
+.hm-d h3 { margin: 6px 0 4px; font-size: 15px; font-weight: 600; line-height: 1.35; }
+.hm-prov { font-size: 12px; color: var(--hm-muted); line-height: 1.7; }
+.hm-prov .chip { vertical-align: -4px; margin: 0 1px 0 3px; }
+.hm-quote { margin: 12px 0; padding: 2px 0 2px 10px; border-left: 2px solid var(--hm-line); color: var(--hm-muted); font-style: italic; }
+.hm-quote small { display: block; margin-top: 4px; font-style: normal; font-size: 11px; color: var(--hm-faint); }
+.hm-facts { display: grid; grid-template-columns: 84px 1fr; gap: 7px 8px; margin: 0; font-size: 12px; }
+.hm-facts dt { color: var(--hm-faint); } .hm-facts dd { margin: 0; display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.pill { display: inline-flex; height: 18px; align-items: center; padding: 0 6px; border-radius: 4px; font-size: 11px;
+  color: var(--hm-muted); background: rgba(255,255,255,.05); }
+.hm-link { color: var(--hm-blue-text); font-size: 12px; }
+.hm-link:hover { text-decoration: underline; }
+.hm-btns { display: flex; gap: 8px; align-items: center; margin-top: 16px; }
+.btn { height: 26px; padding: 0 10px; border-radius: 6px; font-size: 12px !important; font-weight: 500; }
+.btn.primary { background: var(--hm-blue) !important; color: #fff !important; }
+.btn.primary:hover { filter: brightness(1.1); }
+.btn.ghost { box-shadow: inset 0 0 0 1px rgba(255,255,255,.14); color: var(--hm-text); }
+.btn.ghost:hover { background: var(--hm-hover) !important; }
+.btn.locked-btn { opacity: .5; cursor: not-allowed; }
+
+/* approvals */
+.hm-card { margin: 8px 12px; padding: 10px 12px; border-radius: 6px; background: rgba(255,255,255,.03);
+  box-shadow: inset 0 0 0 1px var(--hm-line); position: relative; }
+.hm-card.blocked { box-shadow: inset 2px 0 0 var(--hm-rose), inset 0 0 0 1px rgba(251,113,133,.22); }
+.hm-card .q { margin-top: 6px; font-size: 12px; color: var(--hm-muted); font-style: italic; }
+.hm-card .by { margin-top: 8px; font-size: 11.5px; color: var(--hm-faint); display: flex; gap: 5px; flex-wrap: wrap; align-items: center; }
+.hm-card .acts { display: flex; gap: 6px; margin-top: 10px; }
+.hm-card .wait { margin-top: 10px; font-size: 12px; color: var(--hm-muted); display: flex; gap: 6px; align-items: center; }
+.hm-blk { font-size: 11px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--hm-rose); margin-bottom: 4px; }
+
+/* feed */
+.hm-feed .row { display: flex; align-items: center; gap: 6px; padding: 5px 12px; font-size: 11.5px; color: var(--hm-muted); white-space: nowrap; }
+.hm-feed .row .t { margin-left: auto; font: 11px var(--hm-mono); color: var(--hm-faint); }
+
+/* empty */
+.hm-empty { padding: 28px 20px; text-align: center; }
+.hm-empty b { display: block; font-weight: 500; color: var(--hm-text); }
+.hm-empty span { display: block; margin-top: 4px; font-size: 12px; color: var(--hm-faint); }
+
+/* teach box */
+.hm-teach { border-top: 1px solid var(--hm-line); padding: 10px 12px 12px; }
+.hm-teach .box { display: flex; flex-direction: column; gap: 6px; padding: 8px 8px 6px 10px; border-radius: 6px;
+  background: var(--hm-input); box-shadow: inset 0 0 0 1px rgba(255,255,255,.08); }
+.hm-teach .box:focus-within { box-shadow: inset 0 0 0 1px var(--hm-blue); }
+.hm-teach .foot { display: flex; align-items: center; justify-content: space-between; }
+.hm-teach textarea { overflow: hidden; resize: none; border: 0; outline: 0; background: none; color: var(--hm-text); font: 13px/1.4 var(--hm-ui);
+  min-height: 20px; max-height: 76px; padding: 1px 2px; }
+.hm-teach textarea::placeholder { color: var(--hm-faint); }
+.hm-teach .send { width: 24px; height: 24px; border-radius: 6px; display: grid; place-items: center; color: var(--hm-faint); }
+.hm-teach .send.on { background: var(--hm-blue); color: #fff; }
+.hm-teach .sent { margin-top: 6px; font-size: 12px; color: var(--hm-honey); }
+
+/* celebration */
+.hm-cele { display: flex; gap: 10px; align-items: flex-start; margin: 10px 12px 2px; padding: 10px 12px; border-radius: 8px;
+  background: rgba(245,165,36,.07); box-shadow: inset 0 0 0 1px rgba(245,165,36,.25);
+  animation: hm-drop .24s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes hm-drop { from { opacity: 0; transform: translateY(-8px); } }
+.hm-cele svg { flex: none; width: 28px; height: 28px; overflow: visible; }
+.hm-cele .cell { fill: rgba(245,165,36,0); stroke: var(--hm-honey); stroke-width: 6; stroke-linejoin: round;
+  stroke-dasharray: 260; stroke-dashoffset: 260; animation: hm-draw .3s ease-out forwards, hm-fill .2s .3s ease-out forwards; }
+.hm-cele .ring { fill: none; stroke: var(--hm-honey); stroke-width: 3; opacity: 0; transform-origin: 50px 50px;
+  animation: hm-ring .5s .5s ease-out; }
+@keyframes hm-draw { to { stroke-dashoffset: 0; } }
+@keyframes hm-fill { to { fill: var(--hm-honey); } }
+@keyframes hm-ring { from { opacity: .9; transform: scale(1); } to { opacity: 0; transform: scale(1.7); } }
+.hm-cele .a { font-weight: 500; display: flex; gap: 5px; align-items: center; flex-wrap: wrap; }
+.hm-cele .b { margin-top: 3px; } .hm-cele .c { margin-top: 3px; font-size: 12px; color: var(--hm-muted); }
+@media (prefers-reduced-motion: reduce) {
+  .hm-cele, .hm-cele .cell, .hm-cele .ring, .hm-row.flash, .hm-detail { animation: none !important; transition: none !important; }
+  .hm-cele .cell { stroke-dashoffset: 0; fill: var(--hm-honey); }
+}
+/* ============================== end SIDEBAR ============================== */
+
+
+/* ---------- the fake editor around it (not for porting) ---------- */
+html, body { margin: 0; background: #0E0F12; color: #E4E4E7; font: 14px/1.5 -apple-system, "Segoe UI", system-ui, sans-serif; }
+.page { max-width: 1320px; margin: 0 auto; padding: 32px 16px 80px; }
+.page > h1 { font-size: 20px; margin: 0 0 4px; font-weight: 600; }
+.page > p.lede { margin: 0 0 24px; color: #A1A1AA; max-width: 760px; }
+.page h2 { font-size: 13px; letter-spacing: .06em; text-transform: uppercase; color: #71717A; margin: 48px 0 12px; font-weight: 600; }
+.note { color: #A1A1AA; font-size: 13px; max-width: 760px; margin: 0 0 14px; }
+.note code, .page p code { font: 12px "SF Mono", Consolas, monospace; color: #E4E4E7; }
+.scroll { overflow-x: auto; }
+
+.win { min-width: 1180px; border-radius: 10px; overflow: hidden; background: #1F1F1F;
+  box-shadow: 0 0 0 1px rgba(255,255,255,.08), 0 30px 80px -20px rgba(0,0,0,.7); }
+.titlebar { height: 34px; display: flex; align-items: center; padding: 0 12px; background: #181818; border-bottom: 1px solid #2B2B2B;
+  font-size: 12px; color: #9D9D9D; position: relative; }
+.titlebar .lights { display: flex; gap: 7px; } .titlebar .lights span { width: 12px; height: 12px; border-radius: 50%; }
+.titlebar .ttl { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; }
+.main { display: flex; height: 600px; }
+.actbar { width: 48px; background: #181818; border-right: 1px solid #2B2B2B; display: flex; flex-direction: column; align-items: center; padding-top: 8px; gap: 4px; }
+.actbar .ic { width: 48px; height: 44px; display: grid; place-items: center; color: #858585; position: relative; }
+.actbar .ic.on { color: #E4E4E7; } .actbar .ic.on::before { content: ""; position: absolute; left: 0; top: 10px; bottom: 10px; width: 2px; background: #E4E4E7; }
+.actbar svg { width: 22px; height: 22px; }
+.side { width: 316px; border-right: 1px solid #2B2B2B; }
+.ed { flex: 1; position: relative; display: flex; flex-direction: column; background: #1F1F1F; min-width: 0; }
+.tabsbar { height: 35px; display: flex; background: #181818; border-bottom: 1px solid #2B2B2B; font-size: 13px; }
+.tabsbar span { padding: 0 14px; display: flex; align-items: center; color: #9D9D9D; border-right: 1px solid #2B2B2B; }
+.tabsbar span.on { background: #1F1F1F; color: #E4E4E7; box-shadow: inset 0 1px 0 #4C6EF5; }
+.crumbs { height: 22px; padding: 0 16px; display: flex; align-items: center; font-size: 12px; color: #9D9D9D; }
+.code { position: relative; flex: 1; font: 13px/20px "SF Mono", "Cascadia Code", Consolas, monospace; padding: 4px 0; }
+.ln > span:last-child { white-space: pre; }
+.ln { position: relative; display: flex; }
+.ln .g { width: 44px; text-align: right; padding-right: 18px; color: #6E7681; flex: none; position: relative; }
+.ln.err .g::after, .ln.warn .g::after { content: ""; position: absolute; right: 4px; top: 2px; bottom: 2px; width: 2px; border-radius: 2px; }
+.ln.err .g::after { background: #FB7185; } .ln.warn .g::after { background: #F5A524; }
+.ln.cur { background: rgba(255,255,255,.035); }
+.k { color: #C586C0; } .s { color: #CE9178; } .f { color: #DCDCAA; } .v { color: #9CDCFE; } .t { color: #4EC9B0; } .c { color: #6A9955; }
+/* our decoration on the exact range + the theme's own squiggle under it */
+.hl-lock { background: rgba(251,113,133,.16); border-radius: 2px; text-decoration: underline wavy #F14C4C; text-decoration-thickness: 1px; text-underline-offset: 3px; text-decoration-skip-ink: none; }
+.hl-less { background: rgba(245,165,36,.13); border-radius: 2px; text-decoration: underline wavy #CCA700; text-decoration-thickness: 1px; text-underline-offset: 3px; text-decoration-skip-ink: none; }
+.eol { font-style: italic; font-size: 12px; margin-left: 2.5em; font-family: -apple-system, "Segoe UI", system-ui, sans-serif; }
+.eol.lock { color: rgba(251,113,133,.8); } .eol.less { color: rgba(245,165,36,.75); } .eol.from { color: rgba(245,165,36,.6); }
+.ruler { position: absolute; right: 0; top: 0; bottom: 0; width: 14px; border-left: 1px solid #2B2B2B; }
+.ruler i { position: absolute; right: 2px; width: 5px; height: 3px; }
+
+/* hover card (markdown-rendered in VS Code; this is how it should come out) */
+.hover { position: absolute; left: 62px; top: 52px; width: 470px; background: #202020; border: 1px solid #454545; border-radius: 4px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.5); font: 13px/1.5 -apple-system, "Segoe UI", system-ui, sans-serif; white-space: normal; z-index: 3; }
+.hover .sec { padding: 8px 10px; } .hover .sec + .sec { border-top: 1px solid #454545; }
+.hover .kind { font-size: 11px; font-weight: 600; letter-spacing: .06em; color: #FB7185; }
+.hover .kind .sc { color: #E4E4E7; background: #E4E4E722; font: 11px "SF Mono", Consolas, monospace; letter-spacing: 0; padding: 0 4px; }
+.hover .ti { font-weight: 600; margin-top: 2px; }
+.hover .pv { color: #A1A1AA; font-size: 12px; }
+.hover .hd { color: #E4E4E7; background: #E4E4E722; font: 11.5px "SF Mono", Consolas, monospace; padding: 0 3px; }
+.hover .qt { color: #A1A1AA; font-style: italic; }
+.hover .lk { color: #7C93FA; } .hover .dotsep { color: #6E7681; }
+
+.status { height: 24px; display: flex; align-items: center; gap: 14px; padding: 0 10px; background: #181818; border-top: 1px solid #2B2B2B; font-size: 12px; color: #9D9D9D; }
+.status .hmsb { margin-left: auto; display: flex; align-items: center; gap: 5px; padding: 0 6px; height: 100%; color: #FB7185; }
+.status .hmsb svg { width: 13px; height: 13px; }
+.status .hmsb.flip { color: #E4E4E7; background: #4C6EF5; transition: background 1.2s; }
+
+/* toasts (VS Code notifications) */
+.toasts { position: absolute; right: 14px; bottom: 34px; display: flex; flex-direction: column; gap: 8px; z-index: 4; }
+.toast { width: 420px; background: #202020; border: 1px solid #454545; border-radius: 6px; box-shadow: 0 8px 24px rgba(0,0,0,.5);
+  padding: 10px 12px; font-size: 13px; color: #CCCCCC; white-space: normal; }
+.toast .row { display: flex; gap: 8px; }
+.toast .ico { flex: none; width: 16px; height: 16px; margin-top: 2px; color: #3794FF; }
+.toast .src { font-size: 11.5px; color: #8B8B8B; margin-top: 8px; display: flex; justify-content: space-between; align-items: center; }
+.toast .bt { display: flex; gap: 6px; }
+.toast .bt span { padding: 3px 10px; border-radius: 3px; background: #4C6EF5; color: #fff; font-size: 12px; }
+.toast .bt span.sec2 { background: #313131; color: #CCCCCC; }
+
+.gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
+.frame { height: 560px; border-radius: 8px; overflow: hidden; box-shadow: 0 0 0 1px rgba(255,255,255,.08); }
+.frame-cap { font-size: 12.5px; color: #A1A1AA; margin: 8px 2px 0; }
+.frame-cap b { color: #E4E4E7; font-weight: 500; }
+.replay { margin-top: 8px; font: 12px -apple-system, "Segoe UI", sans-serif; color: #7C93FA; background: none; border: 1px solid #333; border-radius: 6px; padding: 4px 10px; cursor: pointer; }
+.toast-row { display: flex; flex-wrap: wrap; gap: 16px; }
+.toast-row .toast { position: static; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="hm-mark" viewBox="0 0 120 120">
+    <path d="M60 13L84.25 27L84.25 55L60 69L35.75 55L35.75 27Z" fill="#FB7185"/>
+    <path d="M38 51.1L62.25 65.1L62.25 93.1L38 107.1L13.75 93.1L13.75 65.1Z" fill="#F5A524" style="mix-blend-mode:screen"/>
+    <path d="M82 52.7L104.86 65.9L104.86 92.3L82 105.5L59.14 92.3L59.14 65.9Z" fill="none" stroke="#F5A524" stroke-width="7" stroke-dasharray="10 6.5" stroke-linejoin="round"/>
+  </symbol>
+  <symbol id="chev" viewBox="0 0 10 10"><path d="M3 2l3 3-3 3" fill="none" stroke="currentColor" stroke-width="1.4"/></symbol>
+  <symbol id="send" viewBox="0 0 16 16"><path d="M8 13V3M3.5 7.5L8 3l4.5 4.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="lock" viewBox="0 0 16 16"><rect x="3.5" y="7" width="9" height="6.5" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M5.5 7V5a2.5 2.5 0 015 0v2" fill="none" stroke="currentColor" stroke-width="1.4"/></symbol>
+  <symbol id="info" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M8 7v4M8 5v.01" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+</svg>
+
+<div class="page">
+  <h1>Hivemind in your editor</h1>
+  <p class="lede">Every editor surface, drawn to the spec in <code>editor-spec.md</code>. Strings come from <code>wording.md</code> (“Editor, 17 Oct”). Blue is chrome only; rose means locked, honey means lesson.</p>
+
+  <h2>1 · The whole window (Noor, export.ts)</h2>
+  <p class="note">Line 17 breaks the locked rule: the exact expression is tinted rose, with the theme’s own red squiggle, a gutter bar, a ruler mark and an end-of-line note. Line 18 misses a team lesson (honey). Line 22 was written by an agent and shaped by Alex’s lesson. The hover is open on line 17. No CodeLens, no QuickPick.</p>
+  <div class="scroll"><div class="win">
+    <div class="titlebar"><span class="lights"><span style="background:#ff5f57"></span><span style="background:#febc2e"></span><span style="background:#28c840"></span></span><span class="ttl">export.ts — export-service</span></div>
+    <div class="main">
+      <div class="actbar">
+        <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 3H6a1 1 0 00-1 1v16a1 1 0 001 1h12a1 1 0 001-1V8z"/><path d="M14 3v5h5"/></svg></span>
+        <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></svg></span>
+        <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6" cy="6" r="2"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="8" r="2"/><path d="M6 8v8M18 10c0 4-6 3-11 6.5"/></svg></span>
+        <span class="ic on"><svg viewBox="0 0 120 120"><use href="#hm-mark"/></svg></span>
+      </div>
+
+      <!-- SIDEBAR: Here tab, with the celebration card that plays when @jordan approves -->
+      <div class="side">
+        <div class="hm" id="sbMain">
+          <div class="hm-head">
+            <div class="hm-brand"><svg viewBox="0 0 120 120"><use href="#hm-mark"/></svg>Hivemind<span class="hm-dot-on" title="Connected to hivemind-beta-virid.vercel.app"></span></div>
+            <div class="hm-where"><b>Meridian Data</b> / export-service</div>
+          </div>
+          <div class="hm-tabs" role="tablist">
+            <button class="hm-tab" role="tab" aria-selected="true">Here</button>
+            <button class="hm-tab" role="tab" aria-selected="false">All rules</button>
+            <button class="hm-tab" role="tab" aria-selected="false">Approvals<span class="hm-count">2</span></button>
+          </div>
+          <div class="hm-body">
+            <div id="celeSlot"></div>
+            <div class="hm-cap">In <code>export.ts</code>, line 17</div>
+            <button class="hm-row locked sel">
+              <span class="hm-title">Never mix data from different lab customers</span>
+              <span class="hm-meta"><span class="chip org"><i></i>#org</span><span class="chip h org"><i>M</i>@maya</span>locked</span>
+            </button>
+            <button class="hm-row lesson" id="rowHero">
+              <span class="hm-title">Exports call <span class="tok">assertSingleCustomer()</span> before writing</span>
+              <span class="hm-meta"><span class="chip repo"><i></i>#repo/export-service</span><span class="chip h repo"><i>A</i>@alex</span>3h ago</span>
+            </button>
+            <button class="hm-row lesson">
+              <span class="hm-title">Use <span class="tok">logger</span>, not <span class="tok">console.log</span></span>
+              <span class="hm-meta"><span class="chip team"><i></i>#team/data-pipelines</span><span class="chip h team"><i>J</i>@jordan</span>2d ago</span>
+            </button>
+
+            <div class="hm-sec"><svg class="chev" style="transform:rotate(90deg)"><use href="#chev"/></svg>Activity</div>
+            <div class="hm-feed">
+              <div class="row"><span class="chip h repo"><i>A</i>@adrian</span><span class="pill">Cursor</span>edited export.ts<span class="t">2m</span></div>
+              <div class="row"><span class="chip h repo"><i>A</i>@alex</span><span class="pill">Claude Code</span>taught a lesson<span class="t">3h</span></div>
+              <div class="row"><span class="chip h repo"><i>N</i>@noor</span><span class="pill">Claude Code</span>was blocked<span class="t">now</span></div>
+            </div>
+          </div>
+          <div class="hm-teach">
+            <div class="box">
+              <textarea rows="1" placeholder="Teach Hivemind a rule…" id="teachIn"></textarea>
+              <div class="foot"><button class="chip repo" title="Scope: click to change"><i></i>#repo/export-service</button><button class="send" id="teachSend" aria-label="Send"><svg width="14" height="14"><use href="#send"/></svg></button></div>
+            </div>
+            <div class="sent" id="teachSent" hidden>Lesson proposed. Waiting on @jordan.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="ed">
+        <div class="tabsbar"><span class="on">export.ts</span><span>fixtures.test.ts</span></div>
+        <div class="crumbs">src › export.ts › writeCsvExport</div>
+        <div class="code">
+<div class="ln"><span class="g">6</span><span><span class="c">// Exports for lab customers. One customer per file.</span></span></div>
+<div class="ln"><span class="g">7</span><span><span class="k">import type</span> { <span class="t">Row</span> } <span class="k">from</span> <span class="s">"./types"</span>;</span></div>
+<div class="ln"><span class="g">8</span><span><span class="k">import</span> { <span class="v">toCsv</span>, <span class="v">synthRows</span> } <span class="k">from</span> <span class="s">"./format"</span>;</span></div>
+<div class="ln"><span class="g">9</span><span><span class="k">import</span> { <span class="v">logger</span> } <span class="k">from</span> <span class="s">"./logger"</span>;</span></div>
+<div class="ln"><span class="g">10</span><span></span></div>
+<div class="ln"><span class="g">11</span><span><span class="c">// Called from the nightly job and the export button.</span></span></div>
+<div class="ln"><span class="g">12</span><span><span class="k">import</span> { <span class="v">assertSingleCustomer</span> } <span class="k">from</span> <span class="s">"./tenancy"</span>;</span></div>
+<div class="ln"><span class="g">13</span><span><span class="k">import</span> <span class="v">fs</span> <span class="k">from</span> <span class="s">"node:fs"</span>;</span></div>
+<div class="ln"><span class="g">14</span><span></span></div>
+<div class="ln"><span class="g">15</span><span><span class="k">export function</span> <span class="f">writeCsvExport</span>(<span class="v">rows</span>: <span class="t">Row</span>[], <span class="v">path</span>: <span class="t">string</span>) {</span></div>
+<div class="ln"><span class="g">16</span><span>  <span class="k">const</span> <span class="v">csv</span> = <span class="f">toCsv</span>(<span class="v">rows</span>);</span></div>
+<div class="ln err cur"><span class="g">17</span><span>  <span class="hl-lock"><span class="v">fs</span>.<span class="f">writeFileSync</span>(<span class="v">path</span>, <span class="v">csv</span>)</span>;<span class="eol lock">Breaks locked rule · Never mix data from different lab… · @maya</span></span></div>
+<div class="ln warn"><span class="g">18</span><span>  <span class="hl-less"><span class="v">console</span>.<span class="f">log</span></span>(<span class="s">"export done"</span>);<span class="eol less">Team lesson · Use logger, not console.log · @jordan</span></span></div>
+<div class="ln"><span class="g">19</span><span>}</span></div>
+<div class="ln"><span class="g">20</span><span></span></div>
+<div class="ln"><span class="g">21</span><span><span class="k">export function</span> <span class="f">writeJsonExport</span>(<span class="v">rows</span>: <span class="t">Row</span>[], <span class="v">path</span>: <span class="t">string</span>) {</span></div>
+<div class="ln"><span class="g">22</span><span>  <span class="f">assertSingleCustomer</span>(<span class="v">rows</span>);<span class="eol from">from @alex's lesson</span></span></div>
+<div class="ln"><span class="g">23</span><span>  <span class="v">fs</span>.<span class="f">writeFileSync</span>(<span class="v">path</span>, <span class="t">JSON</span>.<span class="f">stringify</span>(<span class="v">rows</span>));</span></div>
+<div class="ln"><span class="g">24</span><span>}</span></div>
+<div class="ln"><span class="g">25</span><span></span></div>
+<div class="ln"><span class="g">26</span><span><span class="c">// Lab B fixtures: synthetic rows only</span></span></div>
+<div class="ln"><span class="g">27</span><span><span class="k">export const</span> <span class="v">labBRows</span> = <span class="f">synthRows</span>(<span class="s">"lab-b"</span>, <span class="v">40</span>);</span></div>
+
+          <div class="hover">
+            <div class="sec">
+              <div class="kind">LOCKED RULE · <span class="sc">● #org</span></div>
+              <div class="ti">Never mix data from different lab customers</div>
+              <div class="pv">Set by <span class="hd">@maya</span> · Head of Security · locked 14 Oct</div>
+            </div>
+            <div class="sec"><span class="qt">“Lab A and Lab B rows never share a file, a test or a fixture.”</span></div>
+            <div class="sec">
+              <div class="pv">Reaches every agent: Claude Code · Cursor · Copilot · Codex · Gemini CLI</div>
+              <div style="margin-top:4px"><span class="lk">Fix: add assertSingleCustomer(rows)</span> <span class="dotsep">·</span> <span class="lk">Show in sidebar</span> <span class="dotsep">·</span> <span class="lk">Open in Hivemind</span></div>
+            </div>
+          </div>
+          <div class="ruler"><i style="top:238px;background:#FB7185"></i><i style="top:258px;background:#F5A524"></i></div>
+        </div>
+        <div class="toasts" id="toasts"></div>
+      </div>
+    </div>
+    <div class="status">
+      <span>main</span><span>0 ⚠ 1 ✕</span>
+      <span class="hmsb" id="sb"><svg viewBox="0 0 120 120"><use href="#hm-mark"/></svg><span id="sbText">breaks 1 locked rule</span></span>
+      <span>Ln 17, Col 3</span><span>TypeScript</span>
+    </div>
+  </div></div>
+  <button class="replay" id="play">Play: @jordan approves Alex’s lesson</button>
+  <p class="note" style="margin-top:8px">Plays the celebration: the sidebar card (hex seal, under 1.2s of motion), the toast, the row’s honey flash, and the status-bar count flipping 10 → 11.</p>
+
+  <h2>2 · Sidebar states</h2>
+  <div class="gallery">
+    <div>
+      <div class="frame"><div class="hm">
+        <div class="hm-head"><div class="hm-brand"><svg viewBox="0 0 120 120"><use href="#hm-mark"/></svg>Hivemind<span class="hm-dot-on"></span></div><div class="hm-where"><b>Meridian Data</b> / export-service</div></div>
+        <div class="hm-tabs"><button class="hm-tab" aria-selected="false">Here</button><button class="hm-tab" aria-selected="true">All rules</button><button class="hm-tab" aria-selected="false">Approvals<span class="hm-count">2</span></button></div>
+        <div class="hm-body">
+          <div class="hm-sec"><svg class="chev" style="transform:rotate(90deg)"><use href="#chev"/></svg>Locked<span class="n">· 2</span></div>
+          <button class="hm-row locked"><span class="hm-title">Never mix data from different lab customers</span><span class="hm-meta"><span class="chip org"><i></i>#org</span><span class="chip h org"><i>M</i>@maya</span></span></button>
+          <button class="hm-row locked"><span class="hm-title">Never log expert personal info</span><span class="hm-meta"><span class="chip org"><i></i>#org</span><span class="chip h org"><i>M</i>@maya</span></span></button>
+          <div class="hm-sec"><svg class="chev" style="transform:rotate(90deg)"><use href="#chev"/></svg>Team<span class="n">· #team/data-pipelines · 6</span></div>
+          <button class="hm-row lesson"><span class="hm-title">Use <span class="tok">logger</span>, not <span class="tok">console.log</span></span><span class="hm-meta"><span class="chip h team"><i>J</i>@jordan</span>2d ago</span></button>
+          <button class="hm-row lesson"><span class="hm-title">Money is integer cents</span><span class="hm-meta"><span class="chip h repo"><i>A</i>@alex</span>4d ago</span></button>
+          <button class="hm-row"><span class="hm-title">Ask <span class="chip h team" style="vertical-align:1px"><i>J</i>@jordan</span> before changing the export schema</span><span class="hm-meta">owner · 1w ago</span></button>
+          <div class="hm-sec"><svg class="chev" style="transform:rotate(90deg)"><use href="#chev"/></svg>Repo<span class="n">· #repo/export-service · 3</span></div>
+          <button class="hm-row lesson"><span class="hm-title">Exports call <span class="tok">assertSingleCustomer()</span> before writing</span><span class="hm-meta"><span class="chip h repo"><i>A</i>@alex</span>3h ago</span></button>
+          <div class="hm-sec"><svg class="chev"><use href="#chev"/></svg>You<span class="n">· 1</span></div>
+        </div>
+      </div></div>
+      <p class="frame-cap"><b>All rules.</b> Locked first, then Org, Team, Repo, You. The scope sits in the section head, so rows carry only the owner.</p>
+    </div>
+
+    <div>
+      <div class="frame"><div class="hm">
+        <div class="hm-head"><div class="hm-brand"><svg viewBox="0 0 120 120"><use href="#hm-mark"/></svg>Hivemind<span class="hm-dot-on"></span></div><div class="hm-where"><b>Meridian Data</b> / export-service</div></div>
+        <div class="hm-tabs"><button class="hm-tab" aria-selected="false">Here</button><button class="hm-tab" aria-selected="true">All rules</button><button class="hm-tab" aria-selected="false">Approvals<span class="hm-count">2</span></button></div>
+        <div style="position:relative;flex:1"><div class="hm-detail open">
+          <button class="hm-back">‹ All rules</button>
+          <div class="hm-d">
+            <div class="hm-kind lesson">Team lesson</div>
+            <h3>Exports call <span class="tok">assertSingleCustomer()</span> before writing</h3>
+            <div class="hm-prov">Learned from <span class="chip h repo"><i>A</i>@alex</span>’s correction · 3h ago</div>
+            <div class="hm-quote">“No. Exports must call assertSingleCustomer() before writing anything.”<small>@alex, to Claude Code · 14 Oct, 9:02</small></div>
+            <dl class="hm-facts">
+              <dt>Scope</dt><dd><span class="chip repo"><i></i>#repo/export-service</span></dd>
+              <dt>Approved by</dt><dd><span class="chip h team"><i>J</i>@jordan</span>· 14 Oct</dd>
+              <dt>Reaches</dt><dd><span class="pill">Claude Code</span><span class="pill">Cursor</span><span class="pill">Copilot</span><span class="pill">Codex</span></dd>
+              <dt>Applies here</dt><dd><a class="hm-link" href="#">line 17</a><a class="hm-link" href="#">line 22</a></dd>
+            </dl>
+            <div class="hm-btns"><button class="btn ghost">Show in file</button><a class="hm-link" href="#">Open in Hivemind</a></div>
+          </div>
+        </div></div>
+      </div></div>
+      <p class="frame-cap"><b>Rule detail.</b> Slides in over the list (180ms). Provenance first, then the quote verbatim, then who approved it and which agents have it.</p>
+    </div>
+
+    <div>
+      <div class="frame"><div class="hm">
+        <div class="hm-head"><div class="hm-brand"><svg viewBox="0 0 120 120"><use href="#hm-mark"/></svg>Hivemind<span class="hm-dot-on"></span></div><div class="hm-where"><b>Meridian Data</b> / export-service · <span style="color:var(--hm-text)">@jordan</span></div></div>
+        <div class="hm-tabs"><button class="hm-tab" aria-selected="false">Here</button><button class="hm-tab" aria-selected="false">All rules</button><button class="hm-tab" aria-selected="true">Approvals<span class="hm-count">2</span></button></div>
+        <div class="hm-body">
+          <div class="hm-sec">For you<span class="n">· 1</span></div>
+          <div class="hm-card" style="box-shadow: inset 2px 0 0 var(--hm-honey), inset 0 0 0 1px var(--hm-line)">
+            <div>Exports call <span class="tok">assertSingleCustomer()</span> before writing</div>
+            <div class="q">“No. Exports must call assertSingleCustomer() before writing anything.”</div>
+            <div class="by"><span class="chip repo"><i></i>#repo/export-service</span>Proposed by @alex’s Claude Code agent · 2m ago</div>
+            <div class="acts"><button class="btn primary">Approve</button><button class="btn ghost">Reject</button></div>
+          </div>
+          <div class="hm-sec">Stopped by a locked rule<span class="n">· 1</span></div>
+          <div class="hm-card blocked">
+            <div class="hm-blk">Blocked by a locked rule</div>
+            <div style="text-decoration:line-through;text-decoration-color:rgba(251,113,133,.6)">Reuse Lab A rows for Lab B test fixtures</div>
+            <div class="by"><span class="chip org wrap"><i></i>Never mix data from different lab customers</span></div>
+            <div class="by">From @noor’s Claude Code agent · just now · only Security can dismiss</div>
+          </div>
+        </div>
+      </div></div>
+      <p class="frame-cap"><b>Approvals, as the lead.</b> Approve is the one blue button. Blocked lessons sit under their own head with a rose rule.</p>
+    </div>
+
+    <div>
+      <div class="frame"><div class="hm">
+        <div class="hm-head"><div class="hm-brand"><svg viewBox="0 0 120 120"><use href="#hm-mark"/></svg>Hivemind<span class="hm-dot-on"></span></div><div class="hm-where"><b>Meridian Data</b> / export-service · <span style="color:var(--hm-text)">@alex</span></div></div>
+        <div class="hm-tabs"><button class="hm-tab" aria-selected="false">Here</button><button class="hm-tab" aria-selected="false">All rules</button><button class="hm-tab" aria-selected="true">Approvals<span class="hm-count">1</span></button></div>
+        <div class="hm-body">
+          <div class="hm-sec">Waiting on someone else<span class="n">· 1</span></div>
+          <div class="hm-card">
+            <div>Exports call <span class="tok">assertSingleCustomer()</span> before writing</div>
+            <div class="by"><span class="chip repo"><i></i>#repo/export-service</span>Proposed by you · 2m ago</div>
+            <div class="wait"><svg width="13" height="13" style="color:var(--hm-faint)"><use href="#lock"/></svg>Waiting on <span class="chip h team"><i>J</i>@jordan</span></div>
+          </div>
+        </div>
+      </div></div>
+      <p class="frame-cap"><b>Approvals, as an engineer.</b> No disabled buttons to tempt a click: one line says who decides.</p>
+    </div>
+
+    <div>
+      <div class="frame"><div class="hm">
+        <div class="hm-head"><div class="hm-brand"><svg viewBox="0 0 120 120"><use href="#hm-mark"/></svg>Hivemind<span class="hm-dot-on" style="background:#52525B" title="Offline"></span></div><div class="hm-where">test workspace / test project</div></div>
+        <div class="hm-tabs"><button class="hm-tab" aria-selected="true">Here</button><button class="hm-tab" aria-selected="false">All rules</button><button class="hm-tab" aria-selected="false">Approvals</button></div>
+        <div class="hm-body">
+          <div class="hm-empty"><b>No team rules apply here.</b><span>Rules that mention this file or its code show up here.</span></div>
+          <div class="hm-sec">Activity</div>
+          <div class="hm-empty" style="padding-top:8px"><span>No agents working right now.</span></div>
+        </div>
+        <div class="hm-teach"><div class="box"><textarea rows="1" placeholder="Teach Hivemind a rule…"></textarea><div class="foot"><button class="chip you"><i></i>#you</button><button class="send" aria-label="Send"><svg width="14" height="14"><use href="#send"/></svg></button></div></div></div>
+      </div></div>
+      <p class="frame-cap"><b>Empty states.</b> A local test project with nothing yet. Personal scope is the hollow ring.</p>
+    </div>
+  </div>
+
+  <h2>3 · Toasts (only these four, at most one per 2 minutes)</h2>
+  <div class="toast-row">
+    <div class="toast"><div class="row"><svg class="ico"><use href="#info"/></svg><div>Claude Code’s edit breaks a locked rule: Never mix data from different lab customers. Locked by @maya.</div></div><div class="src"><span>Hivemind</span><span class="bt"><span>Fix it</span><span class="sec2">Show rule</span></span></div></div>
+    <div class="toast"><div class="row"><svg class="ico"><use href="#info"/></svg><div>@adrian’s Cursor agent edited export.ts 2 min ago. Check before you both change the same lines.</div></div><div class="src"><span>Hivemind</span><span class="bt"><span class="sec2">Show change</span></span></div></div>
+    <div class="toast"><div class="row"><svg class="ico"><use href="#info"/></svg><div>Your correction is now a lesson. Waiting on @jordan.</div></div><div class="src"><span>Hivemind</span><span></span></div></div>
+    <div class="toast"><div class="row"><svg class="ico"><use href="#info"/></svg><div>@jordan approved your lesson “Exports call assertSingleCustomer()”. Every agent on #team/data-pipelines gets it next session.</div></div><div class="src"><span>Hivemind</span><span class="bt"><span class="sec2">Show rule</span></span></div></div>
+  </div>
+</div>
+
+<template id="celeTpl">
+  <div class="hm-cele" role="status">
+    <svg viewBox="0 0 100 100"><path class="cell" d="M50 6L88 28L88 72L50 94L12 72L12 28Z"/><path class="ring" d="M50 6L88 28L88 72L50 94L12 72L12 28Z"/></svg>
+    <div>
+      <div class="a"><span class="chip h team"><i>J</i>@jordan</span>approved your lesson</div>
+      <div class="b"><span class="tok">assertSingleCustomer()</span> before every export</div>
+      <div class="c">Every agent on #team/data-pipelines gets it next session.</div>
+    </div>
+  </div>
+</template>
+
+<script>
+(() => {
+  const slot = document.getElementById("celeSlot");
+  const toasts = document.getElementById("toasts");
+  const sb = document.getElementById("sb"), sbText = document.getElementById("sbText");
+  const row = document.getElementById("rowHero");
+  let timers = [];
+  function play() {
+    timers.forEach(clearTimeout); timers = [];
+    slot.innerHTML = ""; toasts.innerHTML = "";
+    slot.appendChild(document.getElementById("celeTpl").content.cloneNode(true));
+    row.classList.remove("flash"); void row.offsetWidth; row.classList.add("flash");
+    toasts.innerHTML = '<div class="toast"><div class="row"><svg class="ico"><use href="#info"/></svg><div>@jordan approved your lesson “Exports call assertSingleCustomer()”. Every agent on #team/data-pipelines gets it next session.</div></div><div class="src"><span>Hivemind</span><span class="bt"><span class="sec2">Show rule</span></span></div></div>';
+    sbText.textContent = "11 rules"; sb.style.color = "#E4E4E7"; sb.classList.add("flip");
+    timers.push(setTimeout(() => sb.classList.remove("flip"), 1200));
+    timers.push(setTimeout(() => { slot.innerHTML = ""; toasts.innerHTML = ""; sbText.textContent = "breaks 1 locked rule"; sb.style.color = ""; }, 6000));
+  }
+  document.getElementById("play").addEventListener("click", play);
+
+  const ta = document.getElementById("teachIn"), send = document.getElementById("teachSend"), sent = document.getElementById("teachSent");
+  ta.addEventListener("input", () => {
+    send.classList.toggle("on", ta.value.trim().length > 0);
+    ta.style.height = "auto"; ta.style.height = Math.min(ta.scrollHeight, 76) + "px";
+  });
+  const submit = () => {
+    if (!ta.value.trim()) return;
+    ta.value = ""; send.classList.remove("on"); ta.style.height = "";
+    sent.hidden = false; setTimeout(() => (sent.hidden = true), 3000);
+  };
+  send.addEventListener("click", submit);
+  ta.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submit(); } });
+})();
+</script>
+</body>
+</html>
