@@ -1,8 +1,9 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
-import { Check, ChevronDown } from "lucide-react";
+import { ArrowLeft, Check, ChevronDown } from "lucide-react";
 import { Toaster } from "sonner";
 import { AnimatePresence, MotionConfig, motion } from "motion/react";
 import { HivemindProvider, ROLE_USERS, useHivemind } from "./store";
@@ -85,10 +86,11 @@ function Header() {
 
   return (
     <header className="flex h-14 shrink-0 items-center gap-8 border-b border-line bg-panel px-5">
-      <NavLink href="/app" className="flex items-center gap-2.5">
+      {/* The logo goes back to the website, like any site's logo (Adrian, 16 Oct: there was no way back). */}
+      <Link href="/" title="Back to the website" className="flex items-center gap-2.5">
         <Logo className="size-[22px]" intro />
         <Wordmark className="text-[19px]/none" />
-      </NavLink>
+      </Link>
 
       <nav className="flex h-full items-center gap-1">
         {nav.map(({ href, label, badge }) => {
@@ -126,7 +128,13 @@ function Header() {
         })}
       </nav>
 
-      <div className="ml-auto">
+      <div className="ml-auto flex items-center gap-2">
+        <Link
+          href="/"
+          className="hm-pill h-8 px-3 text-[13px] text-muted transition-colors duration-150 hover:bg-elevated hover:text-fg"
+        >
+          <ArrowLeft className="size-3.5" /> Website
+        </Link>
         <ViewingAs />
       </div>
     </header>
