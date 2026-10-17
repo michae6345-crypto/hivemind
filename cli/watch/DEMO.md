@@ -84,8 +84,8 @@ Same split as above, right after Beat 1, or on its own.
 3. **Right (watch):**
    - About 1.5s after your last keystroke, Here shows `Learning from your fix…`.
    - Then it shows the engine's answer, also as a toast and a Feed card. It's one of:
-     - `Hivemind · Lesson captured from @kevin's fix: "…". Waiting on @ben.`
-     - `Hivemind · Reinforced: "…".`
+     - `Hivemind · Lesson captured from @kevin's fix in src/experts.ts:6: "…". Waiting on @ben.`
+     - `Hivemind · Lesson reinforced by @kevin's fix in src/experts.ts:6: "Never log expert personal info".`
 4. **The payoff:** @ben approves it on Queue, and the next agent session, in any tool, gets the lesson in its context.
 
 What the watcher sends, so you can explain it:
