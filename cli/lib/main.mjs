@@ -20,7 +20,7 @@ import { USE_HINT, locateRepo } from "./locate.mjs";
 import { NOT_IN_REPO, WHO_ARE_YOU, explicitUser, findRepoRoot, nativePath, resolveUser } from "./root.mjs";
 import { liveRecent, readState, remember, setDefault } from "./state.mjs";
 import { brand, handleChip, label, rich, scopeChip } from "./style.mjs";
-import { chip, padEnd } from "./ui.mjs";
+import { card, chip, dot, padEnd, printHeader, rows, spin } from "./ui.mjs";
 import { rulesFrontmatter } from "./templates.mjs";
 import { END, START, api, banner, c, callerAgent, mcpCall, mergeJson, onPath, post, read, readEnvFile, rel, sym, table, plain, upsertBlock, write } from "./util.mjs";
 
@@ -265,12 +265,14 @@ const ids = (agents) => agents.map((a) => a.id);
 
 // ---------- status ----------
 async function cmdStatus(cfg) {
-  console.log(banner("status"), c.gray(cfg.root));
-  const tokenNote = cfg.token ? c.green("set") : c.red("missing");
+  const host = cfg.url.replace(/^https?:\/\//, "");
+  await printHeader("status", `#${cfg.repo}${cfg.actor ? ` · @${cfg.actor}` : ""}`);
+  console.log("");
+  const items = [];
   let reachable = false;
   try {
     const qs = new URLSearchParams({ repo: cfg.repo, user: "team", log: "0" });
-    const { data: pack, ms } = await api(cfg, `/api/context-pack?${qs}`);
+    const { data: pack, ms } = await spin("checking Hivemind", api(cfg, `/api/context-pack?${qs}`));
     reachable = true;
     const scopes = await api(cfg, "/api/scopes").then((r) => r.data.scopes ?? []).catch(() => []);
     const known = scopes.some((s) => s.id === cfg.repo);
@@ -279,48 +281,46 @@ async function cmdStatus(cfg) {
       ["active", "pending"].map((s) => api(cfg, `/api/memories?${chain}&status=${s}`).then((r) => r.data.memories ?? []).catch(() => null)),
     );
     const locked = lockedCount(pack);
-    console.log(
-      table(
-        ["Hivemind", ""],
-        [
-          ["API", `${sym.ok} ${cfg.url} ${c.gray(`${ms} ms`)}`],
-          ["Token", tokenNote],
-          ["Repo scope", known ? cfg.repo : `${cfg.repo} ${c.gray("(not in Hivemind yet; showing org memory)")}`],
-          ["Rules in pack", `${pack.memoryIds.length} ${c.gray(`(${locked} locked, ~${pack.tokens} tokens)`)}`],
-          ["Active memories", active ? String(active.length) : c.gray("n/a")],
-          ["Pending lessons", pending ? (pending.length ? c.yellow(`${pending.length} awaiting review`) : "0") : c.gray("n/a")],
-        ],
-      ),
+    items.push(
+      { dot: "ok", key: "API", value: `${host}  ${c.faint(`${ms} ms`)}` },
+      { dot: cfg.token ? "ok" : "bad", key: "Token", value: cfg.token ? "set" : c.rose("missing · set HIVEMIND_TOKEN") },
+      { dot: null, key: "Repo", value: `${c.repo(`#${cfg.repo}`)}${known ? "" : c.faint("  not in Hivemind yet, showing org memory")}` },
+      { dot: null, key: "Rules", value: `${pack.memoryIds.length} in the pack  ${c.faint(`${locked} locked · ~${pack.tokens} tokens`)}` },
+      { dot: null, key: "Memories", value: active ? `${active.length} active` : c.faint("n/a") },
+      {
+        dot: pending?.length ? "warn" : pending ? "ok" : null,
+        key: "Pending",
+        value: pending ? (pending.length ? c.lesson(`${pending.length} awaiting review`) : "none") : c.faint("n/a"),
+      },
     );
   } catch (e) {
-    console.log(table(["Hivemind", ""], [["API", `${sym.fail} ${cfg.url} ${c.red(e.message)}`], ["Token", tokenNote]]));
+    items.push({ dot: "bad", key: "API", value: `${host}  ${c.rose(e.message)}` }, { dot: cfg.token ? "ok" : "bad", key: "Token", value: cfg.token ? "set" : c.rose("missing") });
   }
+  console.log(card(rows(items), { title: "Hivemind" }));
 
   const chosen = new Set(Array.isArray(cfg.saved.agents) ? cfg.saved.agents : detect(cfg.root, { usePath: false }).map((a) => a.id));
-  const rows = [];
+  const seg = (state, name) => `${dot(state)} ${c.faint(name)}`;
+  const agentRows = [];
   for (const a of [...AGENTS, GENERIC]) {
     const rulesPath = a.rules ? join(cfg.root, a.rules.file) : null;
     const rulesText = rulesPath ? read(rulesPath) : null;
     const mcp = a.mcpFile ? mcpWired(cfg.root, a) : null;
     if (!chosen.has(a.id) && (a === GENERIC || (!mcp && !(rulesText ?? "").includes(START)))) continue;
-    let rules = c.gray("—");
+    let rules;
     if (a.id === "claude-code") {
       const skill = read(join(cfg.root, ...SKILL_FILE.split("/"))) !== null;
-      rules = `${c.gray("live via SessionStart")}${skill ? ` · ${sym.ok} /hivemind skill` : ""}`;
+      rules = c.faint(`rules live at session start${skill ? " · /hivemind skill" : ""}`);
     } else if (rulesText?.includes(START) && rulesText.includes(END)) {
       const age = Math.round((Date.now() - statSync(rulesPath).mtimeMs) / 60000);
-      rules = `${sym.ok} ${a.rules.file} ${c.gray(age < 1 ? "just now" : age < 60 ? `${age}m ago` : `${Math.round(age / 60)}h ago`)}`;
-    } else if (a.rules) rules = `${sym.fail} ${a.rules.file} ${c.gray("(run sync)")}`;
+      rules = `${c.faint(a.rules.file)} ${c.faint(age < 1 ? "· just now" : age < 60 ? `· ${age}m ago` : `· ${Math.round(age / 60)}h ago`)}`;
+    } else rules = a.rules ? c.lesson(`${a.rules.file} not synced · run hivemind sync`) : c.faint("—");
     const userLevel = a.mcpFile?.includes(".hivemind.example");
-    const mcpCell =
-      mcp === null ? c.gray("—") : !mcp ? `${sym.fail} ${c.gray("not wired")}` : userLevel ? `${sym.warn} user-level ${c.gray("(see example)")}` : `${sym.ok} ${a.mcpFile}`;
+    const mcpState = mcp === null ? "off" : !mcp ? "bad" : userLevel ? "warn" : "ok";
     const hooksText = a.hooksFile ? (read(join(cfg.root, a.hooksFile)) ?? "") : null;
-    const hooked = hooksText !== null && /\/api\/hooks\/|hooks\/adapters\//.test(hooksText);
-    const hooksCell = hooksText === null ? c.gray("—") : hooked ? `${sym.ok} ${a.hooksFile}` : `${sym.fail} ${c.gray("not wired")}`;
-    rows.push([c.bold(a.label), mcpCell, hooksCell, rules]);
+    const hooksState = hooksText === null ? "off" : /\/api\/hooks\/|hooks\/adapters\//.test(hooksText) ? "ok" : "bad";
+    agentRows.push({ dot: undefined, key: c.text(a.label), value: `${seg(mcpState, "mcp")}  ${seg(hooksState, "hooks")}   ${rules}` });
   }
-  if (rows.length) console.log(table(["Agent", "MCP", "Hooks", "Rules"], rows));
-  else console.log(`${sym.warn} No agents wired here yet. Run ${c.cyan("hivemind init")}.`);
+  console.log(agentRows.length ? card(rows(agentRows), { title: "Agents" }) : `${sym.warn} No agents wired here yet. Run ${c.cyan("hivemind init")}.`);
   if (!reachable) process.exit(1);
 }
 
