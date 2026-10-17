@@ -1,7 +1,7 @@
 ---
 name: hivemind
-description: Opens the Hivemind side pane (hivemind watch) to the right of this terminal. `/hivemind` with no arguments only opens the pane, it never prints rules. `/hivemind rules [file]` lists team rules, `/hivemind teach <rule>` teaches every agent, `/hivemind why [rule]` explains the history behind a block, `/hivemind status` checks the connection. Fastest path, with no model turn at all, is `!hivemind`.
-argument-hint: "[open | rules [file] | teach <rule> | why [rule] | status]"
+description: Opens the Hivemind side pane (hivemind watch) to the right of this terminal. `/hivemind` with no arguments only opens the pane, it never prints rules. `/hivemind rules [file]` lists team rules, `/hivemind teach <rule>` teaches every agent, `/hivemind why [rule]` explains the history behind a block, `/hivemind status` checks the connection, `/hivemind update` updates the CLI. Fastest path, with no model turn at all, is `!hivemind`.
+argument-hint: "[open | rules [file] | teach <rule> | why [rule] | status | update]"
 allowed-tools: Bash(node *) Bash(hivemind *) PowerShell(node *) PowerShell(hivemind *) mcp__hivemind__get_team_rules mcp__hivemind__propose_memory mcp__hivemind__search_memory
 ---
 
@@ -73,6 +73,17 @@ Run exactly one command and print its output verbatim, with no extra prose befor
 The output is about 12 lines: who set or taught the rule and why (quote, PR or incident), who approved it, which agents
 have it in context, how often it was reinforced, and what it blocked. Don't summarise it, reformat it or add advice.
 
+## `update`: update the Hivemind CLI now
+
+Run exactly this one command with the Bash tool (one call) and print its output verbatim, with no extra prose:
+
+```
+node "../../cli/hivemind.mjs" update
+```
+
+It prints `⬢ Hivemind · up to date (<sha>)`, or the commits it just pulled in. (The CLI also updates itself every 15
+minutes in the background; `HIVEMIND_NO_UPDATE=1` turns that off.)
+
 ## When a team rule blocks a request
 
 When a team rule stops a request, reply with exactly these 4 short lines and nothing else (no lists, no essay, don't restate the rule):
@@ -84,5 +95,5 @@ Run /hivemind why for the history.
 ## Anything else
 
 Print these usages: `/hivemind` (open the pane), `/hivemind rules <file>`, `/hivemind teach <rule>`, `/hivemind why [rule]`,
-`/hivemind status`,
+`/hivemind status`, `/hivemind update`,
 and the instant path `!hivemind`.

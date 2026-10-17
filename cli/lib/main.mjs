@@ -498,11 +498,13 @@ const repoIdOf = (found) => {
 // `hivemind update`: check origin/main now and fast-forward this checkout if it's safe (same rules as the auto-update).
 async function cmdUpdate() {
   const u = await import("./update.mjs");
-  console.log(`${brand()} ${c.gray("· update")}  ${u.checkoutRoot}`);
-  if (!u.isCheckout()) return console.log(`  this install isn't a git checkout; reinstall with ${c.cyan("npm i -g ./cli")} from your hivemind clone`);
-  if (process.env.HIVEMIND_NO_UPDATE === "1") console.log(c.gray("  HIVEMIND_NO_UPDATE=1 is set: auto-update is off, but you asked, so checking now"));
+  if (!u.isCheckout()) return console.log(`${brand()} ${c.gray("· update")}  this install isn't a git checkout; reinstall with ${c.cyan("npm i -g ./cli")} from your hivemind clone`);
+  if (process.env.HIVEMIND_NO_UPDATE === "1") console.log(c.gray("HIVEMIND_NO_UPDATE=1 is set: auto-update is off, but you asked, so checking now"));
   const m = u.fetchAndMeasure();
   if (!m) fail("couldn't fetch origin/main (offline?). Details in ~/.hivemind/update.log");
+  // Already current: one line, e.g. "⬢ Hivemind · up to date (6e34b43)".
+  if (!m.behind) return console.log(`${brand()} ${c.gray("·")} up to date ${c.gray(`(${u.headSha()})`)}`);
+  console.log(`${brand()} ${c.gray("· update")}  ${u.checkoutRoot}`);
   const r = u.fastForward({ verbose: true });
   if (!r) return;
   console.log(`  ${c.green("✓")} updated to ${c.bold(r.sha)} ${c.gray(`(${r.n} new commit${r.n === 1 ? "" : "s"})`)}`);

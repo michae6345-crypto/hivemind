@@ -54,6 +54,7 @@ function saveUpdate(patch) {
 export const isCheckout = () => existsSync(join(ROOT, ".git"));
 export const disabled = () => process.env.HIVEMIND_NO_UPDATE === "1" || !!process.env.CI || !isCheckout();
 export const checkoutRoot = ROOT;
+export const headSha = () => out(["rev-parse", "--short", "HEAD"]) ?? "?";
 
 /** Fetch origin/main and record how far behind/ahead this checkout is. Used by the background child and `hivemind update`. */
 export function fetchAndMeasure() {
