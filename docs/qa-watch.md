@@ -10,7 +10,9 @@ Headless only. Nothing touched a real terminal window, and nothing was written t
   activity). It runs on a private copy of the repo with a private TMP (so watch's statusline state file never reaches
   a real Claude Code). Scenarios: tabs 1-4/tab, j/k/enter/esc, `?`, teach open/type/`q`-inside/cancel/send/empty, `p`
   cycle, a/r as engineer and lead (mock 403 + ok), approve spam, 300-key spam, resize storm (50×20 → 120×45 → 40×12 →
-  80×30), Ctrl+C (exit 0, alt screen off, cursor on), DEC 2026 brackets balanced.
+  80×30), Ctrl+C (exit 0, alt screen off, cursor on), DEC 2026 brackets balanced, keys while the first poll loads,
+  `f` on a Here hit, every rule detail opened + scrolled at 50×20 (greg) and 58×30 (ben): 21 each, no overflow.
+- **Not covered:** the celebration on a real approval (needs a live approve on prod), Windows Terminal itself.
 - **Watcher:** no false flags on startup; `.paseo/ node_modules/ .next/ dist/ .claude/ .git/` ignored; binary `.ts`,
   CRLF (flag on the right line), a 787 KB file (checked in ~3s), 20 saves in 400 ms (→ 1 check), delete, rename.
 
