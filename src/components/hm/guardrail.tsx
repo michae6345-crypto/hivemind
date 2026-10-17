@@ -6,6 +6,7 @@ import type { Memory } from "@/mocks/types";
 import { useHivemind } from "./store";
 import { Avatar } from "./bits";
 import { RichText } from "./rich-text";
+import { Handles } from "./handles";
 import { cn, scopeChain, timeAgo } from "./utils";
 
 /** Find the locked rule a blocked lesson ran into: the [[slug]] named in blockedReason, else the nearest lock up its scope chain. */
@@ -48,7 +49,7 @@ export function Guardrail({ memory: m, compact }: { memory: Memory; compact?: bo
           <div className="mb-2 flex items-center gap-2 text-[12px] text-muted">
             <Avatar person={proposer} id={proposal?.actor ?? m.author} className="size-4 text-[9px]" />
             <span>
-              {proposer?.name.split(" ")[0] ?? "Someone"} tried to teach{proposal ? `, ${timeAgo(proposal.at)}` : ""}
+              {proposer ? <Handles text={`@${proposer.id}`} /> : "Someone"} tried to teach{proposal ? `, ${timeAgo(proposal.at)}` : ""}
             </span>
           </div>
           <p className="text-[14px] leading-snug">“{proposal?.quote ?? m.body}”</p>
@@ -71,7 +72,7 @@ export function Guardrail({ memory: m, compact }: { memory: Memory; compact?: bo
             <div className="mb-2 flex items-center gap-2 text-[12px] text-muted">
               <Lock className="size-3.5 text-lock" />
               <span>
-                Locked by {ruleOwner?.name.split(" ")[0] ?? "Security"}
+                Locked by {ruleOwner ? <Handles text={`@${ruleOwner.id}`} /> : "Security"}
                 {ruleOwner ? `, ${ruleOwner.title}` : ""}
               </span>
             </div>

@@ -18,7 +18,7 @@ Matches the design canvas, boards 1–4. Plain words, sentence case. `{n}` and f
 | CodeLens above a function | `{locked} locked rule · {lessons} team lessons apply` (if no locked rule: `{lessons} team lessons apply`) |
 | Ghost-text label at end of line | `Hivemind · from {Person}'s lesson` |
 | Hover on a matching line | Title: the lesson title. Body: `{Person} taught this on {date}. Applies to #{scope}.` |
-| Red squiggle (diagnostic) | `Breaks a locked rule: {rule title}. Locked by {Person}, {role}.` |
+| Red squiggle (diagnostic) | `Breaks a locked rule: {rule title}. Locked by @{handle}, {role}. (Owners are always @handles, never full names.)` |
 | Quick Fix | `Fix: {short action}` e.g. `Fix: add assertSingleCustomer(rows)` |
 | Collision notification | `{Person}'s {Tool} agent edited {file} {time} ago. Check before you both change the same lines.` |
 | "Teach Hivemind?" lightbulb | `Teach Hivemind: turn this fix into a lesson for #{scope}` → after: `Lesson proposed. Waiting on @{lead}.` |

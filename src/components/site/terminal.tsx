@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useInView, useReducedMotion } from "motion/react";
 import { REPO, SCENES, type Scene, type Step } from "./demo-script";
 import { cn } from "@/components/hm/utils";
+import { Handles } from "@/components/hm/handles";
 
 type NotifyStep = Extract<Step, { kind: "notify" }>;
 
@@ -199,7 +200,7 @@ function LineView({ line: l }: { line: Line }) {
       return (
         <div className="mt-1 flex gap-2" style={{ color }}>
           <span className="shrink-0 text-[var(--win-muted)]">⎿</span>
-          <span>{s.text}</span>
+          <span><Handles text={s.text} dark /></span>
         </div>
       );
     }
@@ -247,7 +248,7 @@ function LineView({ line: l }: { line: Line }) {
               <span className="text-[var(--win-muted)]">{d.sign}</span>
               <span className="min-w-0 truncate">{d.text}</span>
               {d.mark ? (
-                <span className="ml-auto shrink-0 font-sans text-[11px] text-[var(--win-honey)]">← Hivemind · {d.mark}</span>
+                <span className="ml-auto shrink-0 font-sans text-[11px] text-[var(--win-honey)]">← Hivemind · <Handles text={d.mark} dark /></span>
               ) : null}
             </div>
           ))}

@@ -131,6 +131,14 @@ body {
   .hm-chip[data-kind="link"] { --dot: var(--honey); }
   .hm-chip[data-kind="lock"] { --dot: var(--chip-lock); color: var(--chip-lock); }
   .hm-chip:hover { border-color: color-mix(in srgb, var(--text) 22%, var(--border)); }
+  .hm-chip[data-static] { cursor: inherit; }
+  /* The same chip inside the dark windows (Terminal, editor, chat). */
+  .hm-chip-dark,
+  .hm-chip-dark:hover {
+    border-color: rgba(255, 255, 255, 0.16);
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--win-text);
+  }
 
   /* Glass: frosted secondary pills and floating bars. */
   .hm-glass {

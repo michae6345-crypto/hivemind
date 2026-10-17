@@ -4,6 +4,7 @@ import { TriangleAlert } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import type { ActivityItem } from "@/mocks/types";
 import { useHivemind } from "./store";
+import { Handles } from "./handles";
 import { useNow } from "./use-now";
 import { cn, timeAgo } from "./utils";
 
@@ -42,13 +43,12 @@ export function AgentBadge({ agent, className }: { agent?: AgentKind; className?
 
 /** "Live activity": the last five agent edits, with collision warnings. The only activity the web app shows. */
 export function LiveActivity() {
-  const { activity, people } = useHivemind();
+  const { activity } = useHivemind();
   const now = useNow();
   const items = activity
     .slice()
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
     .slice(0, 5);
-  const first = (id: string) => people.find((p) => p.id === id)?.name.split(" ")[0] ?? id;
   const file = (path: string) => path.split("/").at(-1) ?? path;
 
   return (
@@ -74,7 +74,9 @@ export function LiveActivity() {
               className="rounded-[10px] px-2.5 py-1.5"
             >
               <div className="flex items-center gap-1.5 text-[12.5px]">
-                <span className="shrink-0 font-medium">{first(a.actor)}&apos;s</span>
+                <span className="shrink-0">
+                  <Handles text={`@${a.actor}'s`} />
+                </span>
                 <AgentBadge agent={a.agent} />
                 <span className="min-w-0 truncate text-fg/85">
                   agent edited <span className="font-mono text-[11.5px]">{file(a.file)}</span>
@@ -84,7 +86,7 @@ export function LiveActivity() {
               {a.warning ? (
                 <div className="mt-0.5 flex items-start gap-1.5 text-[11.5px] leading-snug text-[#9a6412]">
                   <TriangleAlert className="mt-px size-3 shrink-0" />
-                  <span>{a.warning.replace(/@([a-z][\w-]*)/g, (_, id: string) => first(id))}</span>
+                  <Handles text={a.warning} />
                 </div>
               ) : null}
             </motion.li>

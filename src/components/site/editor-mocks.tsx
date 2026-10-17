@@ -4,6 +4,7 @@ import { Check, Lightbulb, Lock, MessageSquare, Search, X } from "lucide-react";
 import { motion } from "motion/react";
 import { Logo } from "@/components/hm/bits";
 import { cn } from "@/components/hm/utils";
+import { Handles } from "@/components/hm/handles";
 import { LESSON, LOCKED_RULE, SCENES } from "./demo-script";
 
 // VS Code, boards 1–4 of the design canvas, drawn as dark windows on the light page.
@@ -69,26 +70,44 @@ export function EditorMock({ className }: { className?: string }) {
         >
           {n(15)}
           <span className="text-[#6b6b72] italic">  assertSingleCustomer(rows);</span>
-          <span className="ml-3 rounded bg-[#f5a5241f] px-1.5 py-px font-sans text-[11px] text-[var(--win-honey)]">Hivemind · from Alex&apos;s lesson</span>
+          <span className="ml-3 rounded bg-[#f5a5241f] px-1.5 py-px font-sans text-[11px] text-[var(--win-honey)]">Hivemind · from <Handles text="@alex's" dark /> lesson</span>
         </motion.div>
         <div>{n(16)}  fs.<span className="text-[#dcdcaa]">writeFileSync</span>(path, JSON.<span className="text-[#dcdcaa]">stringify</span>(rows));</div>
         <div>{n(17)}{"}"}</div>
         <div>{n(18)}</div>
-        <div>
+        <div className="whitespace-nowrap">
           {n(19)}<span className="text-[#c586c0]">const</span> fixtures = [...
-          <span className="underline decoration-[var(--win-rose)] decoration-wavy decoration-from-font underline-offset-4">labA.rows, ...labB.rows</span>];
+          <span className="rounded-sm bg-[#f8717114] underline decoration-[var(--win-rose)] decoration-wavy decoration-from-font underline-offset-4">labA.rows, ...labB.rows</span>];
+          <span className="ml-2 hidden font-sans text-[11px] text-[#8a8a92] italic xl:inline">
+            ⬢ Hivemind: breaks 🔒 Never mix lab customers&apos; data · <Handles text="@maya" dark />
+          </span>
         </div>
         <div className="relative mt-2 mr-4 ml-10 max-w-[440px] rounded-md border border-white/10 bg-[#252527] p-3 font-sans text-[12px] shadow-xl">
           <div className="flex items-start gap-2">
             <Lock className="mt-0.5 size-3.5 shrink-0 text-[var(--win-rose)]" />
             <span>
-              Breaks a locked rule: {LOCKED_RULE}. <span className="text-[var(--win-muted)]">Locked by Maya, Head of Security.</span>
+              Breaks a locked rule: {LOCKED_RULE}. <span className="text-[var(--win-muted)]">Locked by <Handles text="@maya" dark />, Head of Security.</span>
             </span>
           </div>
           <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 border-t border-white/10 pt-2 text-[var(--win-honey)]">
             <span className="flex items-center gap-1"><Lightbulb className="size-3.5" /> Fix: build Lab B fixtures from synthetic rows</span>
           </div>
         </div>
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.6 }}
+          transition={{ duration: 0.4, delay: 1.1 }}
+          className="absolute right-3 bottom-3 hidden w-[210px] rounded-md border border-white/10 bg-[#252527] p-2.5 font-sans text-[12px] shadow-xl sm:block"
+        >
+          <div className="flex items-center gap-1.5">
+            <Logo onDark className="size-3.5" /> Hivemind caught something…
+          </div>
+          <div className="mt-2 flex gap-1.5 text-[11.5px]">
+            <span className="rounded bg-[var(--win-text)] px-2 py-0.5 font-medium text-window">Fix it</span>
+            <span className="rounded bg-white/10 px-2 py-0.5">Show rule</span>
+          </div>
+        </motion.div>
       </div>
       <StatusBar />
     </WindowChrome>
@@ -114,7 +133,7 @@ export function ChatMock({ className }: { className?: string }) {
         <McpCheckCard />
         <div className="text-[12.5px] leading-relaxed">
           I&apos;ll call <code className="rounded bg-white/10 px-1" style={MONO}>assertSingleCustomer(rows)</code> before writing, as
-          Alex&apos;s lesson says.
+          <Handles text="@alex's" dark /> lesson says.
         </div>
         <McpApproveCard />
       </div>
@@ -140,21 +159,21 @@ export function McpCheckCard() {
           <Lock className="mt-0.5 size-3.5 shrink-0 text-[var(--win-rose)]" />
           <span>
             {LOCKED_RULE}
-            <span className="block text-[11.5px] text-[var(--win-muted)]">Locked by Maya · #org</span>
+            <span className="mt-0.5 block text-[11.5px] text-[var(--win-muted)]"><Handles text="Locked by @maya · #org" dark /></span>
           </span>
         </li>
         <li className="flex items-start gap-2.5 px-3 py-2">
           <span className="mt-1 size-2 shrink-0 rounded-full bg-[var(--win-honey)]" />
           <span>
             {LESSON}
-            <span className="block text-[11.5px] text-[var(--win-muted)]">From Alex&apos;s lesson · approved by Jordan · #repo/export-service</span>
+            <span className="mt-0.5 block text-[11.5px] text-[var(--win-muted)]"><Handles text="From @alex's lesson · approved by @jordan · #repo/export-service" dark /></span>
           </span>
         </li>
         <li className="flex items-start gap-2.5 px-3 py-2">
           <span className="mt-1 size-2 shrink-0 rounded-full bg-[var(--win-honey)]" />
           <span>
             Tag every row with lab_customer_id
-            <span className="block text-[11.5px] text-[var(--win-muted)]">From Jordan&apos;s review · #team/data-pipelines</span>
+            <span className="mt-0.5 block text-[11.5px] text-[var(--win-muted)]"><Handles text="From @jordan's review · #team/data-pipelines" dark /></span>
           </span>
         </li>
       </ul>
@@ -167,10 +186,13 @@ export function McpApproveCard() {
   return (
     <div className="rounded-xl border border-[#f5a52440] bg-[#f5a5240d] p-3">
       <div className="flex items-center gap-2 text-[12px] text-[var(--win-honey)]">
-        <Logo onDark className="size-3.5" /> Teach Hivemind: lesson proposed for #repo/export-service
+        <Logo onDark className="size-3.5 shrink-0" />
+        <span>
+          Teach Hivemind: lesson proposed for <Handles text="#repo/export-service" dark />
+        </span>
       </div>
       <p className="mt-1.5 text-[13px]">“Build test fixtures from synthetic rows, one lab at a time.”</p>
-      <p className="mt-1 text-[11.5px] text-[var(--win-muted)]">Waiting on @jordan.</p>
+      <p className="mt-1 text-[11.5px] text-[var(--win-muted)]">Waiting on <Handles text="@jordan" dark />.</p>
       <div className="mt-2.5 flex gap-1.5">
         <span className="inline-flex h-7 items-center gap-1 rounded-full bg-[var(--win-text)] px-3 text-[12px] font-medium text-window">
           <Check className="size-3.5" /> Approve

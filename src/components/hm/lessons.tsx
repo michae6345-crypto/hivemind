@@ -9,6 +9,7 @@ import { useGo } from "./nav";
 import { StatusPill } from "./bits";
 import { DecisionButtons } from "./decision-buttons";
 import { RichText } from "./rich-text";
+import { Handles } from "./handles";
 import { cn, reachFor, scopeLabel, timeAgo } from "./utils";
 
 const GROUPS: { level: Scope["level"]; title: string }[] = [
@@ -189,20 +190,22 @@ function LessonCard({ memory: m }: { memory: Memory }) {
         <figure className="mt-7 rounded-xl bg-elevated px-5 py-4">
           <blockquote className="text-[15px] leading-snug">“{quote.quote}”</blockquote>
           <figcaption className="mt-2 text-[12.5px] text-muted">
-            {quoted?.name ?? (quote.actor.startsWith("agent:") ? "An agent" : quote.actor)}
+            {quoted ? <Handles text={`@${quoted.id}`} /> : quote.actor.startsWith("agent:") ? "An agent" : quote.actor}
             {quote.ref ? `, ${quote.ref}` : ""}, {timeAgo(quote.at)}
           </figcaption>
         </figure>
       ) : null}
 
       <p className="mt-7 border-t border-line pt-5 text-[13px] leading-relaxed text-muted">
-        {m.locked
-          ? `Locked by ${author?.name ?? "Security"}${author ? `, ${author.title}` : ""}. Any lesson that contradicts it is blocked before it reaches an agent.`
+        <Handles
+          text={m.locked
+          ? `Locked by ${author ? `@${author.id}, ${author.title}` : "Security"}. Any lesson that contradicts it is blocked before it reaches an agent.`
           : m.status === "active"
-            ? `Learned from ${SOURCE_TEXT[m.source]}${author ? ` by ${author.name}` : ""}. ${reach} ${reach === 1 ? "person's agent loads" : "people's agents load"} it at the start of every session.`
+            ? `Learned from ${SOURCE_TEXT[m.source]}${author ? ` by @${author.id}` : ""}. ${reach} ${reach === 1 ? "person's agent loads" : "people's agents load"} it at the start of every session.`
             : m.status === "pending"
-              ? `Learned from ${SOURCE_TEXT[m.source]}${author ? ` by ${author.name}` : ""}. No agent sees it until it's approved.`
+              ? `Learned from ${SOURCE_TEXT[m.source]}${author ? ` by @${author.id}` : ""}. No agent sees it until it's approved.`
               : "It contradicts a locked rule, so no agent will ever see it."}
+        />
       </p>
 
       {m.status === "pending" || m.status === "blocked" ? (

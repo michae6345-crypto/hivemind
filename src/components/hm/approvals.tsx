@@ -10,6 +10,7 @@ import { DecisionButtons } from "./decision-buttons";
 import { Guardrail } from "./guardrail";
 import { StatusPill } from "./bits";
 import { RichText } from "./rich-text";
+import { Handles } from "./handles";
 import { HexField } from "./hex";
 import { LiveActivity } from "./activity";
 import { approverFor, canApprove, cn, reachFor, scopeLabel, timeAgo } from "./utils";
@@ -134,7 +135,7 @@ function Group({
                   {m.title}
                 </span>
                 <span className="block truncate text-[11.5px] text-muted">
-                  {author?.name ?? (m.author.startsWith("agent:") ? "An agent" : m.author)} · {timeAgo(m.updatedAt)}
+                  {author ? <Handles text={`@${author.id}`} /> : m.author.startsWith("agent:") ? "An agent" : m.author} · {timeAgo(m.updatedAt)}
                 </span>
               </span>
             </motion.button>
@@ -179,7 +180,7 @@ function Detail({ memory: m, onDone }: { memory: Memory; onDone: () => void }) {
       <h1 className="mt-4 text-[28px] leading-[1.15] font-semibold tracking-[-0.02em] text-balance">{m.title}</h1>
       <p className="mt-2 text-[13.5px] text-muted">
         Learned from {SOURCE_TEXT[m.source]}
-        {author ? ` by ${author.name}` : ""}, {timeAgo(m.updatedAt)}.
+        {author ? <> by <Handles text={`@${author.id}`} /></> : ""}, {timeAgo(m.updatedAt)}.
       </p>
 
       {m.status === "blocked" ? (
@@ -195,7 +196,7 @@ function Detail({ memory: m, onDone }: { memory: Memory; onDone: () => void }) {
             <figure className="mt-6 rounded-xl bg-elevated px-5 py-4">
               <blockquote className="text-[15px] leading-snug">“{quote.quote}”</blockquote>
               <figcaption className="mt-2 text-[12.5px] text-muted">
-                {quoted?.name ?? (quote.actor.startsWith("agent:") ? "An agent" : quote.actor)}
+                {quoted ? <Handles text={`@${quoted.id}`} /> : quote.actor.startsWith("agent:") ? "An agent" : quote.actor}
                 {quote.ref ? `, ${quote.ref}` : ""}, {timeAgo(quote.at)}
               </figcaption>
             </figure>
@@ -211,7 +212,7 @@ function Detail({ memory: m, onDone }: { memory: Memory; onDone: () => void }) {
         <DecisionButtons memory={m} size="md" shortcuts onDone={onDone} />
         {m.status === "pending" && !allowed && approver ? (
           <span className="text-[13px] text-muted">
-            Only {approver.name} can approve this for {scopeLabel(m.scopeId)}.
+            <Handles text={`Only @${approver.id} can approve this for ${scopeLabel(m.scopeId)}.`} />
           </span>
         ) : null}
       </div>

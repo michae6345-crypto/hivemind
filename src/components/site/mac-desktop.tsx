@@ -7,6 +7,7 @@ import { Logo } from "@/components/hm/bits";
 import { cn } from "@/components/hm/utils";
 import { Terminal } from "./terminal";
 import { SCENES, type Step } from "./demo-script";
+import { Handles } from "@/components/hm/handles";
 
 type Note = Extract<Step, { kind: "notify" }>;
 
@@ -125,10 +126,10 @@ export function MacDesktop({ className }: { className?: string }) {
                 </span>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-baseline justify-between gap-2">
-                    <span className="truncate text-[12.5px] font-semibold">{n.title}</span>
+                    <span className="truncate text-[12.5px] font-semibold"><Handles text={n.title} /></span>
                     <span className="shrink-0 text-[11px] text-muted">now</span>
                   </div>
-                  <p className="mt-0.5 text-[12px] leading-snug text-fg/75">{n.body}</p>
+                  <p className="mt-0.5 text-[12px] leading-snug text-fg/75"><Handles text={n.body} /></p>
                   {n.action ? (
                     <div className="mt-2 flex gap-1.5">
                       <button

@@ -6,6 +6,7 @@ import { AnimatePresence, motion, useMotionValue, useMotionValueEvent, useScroll
 import { Logo } from "@/components/hm/bits";
 import { cn } from "@/components/hm/utils";
 import { HIVE, LESSON, PROMPTS, REPO, SCENES } from "./demo-script";
+import { Handles } from "@/components/hm/handles";
 
 // "How it works" as a pinned, scroll-scrubbed scene, the way spacefs.com runs its Finder story: the stage sticks
 // for ~3 screens, the window rises and settles while the headline blurs away, then each step plays as you scroll
@@ -149,11 +150,11 @@ export function ScrollStory() {
                         className="hm-card mx-auto max-w-[520px] p-5"
                       >
                         <div className="flex items-center gap-2 text-[12.5px] text-muted">
-                          <span className="size-2 rounded-full bg-honey" /> From Alex&apos;s correction
+                          <span className="size-2 rounded-full bg-honey" /> From <Handles text="@alex's" /> correction
                           <span className="hm-chip ml-auto" data-kind="repo">#repo/{REPO}</span>
                         </div>
                         <div className="mt-2 text-[17px] font-semibold">{LESSON}</div>
-                        <p className="mt-1 text-[13.5px] text-muted">Proposed by Alex&apos;s Claude Code agent · just now</p>
+                        <p className="mt-1 text-[13.5px] text-muted">Proposed by <Handles text="@alex's" /> Claude Code agent · just now</p>
                         <div className="mt-4 h-9">
                           <AnimatePresence mode="wait" initial={false}>
                             {f.clicked ? (
@@ -168,7 +169,7 @@ export function ScrollStory() {
                                 <span className="flex size-6 items-center justify-center rounded-full bg-ok text-white">
                                   <Check className="size-3.5" strokeWidth={3} />
                                 </span>
-                                Approved by Jordan · in every agent&apos;s next session
+                                Approved by <Handles text="@jordan" /> · in every agent&apos;s next session
                               </motion.div>
                             ) : (
                               <motion.div key="ask" exit={{ opacity: 0, transition: { duration: 0.15 } }} className="relative flex gap-2">
@@ -337,7 +338,7 @@ function RuleCount({ rules, className }: { rules: number; className?: string }) 
 }
 
 function Hook({ children }: { children: ReactNode }) {
-  return <div className="text-[var(--win-honey)]">{children}</div>;
+  return <div className="text-[var(--win-honey)]">{typeof children === "string" ? <Handles text={children} dark /> : children}</div>;
 }
 
 function Prompt({ children, typing }: { children: ReactNode; typing?: boolean }) {

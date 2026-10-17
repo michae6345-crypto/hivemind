@@ -8,6 +8,7 @@
 // its `systemMessage`:
 //   - sessionLoaded
 // The blocked lesson's title is written by the extractor (an LLM), so the live take may word it differently.
+// Owners are always @handles (@jordan, @maya), never full names (Michael, 17 Oct); they render as chips (hm/handles.tsx).
 // If any of these change in Michael's code, change them here too.
 
 export const REPO = "export-service";
@@ -85,7 +86,7 @@ export const SCENES: Scene[] = [
         kind: "notify",
         id: "lesson",
         title: "A lesson is waiting for you",
-        body: `Alex: “${LESSON}”`,
+        body: `@alex: “${LESSON}”`,
         action: "Approve",
         tone: "honey",
       },
@@ -94,8 +95,8 @@ export const SCENES: Scene[] = [
       {
         kind: "notify",
         id: "lesson",
-        title: "Jordan approved Alex's lesson",
-        body: `“${LESSON}” now loads in every export-service agent.`,
+        title: "✅ @jordan approved @alex's lesson",
+        body: `“${LESSON}”: every agent now knows it.`,
         tone: "honey",
       },
       { kind: "pause", ms: 2200 },
@@ -113,7 +114,7 @@ export const SCENES: Scene[] = [
         kind: "diff",
         lines: [
           { sign: "+", text: "export function writeJsonExport(rows: Row[], path: string) {" },
-          { sign: "+", text: "  assertSingleCustomer(rows);", mark: "from Alex's lesson" },
+          { sign: "+", text: "  assertSingleCustomer(rows);", mark: "from @alex's lesson" },
           { sign: "+", text: "  fs.writeFileSync(path, JSON.stringify(rows));" },
           { sign: "+", text: "}" },
         ],
@@ -121,13 +122,13 @@ export const SCENES: Scene[] = [
       { kind: "say", text: "Added writeJsonExport(). It checks the rows belong to one customer before writing." },
       { kind: "pause", ms: 1400 },
       { kind: "prompt", text: PROMPTS.noorBad },
-      { kind: "hook", text: HIVE.lessonBlocked(BAD_LESSON, LOCKED_RULE, "Maya Chen"), tone: "rose" },
+      { kind: "hook", text: HIVE.lessonBlocked(BAD_LESSON, LOCKED_RULE, "@maya"), tone: "rose" },
       { kind: "say", text: "I can't mix lab customers, even in tests. I'll generate synthetic rows for Lab B instead." },
       {
         kind: "notify",
         id: "blocked",
-        title: "Blocked a lesson from Noor's agent",
-        body: `It contradicts Maya's locked rule: ${LOCKED_RULE}.`,
+        title: "Blocked a lesson from @noor's agent",
+        body: `It contradicts @maya's locked rule: ${LOCKED_RULE}.`,
         tone: "rose",
       },
       { kind: "pause", ms: 1200 },

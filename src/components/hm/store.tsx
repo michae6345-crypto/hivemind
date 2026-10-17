@@ -144,7 +144,7 @@ function feedFromMemories(memories: Memory[]): FeedEvent[] {
 
 export function chainOfCommandMessage(m: Memory, scopes: Scope[], people: Person[]) {
   const who = approverFor(m, scopes, people);
-  const name = who ? `${who.name} (${who.title})` : "the scope owner";
+  const name = who ? `@${who.id} (${who.title})` : "the scope owner";
   return `Only ${name} can approve lessons for ${scopeLabel(m.scopeId)}.`;
 }
 
