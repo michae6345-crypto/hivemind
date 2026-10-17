@@ -2,7 +2,7 @@
 name: hivemind
 description: Opens the Hivemind side pane (hivemind watch) to the right of this terminal. `/hivemind` with no arguments only opens the pane, it never prints rules. `/hivemind rules [file]` lists team rules, `/hivemind teach <rule>` teaches every agent, `/hivemind status` checks the connection. Fastest path, with no model turn at all, is `!hivemind`.
 argument-hint: "[open | rules [file] | teach <rule> | status]"
-allowed-tools: Bash(node *) Bash(hivemind *) mcp__hivemind__get_team_rules mcp__hivemind__propose_memory mcp__hivemind__search_memory
+allowed-tools: Bash(node *) Bash(hivemind *) PowerShell(node *) PowerShell(hivemind *) mcp__hivemind__get_team_rules mcp__hivemind__propose_memory mcp__hivemind__search_memory
 ---
 
 # /hivemind
@@ -13,7 +13,8 @@ Choose the subcommand from the first word of the arguments.
 
 ## No arguments, or `open`: open the side pane (default)
 
-Do not fetch or print rules. Do not call any MCP tool. Run exactly this one command and reply with its output line only:
+Do not fetch or print rules. Do not call any MCP tool. Run exactly this one command with the Bash tool (one call) and
+reply with its output line only:
 
 ```
 node "../../cli/hivemind.mjs" open
