@@ -1,0 +1,188 @@
+#!/usr/bin/env node
+// Smoke test for the learning engine. Posts realistic events to a running dev server and prints the resulting memories.
+//   pnpm dev -p 3102   (in another terminal)
+//   node scripts/smoke-engine.mjs [--url http://localhost:3102] [--no-reset]
+// Works with or without ANTHROPIC_API_KEY (server falls back to heuristics). Ensures minimal fixtures exist
+// (scopes/people from the demo company, Maya's 🔒 lab-isolation rule, a "use logger" lesson) without overwriting a seed.
+import fs from "node:fs";
+import { createClient } from "@supabase/supabase-js";
+
+const args = process.argv.slice(2);
+const URL_ = args.includes("--url") ? args[args.indexOf("--url") + 1] : process.env.HIVEMIND_API_URL_SMOKE || "http://localhost:3102";
+const env = { ...readEnv(".env.local"), ...process.env };
+const TOKEN = env.HIVEMIND_TOKEN || "";
+const sb = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SECRET_KEY || env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY, { auth: { persistSession: false } });
+
+function readEnv(p) {
+  if (!fs.existsSync(p)) return {};
+  return Object.fromEntries(
+    fs.readFileSync(p, "utf8").split(/\r?\n/).filter((l) => /^[A-Z_]+=/.test(l)).map((l) => [l.slice(0, l.indexOf("=")), l.slice(l.indexOf("=") + 1).trim()]),
+  );
+}
+const must = (r, what) => {
+  if (r.error) throw new Error(`${what}: ${r.error.message}`);
+  return r.data;
+};
+
+// ---------- fixtures (insert-if-missing) ----------
+const SCOPES = [
+  { id: "org", level: "org", name: "Meridian Data", parent_id: null, owner: "maya" },
+  { id: "team/data-pipelines", level: "team", name: "data-pipelines", parent_id: "org", owner: "jordan" },
+  { id: "repo/export-service", level: "repo", name: "export-service", parent_id: "team/data-pipelines", owner: "jordan" },
+];
+const PEOPLE = [
+  { id: "maya", name: "Maya Chen", role: "security", scope_id: "org" },
+  { id: "jordan", name: "Jordan Reyes", role: "lead", scope_id: "team/data-pipelines" },
+  { id: "alex", name: "Alex Kim", role: "engineer", scope_id: "team/data-pipelines" },
+  { id: "noor", name: "Noor Haddad", role: "engineer", scope_id: "team/data-pipelines" },
+];
+
+async function fixtures() {
+  for (const s of SCOPES) must(await sb.from("scopes").upsert(s, { onConflict: "id", ignoreDuplicates: true }), "scope");
+  for (const p of PEOPLE) must(await sb.from("people").upsert(p, { onConflict: "id", ignoreDuplicates: true }), "person");
+  const now = new Date().toISOString();
+  let lock = must(await sb.from("memories").select("*").eq("locked", true).ilike("title", "%lab%").limit(1), "lock")[0];
+  if (!lock)
+    lock = must(
+      await sb.from("memories").insert({
+        scope_id: "org", kind: "directive", locked: true, status: "active", source: "human", author: "maya", slug: "never-mix-lab-customers",
+        title: "Never mix data from different lab customers",
+        body: "🔒 Never mix data from different lab customers (Lab A / Lab B) in one export, fixture, or test dataset. Owner: @maya",
+        evidence: [{ type: "manual", quote: "Customer data isolation is contractual.", actor: "maya", at: now }],
+      }).select("*").single(),
+      "insert lock",
+    );
+  let logger = must(await sb.from("memories").select("*").eq("scope_id", "team/data-pipelines").ilike("title", "%logger%").limit(1), "logger")[0];
+  if (!logger)
+    logger = must(
+      await sb.from("memories").insert({
+        scope_id: "team/data-pipelines", kind: "lesson", status: "active", source: "review", author: "jordan", slug: "use-logger-not-console-log",
+        title: "Use logger, not console.log", body: "Use the shared `logger` (structured, redacts PII), never `console.log`. #team/data-pipelines",
+        evidence: [{ type: "review_comment", quote: "please use logger here", actor: "jordan", at: now }], alpha: 3, beta: 1,
+      }).select("*").single(),
+      "insert logger",
+    );
+  return { lock, logger };
+}
+
+// Undo everything earlier smoke runs did, including α bumps / promotions / scoring applied to seed rows,
+// so repeated runs never drift the demo data.
+const W = { maya: 2, jordan: 2, alex: 1, noor: 1 };
+async function reset() {
+  const evs = must(await sb.from("events").select("id,type,payload").or("payload->>smoke.eq.true,session_id.like.smoke-%"), "smoke events");
+  const ids = new Set(evs.map((e) => e.id));
+  const mems = must(await sb.from("memories").select("id,evidence,locked,alpha,beta,status,status_reason"), "mems");
+  const mine = mems.filter((m) => !m.locked && (m.evidence ?? []).length && m.evidence.every((e) => ids.has(e.ref)));
+  if (mine.length) {
+    must(await sb.from("memories").update({ invalidated_by: null }).in("invalidated_by", mine.map((m) => m.id)), "unlink");
+    must(await sb.from("memories").delete().in("id", mine.map((m) => m.id)), "delete mems");
+  }
+  // Session-end scoring applied to seed/fixture memories → subtract the deltas.
+  const delta = new Map();
+  for (const e of evs.filter((e) => e.type === "session_end"))
+    for (const s of e.payload?.scored ?? []) {
+      const d = s.delta ?? (s.outcome === "harmful" ? { alpha: 0, beta: 1 } : s.outcome === "helpful" || s.outcome === "untouched" ? { alpha: 1, beta: 0 } : { alpha: 0, beta: 0 });
+      const cur = delta.get(s.id) ?? { alpha: 0, beta: 0 };
+      delta.set(s.id, { alpha: cur.alpha + d.alpha, beta: cur.beta + d.beta });
+    }
+  // Smoke evidence appended to seed/fixture memories → strip it, take back its α, undo auto-promotion.
+  let touched = 0;
+  for (const m of mems) {
+    if (mine.includes(m)) continue;
+    const ev = m.evidence ?? [];
+    const smokeEv = ev.filter((e) => ids.has(e.ref));
+    const d = delta.get(m.id);
+    if (!smokeEv.length && !d) continue;
+    const keep = ev.filter((e) => !ids.has(e.ref));
+    const patch = {
+      evidence: keep,
+      alpha: Math.max(1, Number(m.alpha) - smokeEv.reduce((s, e) => s + (W[e.actor] ?? 1), 0) - (d?.alpha ?? 0)),
+      beta: Math.max(1, Number(m.beta) - (d?.beta ?? 0)),
+    };
+    const humans = new Set(keep.map((e) => e.actor).filter((a) => a && !a.startsWith("agent")));
+    if (m.status === "active" && /^Auto-promoted/.test(m.status_reason ?? "") && humans.size < 2) Object.assign(patch, { status: "pending", status_reason: null });
+    must(await sb.from("memories").update(patch).eq("id", m.id), "restore");
+    touched++;
+  }
+  if (ids.size) must(await sb.from("events").delete().in("id", [...ids]), "delete events");
+  must(await sb.from("pack_log").delete().like("session_id", "smoke-%"), "delete packs");
+  console.log(`reset: removed ${mine.length} smoke memories, ${ids.size} events, restored ${touched} seed memories`);
+}
+
+// ---------- http ----------
+const H = (user, extra = {}) => ({ "content-type": "application/json", authorization: `Bearer ${TOKEN}`, "x-hm-user": user, ...extra });
+async function post(path, body, headers) {
+  const t0 = Date.now();
+  const r = await fetch(`${URL_}${path}`, { method: "POST", headers, body: JSON.stringify(body) });
+  const j = await r.json().catch(() => ({}));
+  if (r.status >= 400) console.log(`         HTTP ${r.status} ${path}: ${JSON.stringify(j).slice(0, 200)}`);
+  return { status: r.status, ms: Date.now() - t0, json: j };
+}
+const results = [];
+function check(name, ok, detail) {
+  results.push({ name, ok });
+  console.log(`${ok ? "✅ PASS" : "❌ FAIL"}  ${name}${detail ? `\n         ${detail}` : ""}`);
+}
+
+// ---------- run ----------
+const run = `smoke-${Date.now().toString(36)}`;
+const SESSION = `${run}-alex`;
+console.log(`Hivemind engine smoke → ${URL_}   (server LLM key ${env.ANTHROPIC_API_KEY ? "present" : "absent → heuristic path"})\n`);
+if (!args.includes("--no-reset")) await reset();
+const { lock, logger } = await fixtures();
+must(await sb.from("pack_log").insert({ session_id: SESSION, actor: "alex", repo: "repo/export-service", memory_ids: [lock.id, logger.id], tokens: 180 }), "pack_log");
+
+// Warm up (dev server compiles routes on first hit; Claude Code's 5s budget applies to a warm server)
+for (const pth of ["/api/hooks/prompt", "/api/hooks/session-end", "/api/events"]) await fetch(`${URL_}${pth}`, { method: "POST", headers: H("alex"), body: "{}" }).catch(() => {});
+
+// 1) Real correction via the Claude Code UserPromptSubmit hook (new pending lesson, or reinforces the seeded one)
+const hook = (prompt) => ({ session_id: SESSION, transcript_path: "C:/Users/alex/.claude/projects/x.jsonl", cwd: "C:\\code\\export-service", hook_event_name: "UserPromptSubmit", prompt });
+const r1 = await post("/api/hooks/prompt", hook("no — exports must call assertSingleCustomer() before writing anything to disk"), H("alex"));
+const ctx1 = r1.json?.hookSpecificOutput?.additionalContext ?? "";
+check("1 correction → lesson captured/reinforced (hook answers < 5s)", r1.status === 200 && /captured a lesson|reinforced/.test(ctx1) && r1.ms < 5000, `${r1.ms}ms  ${ctx1 || JSON.stringify(r1.json)}`);
+
+// 2) One-off instruction → must NOT become a lesson
+const r2 = await post("/api/hooks/prompt", hook("rename this variable to rowCount"), H("alex"));
+check("2 one-off instruction → no lesson", r2.status === 200 && !r2.json?.hookSpecificOutput, `${r2.ms}ms  ${JSON.stringify(r2.json)}`);
+
+// 3) Same lesson from a 2nd engineer → reinforced + auto-promoted to active
+const r3 = await post("/api/events", { type: "correction", actor: "noor", sessionId: `${run}-noor`, repo: "export-service",
+  payload: { smoke: true, text: "Don't write the export file until assertSingleCustomer() has been called — always call it first." } }, H("noor"));
+const promoted = (r3.json.lessons ?? []).find((m) => m.status === "active");
+check("3 duplicate from 2nd actor → promoted active", r3.status === 200 && !!promoted, `${r3.ms}ms  actions=${JSON.stringify(r3.json.actions ?? r3.json)}`);
+
+// 4) Bad lesson → blocked by Maya's 🔒 rule
+const r4 = await post("/api/events", { type: "correction", actor: "alex", sessionId: SESSION, repo: "repo/export-service",
+  payload: { smoke: true, text: "mixing Lab A and Lab B data is fine in tests" } }, H("alex"));
+const blocked = (r4.json.lessons ?? []).find((m) => m.status === "blocked");
+check("4 bad lesson → blocked by 🔒", !!blocked && /🔒/.test(blocked.blockedReason ?? ""), `${r4.ms}ms  ${blocked ? `${blocked.title} — ${blocked.blockedReason}` : JSON.stringify(r4.json)}`);
+
+// 5) PR review comment by the lead that duplicates an existing team lesson → evidence + α += 2
+const r5 = await post("/api/events", { type: "review_comment", actor: "jordan", repo: "repo/export-service",
+  payload: { smoke: true, text: "We never ship console.log in this service — always use the shared logger.", url: "https://github.com/meridian/export-service/pull/42#discussion_r1", file: "src/export.ts" } }, H("jordan"));
+const reinforced = (r5.json.actions ?? []).find((a) => a.memoryId === logger.id);
+check("5 review comment → reinforces existing logger lesson", !!reinforced, `${r5.ms}ms  actions=${JSON.stringify(r5.json.actions ?? r5.json)}`);
+
+// 6) Session end → α/β scoring of served memories + pack_log.corrections
+const r6 = await post("/api/hooks/session-end", { session_id: SESSION, hook_event_name: "SessionEnd", reason: "exit", cwd: "C:\\code\\export-service" }, H("alex"));
+const loggerScore = (r6.json.scored ?? []).find((s) => s.id === logger.id);
+check("6 session end → served lesson scored, corrections counted", r6.status === 200 && r6.json.corrections >= 1 && loggerScore?.outcome === "untouched",
+  `${r6.ms}ms  corrections=${r6.json.corrections}  ${(r6.json.scored ?? []).map((s) => `${s.title}: ${s.outcome} ${s.before} → ${s.after}`).join(" | ")}`);
+const r6b = await post("/api/hooks/session-end", { session_id: SESSION }, H("alex"));
+check("6b session end is idempotent", r6b.json.skipped === "already scored", JSON.stringify(r6b.json).slice(0, 120));
+
+// ---------- print resulting memory rows ----------
+const evIds = must(await sb.from("events").select("id").or(`payload->>smoke.eq.true,session_id.like.${run}%`), "events").map((e) => e.id);
+const mems = must(await sb.from("memories").select("id,scope_id,title,status,status_reason,alpha,beta,author,evidence,locked").order("updated_at", { ascending: false }).limit(60), "mems")
+  .filter((m) => m.id === logger.id || m.id === lock.id || (m.evidence ?? []).some((e) => evIds.includes(e.ref)));
+console.log("\nResulting memories:");
+console.table(mems.map((m) => ({
+  title: m.title.slice(0, 58), scope: m.scope_id, status: (m.locked ? "🔒 " : "") + m.status, α: +Number(m.alpha).toFixed(2), β: +Number(m.beta).toFixed(2),
+  actors: [...new Set((m.evidence ?? []).map((e) => e.actor))].join(","), reason: (m.status_reason ?? "").slice(0, 60),
+})));
+const packs = must(await sb.from("pack_log").select("session_id,memory_ids,corrections").eq("session_id", SESSION), "packs");
+console.log("pack_log:", packs.map((p) => `${p.session_id} corrections=${p.corrections} served=${p.memory_ids.length}`).join("; "));
+
+const failed = results.filter((r) => !r.ok).length;
+console.log(`\n${results.length - failed}/${results.length} checks passed`);
+process.exit(failed ? 1 : 0);
