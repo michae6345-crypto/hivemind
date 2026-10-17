@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { caller, err } from "@/lib/auth";
-import { recordActivity } from "@/app/api/activity/record";
+import { COLLISION_PREFIX, recordActivity } from "@/app/api/activity/record";
 import { agentFromRequest } from "@/lib/engine/pack";
 
 // Claude Code PostToolUse http hook (matcher Edit|Write|MultiEdit). Body = raw hook JSON.
@@ -26,7 +26,10 @@ export async function POST(req: Request) {
   try {
     const { warnings } = await recordActivity({ sessionId: String(h.session_id ?? "unknown"), actor: c.user, repo, file, agent: agentFromRequest(req) });
     if (!warnings.length) return NextResponse.json({});
+    // Collisions are also shown to the engineer (systemMessage); additionalContext alone is model-only.
+    const heads = warnings.filter((w) => w.startsWith(COLLISION_PREFIX));
     return NextResponse.json({
+      ...(heads.length ? { systemMessage: heads.join("\n") } : {}),
       hookSpecificOutput: { hookEventName: "PostToolUse", additionalContext: `Hivemind:\n${warnings.join("\n")}` },
     });
   } catch {

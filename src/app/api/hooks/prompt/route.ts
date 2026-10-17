@@ -41,5 +41,7 @@ export async function POST(req: Request) {
   const out = await Promise.race([work, new Promise<null>((r) => setTimeout(() => r(null), BUDGET_MS))]);
   const msg = out ? hookMessage(out as Outcome) : null;
   if (!msg) return json({});
-  return json({ hookSpecificOutput: { hookEventName: "UserPromptSubmit", additionalContext: msg } });
+  // additionalContext reaches only the model ("neither channel produces a visible transcript entry"); systemMessage is
+  // what the engineer sees in Claude Code.
+  return json({ systemMessage: msg, hookSpecificOutput: { hookEventName: "UserPromptSubmit", additionalContext: msg } });
 }

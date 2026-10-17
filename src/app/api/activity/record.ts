@@ -6,6 +6,8 @@ import { minutesAgo, normRepo, whoseAgent } from "@/lib/engine/pack";
 
 // Shared by POST /api/activity and POST /api/hooks/tool: record an edit, return collision + rule-hit warnings.
 export const COLLISION_WINDOW_MIN = 10;
+/** User-facing collision line (wording: Adrian's brand spec): "Hivemind · Heads up: @alex's Cursor agent edited src/export.ts 2 min ago." */
+export const COLLISION_PREFIX = "Hivemind · Heads up: ";
 const GENERIC_STEMS = new Set(["index", "utils", "util", "main", "types", "test", "tests", "config", "readme", "package"]);
 
 const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -29,8 +31,8 @@ export async function recordActivity(input: { sessionId: string; actor: string; 
   for (const a of prior ?? []) {
     if (a.session_id === input.sessionId || seen.has(a.actor) || seen.size >= 3) continue;
     seen.add(a.actor);
-    const who = a.actor === input.actor ? "Another of your agent sessions" : whoseAgent(a.actor, a.agent);
-    warnings.push(`⚠️ ${who} edited ${base(file)} ${minutesAgo(a.created_at)} — coordinate before changing it.`);
+    const who = a.actor === input.actor ? "another of your agent sessions" : whoseAgent(a.actor, a.agent);
+    warnings.push(`${COLLISION_PREFIX}${who} edited ${file} ${minutesAgo(a.created_at)}.`);
   }
 
   // (b) rule hits: only on this session's first touch of the file, so the agent isn't nagged on every edit

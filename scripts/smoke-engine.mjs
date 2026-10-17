@@ -151,8 +151,8 @@ if (!ctx1 && r1.status === 200) {
     if (ev?.payload?.memoryIds?.length) ctx1 = `(background) ${ev.payload.actions.join(",")} ${ev.payload.memoryIds.join(",")}`;
   }
 }
-check("1 correction → pending lesson, 'captured … pending approval by' (hook answers < 5s)",
-  r1.status === 200 && /^📝 Hivemind captured a lesson: ".+" — pending approval by .+|background/.test(ctx1) && r1.ms < 5000, `${r1.ms}ms  ${ctx1 || JSON.stringify(r1.json)}`);
+check("1 correction → pending lesson, 'Lesson captured … Waiting on @owner.' shown to the user (hook answers < 5s)",
+  r1.status === 200 && (/^Hivemind · Lesson captured: ".+"\. Waiting on @\w+\.$/.test(ctx1) && r1.json?.systemMessage === ctx1 || /background/.test(ctx1)) && r1.ms < 5000, `${r1.ms}ms  ${ctx1 || JSON.stringify(r1.json)}`);
 
 // 2) One-off instruction → must NOT become a lesson
 const r2 = await post("/api/hooks/prompt", hook("rename this variable to rowCount"), H("alex"));
@@ -179,7 +179,7 @@ check("3 duplicate from 2nd actor → reinforced, stays pending (no auto-promoti
 const r4 = await post("/api/events", { type: "correction", actor: "alex", sessionId: SESSION, repo: "repo/export-service",
   payload: { smoke: true, text: "mixing Lab A and Lab B data is fine in tests" } }, H("alex"));
 const blocked = (r4.json.lessons ?? []).find((m) => m.status === "blocked");
-check("4 bad lesson → blocked by 🔒", !!blocked && /🔒/.test(blocked.blockedReason ?? ""), `${r4.ms}ms  ${blocked ? `${blocked.title} — ${blocked.blockedReason}` : JSON.stringify(r4.json)}`);
+check("4 bad lesson → blocked by the locked rule", !!blocked && /^Contradicts @\w+'s locked rule ".+"\.$/.test(blocked.blockedReason ?? ""), `${r4.ms}ms  ${blocked ? `${blocked.title} — ${blocked.blockedReason}` : JSON.stringify(r4.json)}`);
 
 // 5) PR review comment by the lead that duplicates an existing team lesson → evidence + α += 2
 const r5 = await post("/api/events", { type: "review_comment", actor: "jordan", repo: "repo/export-service",

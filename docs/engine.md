@@ -10,7 +10,7 @@ Code lives in `src/lib/engine/` (`extract`, `merge`, `conflict`, `score`, `pipel
 event ─► ① filter     no LLM: drop short / "lgtm" / bot / slash-command echoes
       ─► ② extract    ≤3 candidates {title, body, rule|fact|one_off|noise, scope repo|team, confidence}
                       keep only rule/fact with confidence ≥ 0.75; also rate served context-pack items helpful/harmful
-      ─► ④ conflict   vs 🔒 locked memories in the scope chain → status=blocked, status_reason="Conflicts with 🔒 <title> (<owner>)"
+      ─► ④ conflict   vs 🔒 locked memories in the scope chain → status=blocked, status_reason='Contradicts @<owner>'s locked rule "<title>".'
       ─► ③ merge      Mem0-style ADD / UPDATE / DELETE / NONE against unlocked pending+active lessons in the scope chain
       ─► ⑤ approve    every learned lesson stays pending until its scope owner (lead) or security approves it
 session end ─► ⑥ score  α/β update for every memory served in that session's context pack
@@ -56,60 +56,19 @@ People are always mentioned as **@handles** (person id), e.g. `pending approval 
 | DELETE | new pending memory with `status_reason="Would supersede …"` and a `[[old-slug]]` link. Nothing is retired automatically. On approval the old one should become `status=invalid` / `invalidated_by` (Graphiti's "invalidate, don't delete"); nothing is ever hard-deleted. |
 
 ### Hook feedback
-`/api/hooks/prompt` answers within 4.6s; the Claude Code hook timeout is 5s. With Haiku, a full capture (extract, then conflict ‖ merge, plus DB writes) takes about 3–4s. Measured locally: 3.2–3.8s per hook call; the heuristic path takes about 0.3–0.5s. If the pipeline runs past the budget, the route returns `{}` and Next's `after()` finishes the learning in the background, so the lesson still lands. When something is learned, the agent sees a message like:
+`/api/hooks/prompt` answers within 4.6s; the Claude Code hook timeout is 5s. With Haiku, a full capture (extract, then conflict ‖ merge, plus DB writes) takes about 3–4s. Measured locally: 3.2–3.8s per hook call; the heuristic path takes about 0.3–0.5s. If the pipeline runs past the budget, the route returns `{}` and Next's `after()` finishes the learning in the background, so the lesson still lands. When something is learned, the hook returns the line twice. As `systemMessage` the engineer sees it in Claude Code; as `additionalContext` the agent sees it. The docs say UserPromptSubmit `additionalContext` "doesn't produce a visible transcript entry", so `systemMessage` is what makes it visible.
 
-- `📝 Hivemind captured a lesson: "Exports must call assertSingleCustomer() before writing" — pending approval by @jordan` (new lesson, or evidence added to a still-pending one)
-- `🚫 Hivemind blocked "Mixing Lab A and Lab B data is fine in tests": conflicts with 🔒 Never mix data from different lab customers (@maya)`
-- `📝 Hivemind reinforced an existing lesson: "…" (active)` (evidence added to an already-approved lesson)
-
-The captured/blocked strings are mirrored in `src/components/site/demo-script.ts` (`HIVE.lessonCaptured` / `lessonBlocked`). Keep them identical.
-
-## Confidence math (`score.ts`)
-
-Each memory has a Beta(α, β) posterior over "following this lesson is right". The prior is Beta(1, 1).
-
-- Evidence for the lesson: α += w. Evidence against it: β += w.
-- Posterior mean: `p = α / (α + β)`.
-- Ranking uses the Wilson lower bound (Evan Miller), with z = 1.96, `n = max(α + β − 2, 1)`:
-
-  `LB = (p + z²/2n − z·√((p(1−p) + z²/4n)/n)) / (1 + z²/n)`
-
-  A lesson confirmed by many people outranks one with the same mean and less evidence.
-- Session-end scoring, for each memory served in the session's `pack_log` (locked ones are skipped and never decay):
-  - rated **helpful** by the correction detector, or **no correction in the session touched its topic** → α += 1
-  - rated **harmful**, or contradicted by a correction (same topic, opposite polarity) → β += 1
-  - touched but not contradicted (the engineer re-stated it) → no change
-  - `pack_log.corrections` is set to the number of correction events in the session. That number drives the learning curve (corrections per session ↓).
-  - Idempotent: a second `SessionEnd` for the same session is a no-op.
-- Optional decay (pitch only): `α ← 1 + (α−1)·0.5^(Δt/60d)`.
-
-## LLM vs heuristic paths (`llm.ts`)
-
-Each step calls Claude Haiku 5.5 (`claude-haiku-5-5`) with **structured outputs** (`output_config.format` from a zod schema via `client.messages.parse`). Thinking is disabled, effort is `low`, the timeout is 4s and there are no retries. Haiku 5.5 rejects non-default `temperature`, so determinism comes from the JSON schema instead.
-
-If there's no `ANTHROPIC_API_KEY`, or the call times out, refuses, or fails to parse, the step falls back to a deterministic heuristic. The server log says which path ran (`[engine] extract via llm — …` / `via heuristic`). Set `HIVEMIND_ENGINE_MODE=heuristic` to force the fallback.
-
-Heuristics:
-- **extract:** correction cues (`no / don't / never / always / instead / use X not Y / must / is fine`). Sentences with one-off cues (`rename`, `this variable`, `here`, `line 12`, `for now`) and requests or questions are dropped.
-- **conflict:** at least 2 shared significant stems with a locked rule, plus opposite polarity (prohibit ↔ permit, or require ↔ prohibit/permit). "Never log PII" vs "always redact PII before logging" is *not* a conflict.
-- **merge:** Jaccard ≥ 0.5, or a shared code identifier (`assertSingleCustomer()`) with ≥2 shared stems → duplicate (NONE). The same topic with opposite polarity → DELETE.
-
-## Prompt attributions (all Apache-2.0, adapted in `prompts.ts`)
-| Step | Source |
+| Event | Line (plain text, no emoji, no ANSI) |
 |---|---|
-| Correction detector + served-item ratings ("Do not guess; if unclear, omit") | topoteretes/cognee `cognee/infrastructure/llm/prompts/feedback_detection_system.txt` |
-| PR review comment → rule | topoteretes/cognee `cognee/infrastructure/llm/prompts/coding_rule_association_agent_system.txt` |
-| Merge ADD/UPDATE/DELETE/NONE with short integer ids | mem0ai/mem0 `mem0/configs/prompts.py` `DEFAULT_UPDATE_MEMORY_PROMPT` |
-| Contradiction vs locked rules ("only when both cannot be true; don't infer from recency") | getzep/graphiti `graphiti_core/prompts/dedupe_edges.py` `resolve_edge` |
-| Invalidate-don't-delete | getzep/graphiti |
-| Wilson score ranking | Evan Miller, "How Not To Sort By Average Rating" |
+| New lesson, or evidence added to a still-pending one | `Hivemind · Lesson captured: "Every export calls assertSingleCustomer()". Waiting on @jordan.` |
+| Contradicts a locked rule | `Hivemind · Blocked: contradicts @maya's locked rule "Never mix data from different lab customers".` |
+| Evidence added to an already-approved lesson | `Hivemind · Lesson reinforced: "…" is already a team rule.` |
+| Collision (`/api/hooks/tool`, PostToolUse) | `Hivemind · Heads up: @alex's Cursor agent edited src/export.ts 2 min ago.` (or `just now`) |
+| Session start (`hooks/session-start.mjs`) | `Hivemind · Loaded 10 team rules for #repo/export-service.` |
 
-## Verify
-```
-pnpm dev -p 3102
-node scripts/smoke-engine.mjs            # real correction, one-off (ignored), 2nd-actor duplicate (→ active),
-                                         # bad lesson (→ blocked by 🔒), review comment (→ reinforces), session end (α/β)
-```
-Both engine paths pass 7/7: real Haiku 5.5 (two runs in a row), and `HIVEMIND_ENGINE_MODE=heuristic`.
+The blocked lesson's stored reason (`status_reason` / `blockedReason`) reads `Contradicts @maya's locked rule "Never mix data from different lab customers".`
 
-The script resets its own rows first, including the evidence, α bumps and session scoring it applied to seeded rows, so repeated runs don't drift the demo data. Use `--no-reset` to keep them, or `--reset-only` to just clean up. It uses `scripts/seed.mjs` rows when they exist and only creates what's missing: demo scopes and people, Maya's 🔒 lab rule, and a "use logger" lesson.
+**Why no colour:** Claude Code's hooks docs say nothing about ANSI in `systemMessage` or `additionalContext`, and the hooks' `terminalSequence` field explicitly rejects CSI colour sequences. Escape codes in `additionalContext` would also end up in the model's context. So the lines are plain text.
+
+The wording comes from Adrian's brand spec (`public/brand/vscode/`) and is mirrored in `src/components/site/demo-script.ts`. Keep them identical.
+

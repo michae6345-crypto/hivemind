@@ -69,7 +69,7 @@ async function main() {
   const pack = await res.json();
   if (!pack?.markdown) throw new Error("empty pack");
   const rules = pack.rules ?? pack.memoryIds?.length ?? 0;
-  const banner = `⬢ Hivemind loaded ${rules} team rules for #${pack.repo || repo} (${pack.locked ?? 0} 🔒 locked)`;
+  const banner = `Hivemind · Loaded ${rules} team rules for #${pack.repo || repo}.`; // wording: Adrian's brand spec; plain text (no ANSI)
   emit(pack.markdown.slice(0, 9500), banner); // Claude Code caps additionalContext at 10,000 chars
 }
 

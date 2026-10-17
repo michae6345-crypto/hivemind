@@ -32,7 +32,7 @@ type PersonRow = { id: string; name: string; role: string; scope_id: string | nu
 type Ctx = { scopes: (Pick<Scope, "id" | "parentId"> & { level: string; owner: string | null; name: string })[]; people: PersonRow[] };
 
 export type Action = "added" | "reinforced" | "updated" | "blocked";
-export type Captured = { action: Action; memory: Memory; owner: string | null; note?: string };
+export type Captured = { action: Action; memory: Memory; owner: string | null; note?: string; /** blocked: the locked rule's title */ rule?: string };
 export type Outcome = {
   eventId: string;
   isCorrection: boolean;
@@ -303,7 +303,7 @@ async function learnFromEvent(eventId: string, input: EventInput): Promise<Outco
     const block = async (lock: MemRow, faithful?: Candidate) => {
       const b = faithful ?? c; // when only the raw-text guard fired, show what the engineer actually said
       const lockOwner = handle(lock.author ?? ownerFor(ctx, lock.scope_id));
-      const reason = `Conflicts with 🔒 ${lock.title}${lockOwner ? ` (${lockOwner})` : ""}`;
+      const reason = `Contradicts ${lockOwner ? `${lockOwner}'s` : "the"} locked rule "${lock.title}".`;
       const blockedDupes = mems.filter((m) => m.status === "blocked" && !m.locked);
       const dup = heuristicMerge(b, blockedDupes);
       const dupRow = dup.event === "NONE" && dup.target ? blockedDupes.find((m) => m.id === dup.target!.id) : undefined;
@@ -316,7 +316,7 @@ async function learnFromEvent(eventId: string, input: EventInput): Promise<Outco
               status_reason: reason, source, author: actor, evidence: [evidence], alpha: 1 + w, beta: 1,
             }),
       );
-      captured.push({ action: "blocked", memory: toMemory(row), owner: lockOwner, note: reason });
+      captured.push({ action: "blocked", memory: toMemory(row), owner: lockOwner, note: reason, rule: lock.title });
     };
 
     // ④ conflict vs 🔒 and ③ merge are independent → run in parallel (hook latency budget); conflict decides first.
@@ -374,10 +374,12 @@ async function learnFromEvent(eventId: string, input: EventInput): Promise<Outco
 export function hookMessage(o: Outcome): string | null {
   const lines = o.captured.map((c) => {
     const t = c.memory.title;
-    // Strings are mirrored in src/components/site/demo-script.ts (HIVE.lessonCaptured / lessonBlocked) — keep identical.
-    if (c.action === "blocked") return `🚫 Hivemind blocked "${t}": ${(c.note ?? "conflicts with a 🔒 rule").replace(/^Conflicts/, "conflicts")}`;
-    if (c.memory.status === "pending") return `📝 Hivemind captured a lesson: "${t}" — pending approval by ${c.owner ?? "the scope owner"}`;
-    return `📝 Hivemind reinforced an existing lesson: "${t}" (${c.memory.status})`;
+    // Wording: public/brand/vscode (Adrian), mirrored in src/components/site/demo-script.ts — keep identical.
+    // Plain text: Claude Code doesn't document ANSI rendering in systemMessage, so no colour codes.
+    if (c.action === "blocked")
+      return `Hivemind · Blocked: contradicts ${c.owner ? `${c.owner}'s` : "the"} locked rule "${c.rule ?? "a locked rule"}".`;
+    if (c.memory.status === "pending") return `Hivemind · Lesson captured: "${t}". Waiting on ${c.owner ?? "the scope owner"}.`;
+    return `Hivemind · Lesson reinforced: "${t}" is already a team rule.`;
   });
   return lines.length ? lines.join("\n") : null;
 }
