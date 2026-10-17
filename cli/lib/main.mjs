@@ -343,6 +343,16 @@ async function cmdTeach(cfg, positional) {
     ? { type: "agent_proposal", actor: cfg.actor, repo: cfg.repo, payload: { title: rule.slice(0, 80), body: rule, scope, via: callerAgent() } }
     : { type: "correction", actor: cfg.actor, repo: scope ?? cfg.repo, sessionId: `cli-${Date.now()}`, payload: { text: rule, via: callerAgent() } };
   if (!cfg.flags.json) console.log(banner("teach"), c.gray(`${scope ?? event.repo} · @${cfg.actor} · ${callerAgent()}`));
+  // --dry-run: show what would be proposed and who'd review it. Nothing is posted (reads /api/scopes only).
+  if (cfg.dryRun) {
+    const scopes = await api(cfg, "/api/scopes").then((r) => r.data.scopes ?? []).catch(() => []);
+    const target = scope ?? event.repo;
+    const owner = ownerOf(target, scopes);
+    console.log(`${label("waiting", "WOULD PROPOSE")}  ${c.gray("(dry run, nothing sent)")}`);
+    console.log(`   ${c.gray(`"${plain(rule)}"`)} ${scopeChip(target)} ${c.gray(event.type === "correction" ? "as a correction" : "as a proposal")}`);
+    console.log(`   ${c.gray("reviewed by")} ${handleChip(`@${owner ?? "a lead"}`)} ${c.gray("· checked against locked rules first")}`);
+    return;
+  }
   const [res, scopes] = await Promise.all([
     post(cfg, "/api/events", event).catch((e) => fail(e.message)),
     api(cfg, "/api/scopes").then((r) => r.data.scopes ?? []).catch(() => []),
