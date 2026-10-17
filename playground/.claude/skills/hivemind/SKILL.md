@@ -86,8 +86,8 @@ minutes in the background; `HIVEMIND_NO_UPDATE=1` turns that off.)
 
 ## When a team rule blocks a request
 
-When a team rule stops a request, reply with exactly these 4 short lines and nothing else (no lists, no essay, don't restate the rule):
-Blocked by Hivemind · LOCKED RULE "<rule title>" · @<owner>   (TEAM RULE if it isn't locked)
+When a team rule stops a request, reply with exactly these 4 short lines and nothing else (no lists, no essay, don't restate the rule; plain text, no emojis, keep each line under 80 characters):
+⬢ Hivemind · Blocked · LOCKED RULE "<rule title>" · @<owner>   (TEAM RULE if it isn't locked)
 <one sentence: why it applies to this request>
 <line 3: judge the user's underlying goal, not the method they named. Goal legitimate, rule only in the way ("log the email so I can trace failed payouts" → the goal is tracing payouts): Instead: <one-sentence compliant approach>, plus at most one short code line. Goal is the forbidden thing itself (mix Lab A and Lab B data, get around the rule, skip the tenant filter): @<owner> can change this rule. — and no workaround of any kind.>
 Run /hivemind why for the history.
