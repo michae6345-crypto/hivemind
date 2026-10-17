@@ -55,7 +55,7 @@
   --color-danger: var(--danger);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-  --font-brand: var(--font-syne), var(--font-geist-sans), system-ui, sans-serif;
+  --font-brand: var(--font-brand-face), var(--font-geist-sans), system-ui, sans-serif;
   --font-note: var(--font-shantell), "Comic Sans MS", cursive;
   --radius-hm: 6px;
 }
@@ -83,11 +83,11 @@ body {
   scrollbar-color: #d4d7dd transparent;
 }
 
-/* Two-tone Syne headlines: first line ink, second line graphite. */
+/* Two-tone headlines in Google Sans Flex: first line ink, second line graphite. */
 .hm-display {
-  font-family: var(--font-syne), var(--font-geist-sans), system-ui, sans-serif;
-  font-weight: 700;
-  letter-spacing: -0.03em;
+  font-family: var(--font-brand-face), var(--font-geist-sans), system-ui, sans-serif;
+  font-weight: 500;
+  letter-spacing: -0.035em;
   line-height: 1.02;
   color: var(--text);
 }

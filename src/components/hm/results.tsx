@@ -115,7 +115,7 @@ function Big({ label, value, of, muted }: { label: string; value: number; of: nu
       <div className="text-[13px] text-muted">{label}</div>
       <div className="mt-2 flex items-baseline gap-2">
         <span
-          className={`font-brand text-[84px] leading-[0.9] font-bold tracking-[-0.04em] tabular-nums ${muted ? "text-muted" : "text-fg"}`}
+          className={`font-brand text-[84px] leading-[0.9] font-medium tracking-[-0.045em] tabular-nums ${muted ? "text-muted" : "text-fg"}`}
         >
           {value}
         </span>

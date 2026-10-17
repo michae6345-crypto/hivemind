@@ -213,19 +213,10 @@ function ViewingAs() {
   );
 }
 
-/** The tiny status line: where the data comes from. */
+/** The tiny footer line. (A "Live / Seed data" status sat on the left until 16 Oct; Adrian didn't want it.) */
 function Footer() {
-  const { live } = useHivemind();
-  const on = [live.core, live.activity, live.metrics].filter(Boolean).length;
   return (
     <footer className="flex h-8 shrink-0 items-center gap-4 border-t border-line bg-panel px-5 text-[11.5px] text-muted">
-      <span
-        className="flex items-center gap-1.5"
-        title={`Lessons: ${live.core ? "live" : "seed"} · Activity: ${live.activity ? "live" : "seed"} · Metrics: ${live.metrics ? "live" : "seed"}`}
-      >
-        <span className={cn("size-1.5 rounded-full", on === 3 ? "bg-ok" : on > 0 ? "bg-ok/60" : "bg-muted/50")} />
-        {on === 3 ? "Live" : on > 0 ? `Live ${on}/3` : "Seed data"}
-      </span>
       <span className="ml-auto truncate">{WORKS_WITH}</span>
     </footer>
   );

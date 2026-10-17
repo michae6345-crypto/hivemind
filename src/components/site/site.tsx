@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRef, type ReactNode } from "react";
+import { Fragment, useRef, type ReactNode } from "react";
 import { ArrowRight, Lock, Play, ShieldX } from "lucide-react";
 import { MotionConfig, motion, useScroll, useTransform, type Variants } from "motion/react";
 import { Logo, Wordmark } from "@/components/hm/bits";
@@ -10,14 +10,22 @@ import { evalDetail } from "@/mocks/data";
 import { cn } from "@/components/hm/utils";
 import { Dither } from "./dither";
 import { MacDesktop } from "./mac-desktop";
+import { ScrollStory } from "./scroll-story";
 import { ChatMock, EditorMock } from "./editor-mocks";
 import { LESSON, LOCKED_RULE, PROMPTS } from "./demo-script";
 
 const EASE = [0.22, 1, 0.36, 1] as const;
 
+// Space's hero-rise, measured on spacefs.com: 20px up, 1.1s, staggered ~0.12s.
 const rise: Variants = {
-  hidden: { opacity: 0, y: 12 },
+  hidden: { opacity: 0, y: 20 },
   show: { opacity: 1, y: 0, transition: { duration: 1.1, ease: EASE } },
+};
+
+// Space's launcher-word-in: each word sharpens from a blur as it rises.
+const word: Variants = {
+  hidden: { opacity: 0, y: 8, filter: "blur(6px)" },
+  show: { opacity: 1, y: 0, filter: "blur(0px)", transition: { duration: 0.7, ease: EASE } },
 };
 
 /** The website: the story first (judges land here), then "Open the app" goes to /app. */
@@ -97,7 +105,7 @@ function Hero() {
       <motion.div
         initial="hidden"
         animate="show"
-        variants={{ show: { transition: { staggerChildren: 0.08 } } }}
+        variants={{ show: { transition: { staggerChildren: 0.12, delayChildren: 0.05 } } }}
         className="mx-auto flex max-w-[880px] flex-col items-center text-center"
       >
         <motion.span variants={rise} className="hm-glass rounded-full px-4 py-1.5 text-[12.5px] text-fg/75">
@@ -153,17 +161,42 @@ function Reveal({ children, className, delay = 0 }: { children: ReactNode; class
   );
 }
 
-function SectionHead({ id, one, two, children }: { id: string; one: string; two: string; children?: ReactNode }) {
+function SectionHead({ id, one, two, children }: { id?: string; one: string; two: string; children?: ReactNode }) {
   return (
-    <Reveal className="mx-auto max-w-[760px] text-center">
+    <motion.div
+      initial="hidden"
+      whileInView="show"
+      viewport={{ once: true, amount: 0.5 }}
+      variants={{ show: { transition: { staggerChildren: 0.045 } } }}
+      className="mx-auto max-w-[760px] text-center"
+    >
       <h2 id={id} className="hm-display scroll-mt-28 text-[34px] text-balance sm:text-[48px]">
-        {one}
+        <Words text={one} />
         <br />
-        <span className="tone-2">{two}</span>
+        <span className="tone-2">
+          <Words text={two} />
+        </span>
       </h2>
-      {children ? <p className="mx-auto mt-4 max-w-[58ch] text-[16px] leading-relaxed text-muted">{children}</p> : null}
-    </Reveal>
+      {children ? (
+        <motion.p variants={rise} className="mx-auto mt-4 max-w-[58ch] text-[16px] leading-relaxed text-muted">
+          {children}
+        </motion.p>
+      ) : null}
+    </motion.div>
   );
+}
+
+/** A headline split into words that blur in one after another (the parent sets the stagger). */
+function Words({ text }: { text: string }) {
+  const words = text.split(" ");
+  return words.map((w, i) => (
+    <Fragment key={i}>
+      <motion.span variants={word} className="inline-block">
+        {w}
+      </motion.span>
+      {i < words.length - 1 ? " " : null}
+    </Fragment>
+  ));
 }
 
 /** A hand-drawn note with a little arrow. At most one per section. */
@@ -192,15 +225,25 @@ function NoteArrow({ flip }: { flip?: boolean }) {
 
 function HowItWorks() {
   return (
-    <section className="px-4 pt-32">
-      <SectionHead id="how" one="One correction." two="The whole team learns it.">
-        Agents only propose. A person approves. Then it&apos;s in every session.
-      </SectionHead>
+    <section id="how" className="pt-24 lg:pt-16">
+      {/* Desktop: the pinned, scroll-played story. Below lg: the headline and three step cards. */}
+      <ScrollStory />
+      <div className="px-4 pt-8 lg:hidden">
+        <SectionHead one="One correction." two="The whole team learns it.">
+          Agents only propose. A person approves. Then it&apos;s in every session.
+        </SectionHead>
+        <StepCards />
+      </div>
 
-      <Reveal className="mx-auto mt-14 max-w-[1120px]">
+      <Reveal className="mx-auto mt-14 max-w-[1120px] px-4 lg:mt-4">
         <HiveStates />
       </Reveal>
+    </section>
+  );
+}
 
+function StepCards() {
+  return (
       <div className="mx-auto mt-10 grid max-w-[1120px] gap-5 md:grid-cols-3">
         <Reveal className="hm-card p-6" delay={0}>
           <Step n={1} title="Alex corrects their agent" />
@@ -231,7 +274,6 @@ function HowItWorks() {
           </div>
         </Reveal>
       </div>
-    </section>
   );
 }
 
@@ -454,7 +496,7 @@ function Big({ label, value, of, muted }: { label: string; value: number; of: nu
     <div>
       <div className="text-[14px] text-muted">{label}</div>
       <div className="mt-2 flex items-baseline gap-2">
-        <span className={cn("font-brand text-[88px] leading-[0.9] font-bold tracking-[-0.04em] tabular-nums sm:text-[112px]", muted ? "text-muted" : "text-fg")}>
+        <span className={cn("font-brand text-[88px] leading-[0.9] font-medium tracking-[-0.045em] tabular-nums sm:text-[112px]", muted ? "text-muted" : "text-fg")}>
           {value}
         </span>
         <span className="text-[22px] text-muted">of {of}</span>

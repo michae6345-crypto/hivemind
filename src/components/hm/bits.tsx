@@ -46,7 +46,7 @@ export function Logo({ className, intro = false, onDark = false }: { className?:
 
 const TITTLE = "M50 4L89.84 27L89.84 73L50 96L10.16 73L10.16 27Z";
 
-/** "hivemind" set in Syne Bold with hexagon dots on the i's: one honey, one locked-rule rose. */
+/** "hivemind" set in Google Sans Flex Medium with hexagon dots on the i's: one honey, one locked-rule rose. */
 export function Wordmark({ className }: { className?: string }) {
   const i = (fill: string) => (
     <span className="relative inline-block" aria-hidden>
@@ -57,7 +57,7 @@ export function Wordmark({ className }: { className?: string }) {
     </span>
   );
   return (
-    <span className={cn("font-brand leading-none font-bold tracking-[-0.03em]", className)}>
+    <span className={cn("font-brand leading-none font-medium tracking-[-0.035em]", className)}>
       <span className="sr-only">Hivemind</span>
       <span aria-hidden>
         h{i("var(--honey)")}vem{i("var(--chip-lock)")}nd
