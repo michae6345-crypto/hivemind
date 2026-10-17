@@ -248,8 +248,12 @@ team rule, with Hivemind 0/36, placebo 21/36.
 
 > **Live on prod** (B `806df7b`, rehearsed ~3:40 AM with `node scripts/e2e-rehearse.mjs --beats 8`). Watch captures the
 > fix (J `1667966`), the engine turns the diff into a pending lesson, Ben approves, and Emily's next pack carries it.
-> Run `reset-demo` before the take. If an older "log ids, not emails" lesson is still around, the fix gets
-> *reinforced* instead of *captured*.
+>
+> **Take setup: record beat 8 as its own take, after `node scripts/reset-demo.mjs --drop use-logger`.** The merge step
+> is an LLM call. With the seeded "Use logger, not console.log" lesson present, the same fix was *reinforced* into it in
+> 1 of 2 runs (`→ reinforced "Use logger, not console.lo…"`), and K saw it reinforce A's "Log lines carry trace_id…".
+> With `use-logger` dropped it was *captured* 3/3. The trade-off: beat 5's "ALSO APPLIES HERE" list loses the
+> `Use logger` line, so run a plain `reset-demo` for beats 1–7.
 
 Both panes start as `kevin`, with the right pane on **Here** (`1`).
 
@@ -265,6 +269,14 @@ from the observed API response):
 ```text
 Hivemind · Lesson captured from @kevin's fix: "Log user ids, never emails". Waiting on @ben.
 ```
+
+Right (`kevin` · Feed, `4`), observed (K `27000c9`; the file is a clickable permalink):
+
+```text
+● @kevin                fixed src/welcome.ts#L2 → lesson proposed "Log user ids, never e…  just now
+```
+
+After Ben approves, the same row reads `→ lesson live`.
 
 Observed API response: `POST /api/events {type:"fix"}` → `200`, lesson
 `Log user ids, never emails` · `#team/data-pipelines` · pending. Evidence is `type: fix`, `file: src/welcome.ts`,
@@ -300,7 +312,6 @@ Log identifiers such as user.id through the structured logger instead of logging
 
 Known nits (not blocking):
 - The pack provenance says "@kevin's **correction**" for a lesson learned from a fix (owner B, `pack.ts`).
-- The Feed has no entry for the fix event itself; the lesson only shows in Queue and Here (owner K).
 
 ## 4. Rehearse before recording (5 min)
 

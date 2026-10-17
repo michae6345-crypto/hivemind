@@ -47,7 +47,10 @@ build OOMed, which points to machine memory pressure with 12 Claude sessions ope
   `’`) on that line. I left Adrian's file untouched.
 - ~~Beat 8 "fix it once"~~ **live on prod** (B `806df7b`): a fix event becomes the pending lesson "Log user ids, never emails" (proposed by
   @kevin, `fix` evidence with file:line). Ben approves (200 active), and Emily's next pack carries it. Nits: the pack provenance
-  says "@kevin's correction" for a fix (B, `pack.ts`); the Feed shows no entry for the fix event (K).
+  says "@kevin's correction" for a fix (B, `pack.ts`). Feed row for fixes landed (K `27000c9`, verified).
+- **Beat 8 is non-deterministic with the default seed** (LLM merge). The same fix was reinforced into the seeded `use-logger`
+  lesson in 1 of 2 runs (and into A's `structured-log-fields` in K's run). With `reset-demo --drop use-logger` it was captured
+  3/3. Runbook: record beat 8 as its own take after that reset.
 - **reset-demo regex bug, fixed:** the engine-suffix check matched the letter `d` instead of a digit (`\d`; heredoc ate the backslash), so
   some engine-made leftovers survived a reset. Fixed and verified: the dry-run lists exactly the 3 suffixed slugs, and keeps
   playground (8) + 26 scenario lessons.
