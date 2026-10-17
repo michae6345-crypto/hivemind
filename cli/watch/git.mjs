@@ -90,8 +90,8 @@ export function permalinkInfo(file, line, endLine, { root = process.cwd() } = {}
 /** The URL alone (null if the file can't be located). */
 export const permalink = (file, line, endLine, opts) => permalinkInfo(file, line, endLine, opts)?.url ?? null;
 
-/** OSC 8 hyperlink when colour is on (a TTY that isn't NO_COLOR); plain `text` otherwise. */
-export const link = (url, text) => (COLOR && url ? `\x1b]8;;${url}\x07${text}\x1b]8;;\x07` : String(text));
+/** OSC 8 hyperlink when colour is on (a TTY, not NO_COLOR) and NO_HYPERLINKS is unset; plain `text` otherwise. */
+export const link = (url, text) => (COLOR && url && !process.env.NO_HYPERLINKS ? `\x1b]8;;${url}\x07${text}\x1b]8;;\x07` : String(text));
 
 /** Clickable blue `path#Lnn` (chrome text #91A7FF). */
 export function linkFile(file, line, endLine, opts) {
