@@ -8,7 +8,7 @@ Next.js (App Router, TypeScript) + Tailwind + shadcn/ui · Supabase Postgres · 
 ## Ownership (do not edit outside your owner's folders)
 - **Michael:** `supabase/`, `src/contracts/`, `src/app/api/`, `src/lib/`, `hooks/`, `eval/`, `scripts/` (MCP lives in `src/app/api/mcp`)
 - **Adrian:** `src/app/(ui)/`, `src/components/`, `src/mocks/`, `public/`
-- **Michael's agents (cross-vendor wave, Fri night):** C → , hook/activity routes,  · F → ,  · G →  + non-Claude config files it generates in  · H → ,  · D → , , , build fixes · P → . Demo company name: **Meridian Data**.
+- **Michael's agents (cross-vendor wave, Fri night):** C → `src/app/api/mcp/`, hook/activity routes, `demo/export-service/{.claude,.mcp.json,.vscode}` · F → `integrations/`, `hooks/adapters/` · G → `cli/` + the non-Claude config files it generates in `demo/` · H → `vscode-extension/`, `src/app/api/vscode/` · D → `scripts/e2e-*`, `scripts/reset-demo.mjs`, `docs/deploy.md`, build fixes · P → `docs/pitch/`. Demo company name: **Meridian Data**.
 - `src/contracts/` and `package.json` deps change only in small dedicated commits (announce to the other person).
 
 ## Rules
