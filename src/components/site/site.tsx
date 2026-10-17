@@ -12,7 +12,7 @@ import { Dither } from "./dither";
 import { MacDesktop } from "./mac-desktop";
 import { HeroHive } from "./hero-hive";
 import { ScrollStory } from "./scroll-story";
-import { ChatMock, EditorMock } from "./editor-mocks";
+import { WatchPair, WatchSplit } from "./watch-terminal";
 import { HIVE, LESSON, LOCKED_RULE, PROMPTS } from "./demo-script";
 import { Note } from "./notes";
 import { Structure } from "./structure";
@@ -43,7 +43,7 @@ export function Site() {
         <HowItWorks />
         <Built />
         <WhileTheyWork />
-        <AnyAgent />
+        <InYourTerminal />
         <LockedRules />
         <Results />
         <Closing />
@@ -77,7 +77,7 @@ function Nav() {
           {[
             ["How it works", "#how"],
             ["How it's built", "#built"],
-            ["Any agent", "#agents"],
+            ["In your terminal", "#terminal"],
             ["Results", "#results"],
           ].map(([label, href]) => (
             <a
@@ -367,28 +367,46 @@ function WhileTheyWork() {
   );
 }
 
-// ── Any agent ───────────────────────────────────────────────────────────────
+// ── In your terminal ────────────────────────────────────────────────────────
 
-function AnyAgent() {
+// Since Michael's 17 Oct pivot the product surface is the terminal: `hivemind watch` in a pane next to the agent.
+// The windows are rendered from public/brand/terminal/tui-reference.mjs (see watch-terminal.tsx).
+function InYourTerminal() {
   return (
     <section className="px-4 pt-32">
-      <SectionHead id="agents" one="It works with any agent." two="In any terminal or editor.">
-        Claude Code, Cursor, Gemini CLI, Codex, Copilot and Windsurf read the same lessons through their own hooks and
-        MCP. <code className="rounded bg-panel px-1 font-mono text-[14px] text-fg">hivemind init</code> connects a repo to the ones your team
-        uses.
+      <SectionHead id="terminal" one="It lives in your terminal." two="Next to any agent.">
+        <code className="rounded bg-panel px-1 font-mono text-[14px] text-fg">hivemind watch</code> runs in a split pane beside
+        Claude Code, Cursor, Codex or Gemini CLI. It flags a save that breaks a team rule, shows where every rule came from,
+        and holds the approval queue.
       </SectionHead>
-      <div className="relative mx-auto mt-14 grid max-w-[1120px] gap-6 lg:grid-cols-[1.25fr_1fr]">
-        <Reveal>
-          <EditorMock />
-        </Reveal>
-        <Reveal delay={0.1}>
-          <ChatMock />
-        </Reveal>
-        <Note dir="down-left" className="absolute -top-11 left-[30%] hidden lg:flex" width={190}>
-          ghost text, credited to @kevin
+      <Reveal className="mt-16">
+        <WatchSplit
+          notes={
+            <>
+              <Note dir="down-right" className="absolute -top-12 left-[12%] hidden lg:flex" width={190} tone="rose" delay={0.3}>
+                the agent hits a locked rule and stops
+              </Note>
+              <Note dir="down-left" className="absolute -top-12 right-[16%] hidden lg:flex" width={180} delay={0.6}>
+                the lead approves with one key
+              </Note>
+            </>
+          }
+        />
+      </Reveal>
+      <Reveal className="relative mt-16">
+        <WatchPair />
+        <Note dir="up-right" className="absolute -bottom-14 left-[8%] hidden lg:flex" width={240} tone="rose" delay={0.3}>
+          a save that breaks a rule, underlined where it breaks
         </Note>
-      </div>
-      <Reveal className="relative mx-auto mt-6 max-w-[1120px]">
+        <Note dir="up-left" className="absolute -bottom-14 right-[10%] hidden lg:flex" width={200} tone="honey" delay={0.6}>
+          and when your lesson is approved
+        </Note>
+      </Reveal>
+      <Reveal className="relative mx-auto mt-24 max-w-[1120px]">
+        <p className="mb-4 text-center text-[15px] text-muted">
+          One command connects a repo to the agents it already uses:{" "}
+          <code className="rounded bg-panel px-1 font-mono text-[14px] text-fg">hivemind init</code>
+        </p>
         <InitMock />
         <Note dir="up-left" className="absolute -bottom-12 left-[26%] hidden lg:flex" width={260} delay={0.4}>
           finds the agents a repo already uses, by their files
