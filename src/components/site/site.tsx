@@ -12,7 +12,7 @@ import { Dither } from "./dither";
 import { MacDesktop } from "./mac-desktop";
 import { HeroHive } from "./hero-hive";
 import { ScrollStory } from "./scroll-story";
-import { WatchPair, WatchSplit } from "./watch-terminal";
+import { WatchPair, WatchStory } from "./watch-terminal";
 import { HIVE, LESSON, LOCKED_RULE, PROMPTS } from "./demo-script";
 import { Note } from "./notes";
 import { Structure } from "./structure";
@@ -380,18 +380,7 @@ function InYourTerminal() {
         and holds the approval queue.
       </SectionHead>
       <Reveal className="mt-16">
-        <WatchSplit
-          notes={
-            <>
-              <Note dir="down-right" className="absolute -top-12 left-[12%] hidden lg:flex" width={190} tone="rose" delay={0.3}>
-                the agent hits a locked rule and stops
-              </Note>
-              <Note dir="down-left" className="absolute -top-12 right-[16%] hidden lg:flex" width={180} delay={0.6}>
-                the lead approves with one key
-              </Note>
-            </>
-          }
-        />
+        <WatchStory />
       </Reveal>
       <Reveal className="relative mt-16">
         <WatchPair />

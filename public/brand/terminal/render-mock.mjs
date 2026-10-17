@@ -91,9 +91,42 @@ if(!matchMedia("(prefers-reduced-motion: reduce)").matches){play("anim-celebrate
 writeFileSync(join(here, "terminal-mock.html"), html);
 
 // ── the website's copy (its demo names) ──────────────────────────────────────
-const site = T.withNames({ alex: "kevin", jordan: "ben", noor: "emily", maya: "greg" });
+const NAMES = { alex: "kevin", jordan: "ben", noor: "emily", maya: "greg" };
+// The site's names are shorter than the reference's, so each line is padded back to its old width (the grid holds).
+const rename = T.withNames(NAMES);
+const site = (lines) =>
+  rename(lines).map((l, i) => {
+    const bg = lines[i].at(-1)?.bg;
+    const want = T.w(lines[i]);
+    if (T.w(l) < want) return [...l, T.s(" ".repeat(want - T.w(l)), bg ? { bg } : {})];
+    // Longer (@emily for @noor): take the extra cells out of trailing spaces, else out of the widest space run.
+    let extra = T.w(l) - want;
+    const out = l.map((x) => ({ ...x }));
+    for (let j = out.length - 1; j >= 0 && extra > 0; j--) {
+      const trail = out[j].t.length - out[j].t.trimEnd().length;
+      const cut = Math.min(trail, extra);
+      out[j].t = out[j].t.slice(0, out[j].t.length - cut);
+      extra -= cut;
+      if (out[j].t.trim()) break;
+    }
+    for (let j = 0; j < out.length && extra > 0; j++) {
+      const m = out[j].t.match(/ {2,}/);
+      if (!m) continue;
+      const cut = Math.min(extra, m[0].length - 1);
+      out[j].t = out[j].t.replace(m[0], " ".repeat(m[0].length - cut));
+      extra -= cut;
+    }
+    return out.filter((x) => x.t);
+  });
+const st = T.story();
+const story = {
+  ...st,
+  scenes: st.scenes.map((x) => ({ who: NAMES[x.who], caption: x.caption.replace(/@(\w+)/g, (m, h) => `@${NAMES[h] ?? h}`), left: site(x.left) })),
+  status: Object.fromEntries(Object.entries(st.status).map(([k, v]) => [k, site(v)])),
+  right: st.right.map(site),
+};
 writeFileSync(
   join(root, "src", "components", "site", "watch-screens.json"),
-  JSON.stringify({ split: site(T.split()), here: site(T.here(W)), queue: site(T.queue(W)), celebrate: frames.celebrate.map(site) }) + "\n",
+  JSON.stringify({ split: site(T.split()), here: site(T.here(W)), queue: site(T.queue(W)), celebrate: frames.celebrate.map(site), story }) + "\n",
 );
 console.log(`terminal-mock.html: ${shots.length} screens + 3 animations; watch-screens.json written`);

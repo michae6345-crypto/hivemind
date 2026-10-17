@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
-import { useInView } from "motion/react";
+import { useInView, useReducedMotion } from "motion/react";
 import { cn } from "@/components/hm/utils";
 import screens from "./watch-screens.json";
 
@@ -86,6 +86,75 @@ function Celebration() {
   return (
     <div ref={ref}>
       <TermWindow title="hivemind watch" lines={frames[i]} size="sm" />
+    </div>
+  );
+}
+
+type Story = {
+  leftCols: number;
+  rows: number;
+  scenes: { who: string; caption: string; left: Screen }[];
+  status: Record<string, Screen>;
+  right: Screen[];
+  frames: { b: number; n: number; r: number; st: string; ms: number }[];
+};
+const story = screens.story as Story;
+const FIRST = story.scenes.map((_, b) => story.frames.findIndex((f) => f.b === b));
+const BLANK: Seg[] = [{ t: " ".repeat(story.leftCols) }];
+const DIVIDER: Seg = { t: " │ ", fg: "#2E2E32" };
+
+/** One frame of the split: Claude Code's transcript so far on the left, `hivemind watch` on the right. */
+function storyLines(i: number): Screen {
+  const f = story.frames[i];
+  const left = story.scenes[f.b].left.slice(0, f.n);
+  while (left.length < story.rows - 4) left.push(BLANK);
+  left.push(...story.status[f.st]);
+  return left.map((l, row) => [...l, DIVIDER, ...story.right[f.r][row]]);
+}
+
+/**
+ * The loop Michael asked for (17 Oct): @kevin corrects his agent → @ben approves with `a` → the celebration →
+ * @emily's fresh session writes the check first → her bad lesson hits @greg's lock. Plays only while on screen.
+ * Reduced motion (and the server render) shows the last frame, the blocked lesson. The captions jump to a scene.
+ */
+export function WatchStory() {
+  const ref = useRef<HTMLDivElement>(null);
+  const inView = useInView(ref, { amount: 0.35 });
+  const last = story.frames.length - 1;
+  const [i, setI] = useState(last);
+  const reduce = useReducedMotion();
+  const play = inView && !reduce;
+  const started = useRef(false);
+  useEffect(() => {
+    if (!play) return;
+    // The first time it comes on screen, rewind from the held last frame to the start of the story.
+    const first = !started.current;
+    started.current = true;
+    const t = setTimeout(() => setI((x) => (first ? 0 : (x + 1) % story.frames.length)), first ? 300 : story.frames[i].ms);
+    return () => clearTimeout(t);
+  }, [i, play]);
+  const scene = story.frames[i].b;
+  return (
+    <div ref={ref} className="mx-auto max-w-[1120px]">
+      <TermWindow title={`${story.scenes[scene].who} — claude | hivemind watch`} lines={storyLines(i)} />
+      <ol className="mt-5 flex flex-wrap justify-center gap-1.5 text-[13px]">
+        {story.scenes.map((x, b) => (
+          <li key={b}>
+            <button
+              type="button"
+              onClick={() => setI(FIRST[b])}
+              aria-current={b === scene ? "step" : undefined}
+              className={cn(
+                "rounded-full px-3 py-1.5",
+                b === scene ? "bg-fg text-white" : "text-muted hover:bg-black/5 hover:text-fg",
+              )}
+            >
+              <span className="mr-1.5 font-mono text-[11px] opacity-60">{b + 1}</span>
+              {x.caption}
+            </button>
+          </li>
+        ))}
+      </ol>
     </div>
   );
 }

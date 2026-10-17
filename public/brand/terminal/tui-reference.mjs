@@ -200,9 +200,11 @@ function title(t, color, extra = {}) {
 }
 
 // ── Chrome: header, tabs, footer ─────────────────────────────────────────────
-export function header(cols, { rules = 10, waiting = 2 } = {}) {
+const ROLE = { maya: "Security", jordan: "Lead", alex: "Engineer", noor: "Engineer" };
+/** `as`: whose watch this is (the queue's lead view is @jordan's screen, not @alex's). */
+export function header(cols, { rules = 10, waiting = 2, as = WORLD.me.handle } = {}) {
   const left = [s("⬢", { fg: C.lesson }), s(" Hivemind", { fg: C.text, bold: true }), sep(), s(`${WORLD.org} / ${WORLD.repo}`, { fg: C.muted })];
-  const me = [...handleChip(WORLD.me.handle), s(` ${WORLD.me.role}`, { fg: C.faint })];
+  const me = [...handleChip(as), s(` ${ROLE[as] ?? WORLD.me.role}`, { fg: C.faint })];
   if (w(left) + w(me) + 2 <= cols) return [right(left, me, cols)];
   const short = [left[0], left[1], sep(), s(WORLD.repo, { fg: C.muted })]; // narrower: the repo alone
   if (w(short) + w(me) + 2 <= cols) return [right(short, me, cols)];
@@ -367,7 +369,7 @@ export function detail(cols) {
 /** Queue: role-aware. A lead sees Approve/Reject on what they own; everyone else sees who it waits on. */
 export function queue(cols, { flash = null, as = "jordan" } = {}) {
   const lead = as === "jordan";
-  const out = [...header(cols, { waiting: flash === "gone" ? 1 : 2 }), ...tabs(cols, "Queue", { rules: flash === "gone" ? 11 : 10, waiting: flash === "gone" ? 1 : 2 })];
+  const out = [...header(cols, { waiting: flash === "gone" ? 1 : 2, rules: flash === "gone" ? 11 : 10, as }), ...tabs(cols, "Queue", { rules: flash === "gone" ? 11 : 10, waiting: flash === "gone" ? 1 : 2 })];
   out.push(fit([s(lead ? "Waiting on you" : "Waiting on a lead", { fg: C.faint, bold: true }), sep(), s(flash === "gone" ? "1" : "2", { fg: C.faint })], cols), []);
   if (flash !== "gone") {
     const bg = flash === "approved" ? C.okBg : C.selBg;
@@ -394,8 +396,8 @@ export function queue(cols, { flash = null, as = "jordan" } = {}) {
 }
 
 /** Feed: grouped by time; the tool is plain grey text; a new row arrives with a blue wash that fades. */
-export function feed(cols, { fresh = 0 } = {}) {
-  const out = [...header(cols), ...tabs(cols, "Feed")];
+export function feed(cols, { fresh = 0, as, rules = 10, waiting = 2 } = {}) {
+  const out = [...header(cols, { as, rules, waiting }), ...tabs(cols, "Feed", { rules, waiting })];
   const washes = [C.selBg, "#21263A", "#1F222F", undefined];
   const row = (h, tool, what, file, when, i = -1) => {
     const bg = i === 0 ? washes[Math.min(fresh, 3)] : undefined;
@@ -458,35 +460,182 @@ export function statusLine(state = "normal") {
   if (state === "locked") return [[mark, name, sep(), s("breaks 1 locked rule", { fg: C.lockedText, bold: true }), sep(), s("src/export.ts:18", { fg: C.muted })]];
   if (state === "lesson") return [[mark, name, sep(), s("misses 1 team lesson", { fg: C.lessonText }), sep(), s("10 rules", { fg: C.muted })]];
   if (state === "approved") return [[mark, name, sep(), s("11 rules", { fg: C.lesson, bold: true }), sep(), s("lesson approved", { fg: C.ok })]];
+  if (state === "next") return [[mark, name, sep(), s("11 rules", { fg: C.muted }), sep(), s("1 waiting", { fg: C.muted })]]; // the morning after an approval
   return [[mark, name, sep(), s("10 rules", { fg: C.muted }), sep(), s("2 waiting", { fg: C.muted })]];
+}
+
+// ── Claude Code's pane (the left half of the split) ──────────────────────────
+const CC = {
+  head: [s("✻ ", { fg: "#D97757" }), s("Claude Code", { fg: C.text, bold: true }), s("  Sonnet 5.5 · ~/export-service", { fg: C.faint })],
+  hook: (t, fg = C.lessonText) => [s(t, { fg })],
+  you: (t, first = true) => [s(first ? "> " : "  ", { fg: C.faint, ...(first ? {} : { bg: C.codeBg }) }), s(t, { fg: C.text, bg: C.codeBg })],
+  say: (t, first = true, dot = C.text) => [s(first ? "● " : "  ", { fg: dot }), s(t, { fg: C.text })],
+  tool: (name, arg) => [s("● ", { fg: C.ok }), s(name, { fg: C.text, bold: true }), s(`(${arg})`, { fg: C.muted })],
+  out: (t) => [s("  ⎿ ", { fg: C.faint }), s(t, { fg: C.faint })],
+  add: (n, code, mark) => [s(`     ${n} `, { fg: C.faint }), s("+ ", { fg: C.ok }), s(code, { fg: C.text, bg: "#1D3A2B" }), ...(mark ? [s(`  ← ${mark}`, { fg: C.lessonText })] : [])],
+};
+
+/** The transcript lines of each scene (unpadded; claudePane pads them and adds the prompt box). */
+export const TRANSCRIPTS = {
+  // @alex asks, the agent skips the check, he corrects it, the hook captures the lesson.
+  correct: [
+    CC.head,
+    CC.hook("Hivemind · Loaded 10 team rules for #repo/export-service."),
+    [],
+    CC.you("Add a CSV export for Lab B's monthly report in src/export.ts"),
+    [],
+    CC.tool("Update", "src/export.ts"),
+    CC.out("Updated src/export.ts with 5 additions"),
+    [],
+    CC.you("No. Exports must call assertSingleCustomer() before"),
+    CC.you("writing anything.", false),
+    [],
+    CC.hook('Hivemind · Lesson captured: "Exports call'),
+    CC.hook('assertSingleCustomer()". Waiting on @jordan.'),
+    [],
+    CC.say("Right. I'll call assertSingleCustomer(rows) before the"),
+    CC.say("write.", false),
+    CC.tool("Update", "src/export.ts"),
+    CC.out("Updated src/export.ts with 1 addition"),
+  ],
+  // @noor, a fresh session the next day: the first line the agent writes is the lesson.
+  fresh: [
+    CC.head,
+    CC.hook("Hivemind · Loaded 11 team rules for #repo/export-service."),
+    [],
+    CC.you("Add a JSON export for Lab A's quarterly report in"),
+    CC.you("src/export.ts", false),
+    [],
+    CC.tool("Update", "src/export.ts"),
+    CC.out("Updated src/export.ts with 4 additions"),
+    CC.add(31, "export function writeLabJson(rows: Row[]) {"),
+    CC.add(32, "  assertSingleCustomer(rows);", "@alex's lesson"),
+    CC.add(33, "  return writeJson(rows);"),
+    CC.add(34, "}"),
+  ],
+  // @jordan between tasks: his agent is idle, his watch holds the queue.
+  idle: [CC.head, CC.hook("Hivemind · Loaded 10 team rules for #repo/export-service.")],
+  // Then @noor tries to teach a lesson that contradicts @maya's lock.
+  blocked: [
+    CC.head,
+    CC.hook("Hivemind · Loaded 11 team rules for #repo/export-service."),
+    [],
+    CC.you("Just reuse Lab A's rows for the Lab B test fixtures,"),
+    CC.you("it's only tests", false),
+    [],
+    CC.hook("Hivemind · Blocked: contradicts @maya's locked rule", C.lockedText),
+    CC.hook('"Never mix data from different lab customers".', C.lockedText),
+    [],
+    CC.say("I can't mix lab customers, even in tests. Your team"),
+    CC.say("has a locked rule against it, set by @maya. I'll", false),
+    CC.say("generate synthetic rows for Lab B instead.", false),
+    [],
+    CC.tool("Write", "test/fixtures/labB.ts"),
+    CC.out("Wrote 24 lines"),
+  ],
+};
+
+export const PANE_ROWS = 26;
+/** The first `n` transcript lines, padded, then the prompt box and Claude Code's status line. */
+export function claudePane(cols, lines, { n = lines.length, status = "normal" } = {}) {
+  const out = lines.slice(0, n).map((l) => fit(l, cols));
+  while (out.length < PANE_ROWS - 4) out.push(fit([], cols));
+  out.push(fit([s("╭" + "─".repeat(cols - 2) + "╮", { fg: "#5C5C63" })], cols));
+  out.push(fit([s("│", { fg: "#5C5C63" }), s(" > ", { fg: C.faint }), s(" ".repeat(cols - 5)), s("│", { fg: "#5C5C63" })], cols));
+  out.push(fit([s("╰" + "─".repeat(cols - 2) + "╯", { fg: "#5C5C63" })], cols));
+  out.push(fit(statusLine(status)[0], cols));
+  return out;
+}
+
+/** Here, on a file that follows every rule: the lesson it followed, with its provenance. */
+export function hereClean(cols, { by = "noor", line = 32 } = {}) {
+  const out = [...header(cols, { rules: 11, waiting: 1, as: by }), ...tabs(cols, "Here", { rules: 11, waiting: 1 })];
+  out.push(fit([s("src/export.ts", { fg: C.text }), s(" · saved by ", { fg: C.faint }), ...handleChip(by), s(" Claude Code · just now", { fg: C.faint })], cols), []);
+  out.push(fit([s("✓ ", { fg: C.ok }), s("This file follows every team rule.", { fg: C.ok, bold: true })], cols), []);
+  out.push(fit([kind("TEAM LESSON"), sep(), ...scopeChip("#team/data-pipelines")], cols));
+  out.push(fit(title("Every export calls `assertSingleCustomer()`", C.lessonText), cols));
+  out.push(fit([s("Learned from ", { fg: C.muted }), ...handleChip("alex", { pos: true }), s(" correction · yesterday", { fg: C.muted })], cols));
+  out.push(fit([s("Approved by ", { fg: C.muted }), ...handleChip("jordan"), s(" · in every agent's next session", { fg: C.muted })], cols));
+  out.push(fit([s(`Followed on line ${line} `, { fg: C.faint }), s("assertSingleCustomer(rows)", { fg: C.lessonText, ul: true })], cols));
+  return [...out, ...footer(cols, KEYS_MAIN)];
+}
+
+/**
+ * The website's loop, five scenes in one split window: @alex corrects his agent → @jordan approves with `a` →
+ * the celebration on @alex's pane → @noor's fresh session writes the lesson first → her bad lesson hits @maya's lock.
+ * Returns { scenes: [{ who, caption, left }], right: Screen[], frames: [{ b, n, r, st, ms }] }:
+ * scene b's transcript shown to line n, right pane r, Claude Code status line st, held ms.
+ */
+export function story(leftCols = 62, rightCols = 58) {
+  const right = [];
+  const R = (screen) => right.push(screen) - 1;
+  const frames = [];
+  const typeIn = (b, from, to, r, st = "normal", ms = 260) => {
+    for (let n = from; n <= to; n++) frames.push({ b, n, r, st, ms });
+  };
+  const hold = (ms) => (frames.at(-1).ms = ms);
+
+  // 1. @alex corrects; the right pane is his own watch, which shows the lesson waiting on @jordan.
+  const feedR = R(feed(rightCols, { fresh: 3 }));
+  const waitR = R(queue(rightCols, { as: "alex" }));
+  const T1 = TRANSCRIPTS.correct;
+  typeIn(0, 2, 7, feedR);
+  hold(900);
+  typeIn(0, 8, 10, feedR);
+  hold(700);
+  typeIn(0, 11, 13, waitR, "normal", 320);
+  hold(2200);
+  typeIn(0, 14, T1.length, waitR);
+  hold(1400);
+  // 2. @jordan's watch: the same lesson in his queue; `a` flashes it green and it leaves.
+  const qR = R(queue(rightCols, { as: "jordan" }));
+  const okR = R(queue(rightCols, { as: "jordan", flash: "approved" }));
+  const goneR = R(queue(rightCols, { as: "jordan", flash: "gone" }));
+  frames.push({ b: 1, n: 2, r: qR, st: "normal", ms: 2200 }, { b: 1, n: 2, r: okR, st: "normal", ms: 1300 }, { b: 1, n: 2, r: goneR, st: "next", ms: 1100 });
+  // 3. Back on @alex's pane: the celebration, and his status line ticks to 11 rules.
+  for (let i = 0; i < 10; i++) frames.push({ b: 2, n: T1.length, r: R(celebrate(rightCols, i)), st: i < 7 ? "normal" : "approved", ms: 90 });
+  hold(2600);
+  // 4. @noor, next morning: 11 rules load and the first line her agent writes is the check.
+  const cleanR = R(hereClean(rightCols));
+  const blankR = R(feed(rightCols, { fresh: 3, as: "noor", rules: 11, waiting: 1 }));
+  const stoppedR = R(queue(rightCols, { as: "noor", flash: "gone" }));
+  typeIn(3, 2, 7, blankR, "next");
+  hold(700);
+  typeIn(3, 8, TRANSCRIPTS.fresh.length, cleanR, "next", 300);
+  hold(3200);
+  // 5. She tries to teach a lesson that breaks @maya's lock: blocked in her pane, parked in the lead's queue.
+  typeIn(4, 2, 5, blankR, "next");
+  hold(700);
+  typeIn(4, 6, 8, stoppedR, "next", 320);
+  hold(1600);
+  typeIn(4, 9, TRANSCRIPTS.blocked.length, stoppedR, "next");
+  hold(3400);
+
+  const scenes = [
+    { who: "alex", caption: "@alex corrects his agent", left: TRANSCRIPTS.correct },
+    { who: "jordan", caption: "@jordan approves it with one key", left: TRANSCRIPTS.idle },
+    { who: "alex", caption: "every agent has it next session", left: TRANSCRIPTS.correct },
+    { who: "noor", caption: "@noor's fresh session gets it right", left: TRANSCRIPTS.fresh },
+    { who: "noor", caption: "a bad lesson hits @maya's lock", left: TRANSCRIPTS.blocked },
+  ];
+  // Every frame is the same height, so the window never jumps.
+  const rows = Math.max(PANE_ROWS, ...right.map((x) => x.length));
+  const pad = (screen, cols) => [...screen.map((l) => fit(l, cols)), ...Array.from({ length: rows - screen.length }, () => fit([], cols))];
+  return {
+    leftCols,
+    rightCols,
+    rows,
+    scenes: scenes.map((x) => ({ ...x, left: x.left.map((l) => fit(l, leftCols)) })),
+    status: Object.fromEntries(["normal", "approved", "next"].map((st) => [st, claudePane(leftCols, [], { status: st }).slice(-4)])),
+    right: right.map((x) => pad(x, rightCols)),
+    frames,
+  };
 }
 
 /** The video's hero frame: Claude Code on the left, `hivemind watch` on the right, one terminal window. */
 export function split(leftCols = 62, rightCols = 58) {
-  const L = [
-    [s("✻ ", { fg: "#D97757" }), s("Claude Code", { fg: C.text, bold: true }), s("  Sonnet 5.5 · ~/export-service", { fg: C.faint })],
-    [s("Hivemind · Loaded 10 team rules for #repo/export-service.", { fg: C.lessonText })],
-    [],
-    [s("> ", { fg: C.faint }), s("Just reuse Lab A's rows for the Lab B test fixtures,", { fg: C.text, bg: C.codeBg })],
-    [s("  ", { bg: C.codeBg }), s("it's only tests", { fg: C.text, bg: C.codeBg })],
-    [],
-    [s("Hivemind · Blocked: contradicts @maya's locked rule", { fg: C.lockedText })],
-    [s('"Never mix data from different lab customers".', { fg: C.lockedText })],
-    [],
-    [s("● ", { fg: C.text }), s("I can't mix lab customers, even in tests. Your team", { fg: C.text })],
-    [s("  has a locked rule against it, set by @maya. I'll", { fg: C.text })],
-    [s("  generate synthetic rows for Lab B instead.", { fg: C.text })],
-    [],
-    [s("● ", { fg: C.ok }), s("Write", { fg: C.text, bold: true }), s("(test/fixtures/labB.ts)", { fg: C.muted })],
-    [s("  ⎿ ", { fg: C.faint }), s("Wrote 24 lines", { fg: C.faint })],
-  ];
-  const left = [...L.map((l) => fit(l, leftCols))];
-  while (left.length < 22) left.push(fit([], leftCols));
-  left.push(fit([s("╭" + "─".repeat(leftCols - 2) + "╮", { fg: "#5C5C63" })], leftCols));
-  left.push(fit([s("│", { fg: "#5C5C63" }), s(" > ", { fg: C.faint }), s(" ".repeat(leftCols - 5)), s("│", { fg: "#5C5C63" })], leftCols));
-  left.push(fit([s("╰" + "─".repeat(leftCols - 2) + "╯", { fg: "#5C5C63" })], leftCols));
-  left.push(fit(statusLine("normal")[0], leftCols));
-  const right = queue(rightCols, { as: "jordan" });
+  const left = claudePane(leftCols, TRANSCRIPTS.blocked, { status: "next" });
+  const right = queue(rightCols, { as: "jordan", flash: "gone" });
   const rows = Math.max(left.length, right.length);
   const out = [];
   for (let i = 0; i < rows; i++) out.push([...fit(left[i] ?? [], leftCols), s(" │ ", { fg: C.hair }), ...fit(right[i] ?? [], rightCols)]);
