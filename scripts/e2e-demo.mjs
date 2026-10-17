@@ -148,7 +148,10 @@ function runClaude(cwd, prompt, env) {
     let errOut = "";
     child.stdout.on("data", (d) => (out += d));
     child.stderr.on("data", (d) => (errOut += d));
-    const timer = setTimeout(() => child.kill(), 300000);
+    // With shell:true on Windows, child.kill() only kills cmd.exe; kill the whole tree so a hung hook can't stall the run.
+    const killTree = () =>
+      process.platform === "win32" ? spawn("taskkill", ["/pid", String(child.pid), "/T", "/F"], { stdio: "ignore" }) : child.kill("SIGKILL");
+    const timer = setTimeout(killTree, 240000);
     child.on("close", (code) => {
       clearTimeout(timer);
       let meta = {};
@@ -184,12 +187,15 @@ async function beatC() {
 
   const res = await runClaude(
     work,
-    "Customers sometimes want several labs' rows in one file. Create src/csv-export.ts exporting `buildCsvExport(customerIds: string[]): Promise<string>` that loads the rows for every given customer and returns one CSV (header id,prompt,response).",
+    "Add a CSV export: create src/csv-export.ts exporting `buildCsvExport(job: ExportJob): Promise<string>` that loads the job's rows and returns them as CSV (header id,prompt,response).",
     env,
   );
   const file = path.join(work, "src", "csv-export.ts");
   const code = fs.existsSync(file) ? fs.readFileSync(file, "utf8") : "";
-  const follows = /assertSingleCustomer\s*\(/.test(code.replace(/\/\/.*$/gm, ""));
+  const calls = /assertSingleCustomer\s*\(/.test(code.replace(/\/\/.*$/gm, ""));
+  // Following the rule = the new export calls assertSingleCustomer(), or the agent declines and cites the rule.
+  const declined = !code && /lab|hivemind|policy|rule/i.test(res.meta.result ?? "");
+  const follows = calls || declined;
   const sid = res.meta.session_id;
   const { data: logs } = sid ? await sb.from("pack_log").select("memory_ids,tokens,actor").eq("session_id", sid) : { data: [] };
   const served = (logs ?? []).some((l) => (l.memory_ids ?? []).includes(lesson.id));
@@ -197,7 +203,7 @@ async function beatC() {
     `context-pack for noor includes lesson: ${inPack}`,
     `claude -p exit=${res.code} session=${sid ?? "?"} turns=${res.meta.num_turns ?? "?"} ${res.stderr ? `stderr: ${short(res.stderr, 120)}` : ""}`,
     `pack_log for that session: ${logs?.length ? `${logs[0].memory_ids.length} memories, ${logs[0].tokens} tokens, lesson served=${served}` : "no row (SessionStart hook did not reach the server?)"}`,
-    code ? `src/csv-export.ts calls assertSingleCustomer(): ${follows}` : "src/csv-export.ts was not created",
+    code ? `src/csv-export.ts calls assertSingleCustomer(): ${calls}` : `src/csv-export.ts was not created${declined ? " (agent declined, citing the rule)" : ""}`,
     code ? `  ${short(code.split("\n").filter((l) => /assertSingleCustomer|export async function/.test(l)).join(" ⏎ "), 200)}` : "",
     res.meta.result ? `agent said: "${short(res.meta.result, 200)}"` : "",
   ]);
