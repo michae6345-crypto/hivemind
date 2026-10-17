@@ -36,7 +36,7 @@ Hivemind is shared memory for AI coding agents, with a chain of command.
    attributed lesson ("Exports call `assertSingleCustomer(rows)` before writing", evidence: Alex's correction on
    `src/export.ts`). Agents can also propose lessons through MCP. Every proposal starts as ⏳ **pending**.
 2. **A human approves it.** The lead who owns that scope (team, repo) approves or rejects it in the Approvals inbox.
-   Agents can only propose. They can never approve. *(Inbox UI is on main; approve/reject routes ⏳ landing tonight.)*
+   Agents can only propose. They can never approve.
 3. **Every agent gets it.** When any engineer starts a new agent session, a SessionStart hook injects a context pack:
    locked policies first, then lessons ranked by confidence and scope, the code owners, and who else is editing the
    repo right now. It stays under 6,000 characters (Claude Code caps hook context at 10,000).
@@ -165,9 +165,9 @@ per-task table and reproduction commands: `docs/eval.md`.
 
 ## Build status (internal, delete before submitting)
 
-Checked against `origin/main` at **86cff0f, Fri Oct 16, 10:50 PM**. Only ✅ rows may be described as working in
+Checked against `origin/main` at **09e2156, Fri Oct 16, 11:00 PM**. Only ✅ rows may be described as working in
 the video or on Devpost. ⏳ rows are roadmap until they land. ✅ means the code is on main; the full run sheet has not
-been rehearsed end to end yet (it waits on approve/reject).
+been rehearsed end to end yet.
 
 | Feature | Status | Where |
 |---|---|---|
@@ -181,10 +181,10 @@ been rehearsed end to end yet (it waits on approve/reject).
 | Correction typed to the agent → pending lesson (`/api/hooks/prompt` + extractor) | ✅ | `src/app/api/hooks/prompt`, `src/lib/engine/pipeline.ts` |
 | Block a lesson that contradicts a 🔒 rule | ✅ | `src/lib/engine/pipeline.ts` |
 | Confidence update at session end (`/api/hooks/session-end`) | ✅ | `src/app/api/hooks/session-end` |
-| Cross-vendor: `hivemind init / sync / status` for Claude Code, Cursor, Gemini CLI, Copilot, Codex, Windsurf | ✅ | `cli/` |
+| Cross-vendor: `hivemind init / sync / status` and hook adapters for Claude Code, Cursor, Gemini CLI, Copilot, Codex, Windsurf | ✅ | `cli/`, `integrations/`, `hooks/adapters/` |
 | Claude chat (claude.ai, Claude Desktop) and VS Code Copilot through MCP | ✅ | `docs/integrations/` |
 | Demo reset + rehearsal scripts | ✅ | `scripts/reset-demo.mjs`, `scripts/e2e-demo.mjs` |
-| Approve / reject routes, `POST /api/memories` | ⏳ not on main (Michael, top priority) | |
+| Approve / reject (role-checked, 🔒 blocks only security can clear), `POST /api/memories` | ✅ | `src/app/api/memories/` |
 | Visible "⬢ Hivemind loaded N team rules" line at session start | ⏳ not on main (assigned) | `hooks/session-start.mjs` |
 | VS Code overlay (agent H) | ⏳ source on main; `.vsix` + README not yet | `vscode-extension/` |
 | MCP chat card (real MCP App) | ⏳ in progress; mockups are the fallback | `src/components/site/editor-mocks.tsx` |
