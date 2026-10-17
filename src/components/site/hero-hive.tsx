@@ -114,7 +114,7 @@ export function HeroHive({ evalOff, evalOn, runs }: { evalOff: number; evalOn: n
           it, every agent on the team follows it from its next session: Claude Code, Cursor, Codex, Copilot and Gemini CLI.
         </motion.p>
         <motion.div variants={rise} className="mt-8 flex flex-wrap justify-center gap-3 lg:justify-start">
-          <a href="#demo" className="hm-pill hm-pill-primary h-11 px-5 text-[14px]">
+          <a href="#how" className="hm-pill hm-pill-primary h-11 px-5 text-[14px]">
             <Play className="size-4 fill-current" /> Watch it work
           </a>
           <Link href="/app" className="hm-pill hm-glass hm-pill-glass h-11 px-5 text-[14px]">

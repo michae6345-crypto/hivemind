@@ -9,14 +9,14 @@ import screens from "./watch-screens.json";
 // Michael's CLI follows), rendered by render-mock.mjs into watch-screens.json with the site's demo names. Don't edit
 // the JSON by hand: change the reference and re-run render-mock.mjs.
 
-type Seg = { t: string; fg?: string; bg?: string; bold?: boolean; ul?: boolean };
-type Screen = Seg[][];
+export type Seg = { t: string; fg?: string; bg?: string; bold?: boolean; ul?: boolean };
+export type Screen = Seg[][];
 
 const MONO = { fontFamily: 'ui-monospace, "SF Mono", Menlo, Consolas, var(--font-geist-mono), monospace' } as const;
 // Glyphs browsers draw from fallback fonts at their own widths; pinned to one cell so the grid holds.
 const PIN = /([⬢●○▎⏺⎿‹›…▍✻])/;
 
-function Line({ line }: { line: Seg[] }) {
+export function TermLine({ line }: { line: Seg[] }) {
   return (
     <div className="min-h-[1.4em] whitespace-pre">
       {line.map((x, i) => {
@@ -59,7 +59,7 @@ export function TermWindow({ title, lines, className, size = "md" }: { title: st
         style={MONO}
       >
         {lines.map((l, i) => (
-          <Line key={i} line={l} />
+          <TermLine key={i} line={l} />
         ))}
       </div>
     </div>

@@ -1,22 +1,20 @@
 "use client";
 
 import Link from "next/link";
-import { Fragment, useRef, type ReactNode } from "react";
+import { Fragment, type ReactNode } from "react";
 import { ArrowRight, Lock, ShieldX } from "lucide-react";
-import { MotionConfig, motion, useScroll, useTransform, type Variants } from "motion/react";
+import { MotionConfig, motion, type Variants } from "motion/react";
 import { Logo, Wordmark } from "@/components/hm/bits";
 import { WORKS_WITH } from "@/components/hm/activity";
 import { evalDetail } from "@/mocks/data";
 import { cn } from "@/components/hm/utils";
 import { Dither } from "./dither";
-import { MacDesktop } from "./mac-desktop";
 import { HeroHive } from "./hero-hive";
-import { ScrollStory } from "./scroll-story";
-import { WatchPair, WatchStory } from "./watch-terminal";
-import { HIVE, LESSON, LOCKED_RULE, PROMPTS } from "./demo-script";
+import { HowItWorksPinned } from "./how-it-works";
+import { UnderTheHood } from "./under-the-hood";
+import { WatchStory } from "./watch-terminal";
+import { LOCKED_RULE, PROMPTS } from "./demo-script";
 import { Note } from "./notes";
-import { Structure } from "./structure";
-import { CheckMock, InitMock, WhileWorking } from "./live-work";
 
 const EASE = [0.22, 1, 0.36, 1] as const;
 
@@ -41,10 +39,8 @@ export function Site() {
         <Nav />
         <Hero />
         <HowItWorks />
-        <Built />
-        <WhileTheyWork />
-        <InYourTerminal />
         <LockedRules />
+        <UnderHood />
         <Results />
         <Closing />
         <Footer />
@@ -76,8 +72,7 @@ function Nav() {
         <nav className="hm-glass hm-glass-strong hidden items-center gap-1 rounded-full p-1 text-[13.5px] md:flex">
           {[
             ["How it works", "#how"],
-            ["How it's built", "#built"],
-            ["In your terminal", "#terminal"],
+            ["Under the hood", "#hood"],
             ["Results", "#results"],
           ].map(([label, href]) => (
             <a
@@ -98,37 +93,10 @@ function Nav() {
 }
 
 function Hero() {
-  const screen = useRef<HTMLDivElement>(null);
-  const { scrollYProgress } = useScroll({ target: screen, offset: ["start end", "start 0.25"] });
-  const scale = useTransform(scrollYProgress, [0, 1], [0.92, 1]);
-  const shadow = useTransform(
-    scrollYProgress,
-    [0, 1],
-    ["0 10px 30px -10px rgba(15,23,42,0.12)", "0 40px 90px -20px rgba(15,23,42,0.35)"],
-  );
-
   return (
     <section id="top" className="px-4 pt-28 sm:pt-32">
       <HeroHive evalOff={evalDetail.targetViolations.off} evalOn={evalDetail.targetViolations.on} runs={evalDetail.n.off} />
-
-      <p className="mx-auto mt-24 max-w-[60ch] text-center text-[15px] leading-relaxed text-muted">
-        <span className="font-medium text-fg">The same thing in a real terminal.</span>{" "}
-        <span className="hm-chip" data-kind="person">@kevin</span> corrects Claude Code,{" "}
-        <span className="hm-chip" data-kind="person">@ben</span> approves, and{" "}
-        <span className="hm-chip" data-kind="person">@emily</span>&apos;s next session gets it right the first time.
-      </p>
-      <motion.div
-        id="demo"
-        ref={screen}
-        style={{ scale, boxShadow: shadow }}
-        initial={{ opacity: 0, y: 24 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 1.1, ease: EASE, delay: 0.45 }}
-        className="mx-auto mt-8 max-w-[1120px] scroll-mt-24 rounded-[22px]"
-      >
-        <MacDesktop />
-      </motion.div>
-      <p className="mx-auto mt-6 max-w-[64ch] text-center font-mono text-[12px] leading-relaxed text-muted">
+      <p className="mx-auto mt-16 max-w-[64ch] text-center font-mono text-[12px] leading-relaxed text-muted">
         We built Hivemind for AI training-data teams like AfterQuery&apos;s. The company in the demo, Meridian Data, is
         fictional.
       </p>
@@ -190,70 +158,25 @@ function Words({ text }: { text: string }) {
 
 // ── How it works ────────────────────────────────────────────────────────────
 
+// The story is told once: the split terminal (Claude Code | hivemind watch), pinned and played by scroll on desktop,
+// playing by itself on smaller screens.
 function HowItWorks() {
   return (
     <section id="how" className="pt-24 lg:pt-16">
-      {/* Desktop: the pinned, scroll-played story. Below lg: the headline and three step cards. */}
-      <ScrollStory />
+      <HowItWorksPinned />
       <div className="px-4 pt-8 lg:hidden">
-        <SectionHead one="One correction." two="The whole team learns it.">
-          Agents only propose. A person approves. Then it&apos;s in every session.
+        <SectionHead one="How it works." two="One correction, every agent.">
+          Claude Code on the left, <code className="font-mono text-[15px] text-fg">hivemind watch</code> on the right.
         </SectionHead>
-        <StepCards />
+        <Reveal className="mt-10">
+          <WatchStory />
+        </Reveal>
       </div>
-
-      <Reveal className="mx-auto mt-14 max-w-[1120px] px-4 lg:mt-4">
-        <HiveStates />
-      </Reveal>
     </section>
   );
 }
 
-function StepCards() {
-  return (
-      <div className="mx-auto mt-10 grid max-w-[1120px] gap-5 md:grid-cols-3">
-        <Reveal className="hm-card p-6" delay={0}>
-          <Step n={1} title="Kevin corrects their agent" />
-          <div className="mt-4 rounded-[10px] bg-window p-3.5 text-[12px] leading-[1.6] text-[var(--win-text)]" style={{ fontFamily: "var(--font-geist-mono), monospace" }}>
-            <div className="text-[var(--win-muted)]">&gt; {PROMPTS.alexCorrect}</div>
-            <div className="mt-1.5 text-[var(--win-honey)]">{HIVE.lessonCaptured(LESSON, "@ben")}</div>
-          </div>
-        </Reveal>
-        <Reveal className="hm-card p-6" delay={0.08}>
-          <Step n={2} title="Ben approves it" />
-          <div className="mt-4 rounded-[12px] p-3.5 shadow-[0_0_0_1px_var(--border)]">
-            <div className="flex items-center gap-2 text-[12px] text-muted">
-              <span className="size-2 rounded-full bg-honey" /> From Kevin&apos;s correction
-            </div>
-            <div className="mt-1.5 text-[14px] font-semibold">{LESSON}</div>
-            <div className="mt-3 flex gap-1.5">
-              <span className="hm-pill hm-pill-primary h-8 px-3.5 text-[12.5px]">Approve</span>
-              <span className="hm-pill hm-glass h-8 px-3.5 text-[12.5px]">Reject</span>
-            </div>
-          </div>
-        </Reveal>
-        <Reveal className="hm-card p-6" delay={0.16}>
-          <Step n={3} title="Emily's agent gets it right first time" />
-          <div className="mt-4 rounded-[10px] bg-window p-3.5 text-[12px] leading-[1.6] text-[var(--win-text)]" style={{ fontFamily: "var(--font-geist-mono), monospace" }}>
-            <div className="text-[var(--win-muted)]">+ export function writeJsonExport(rows) {"{"}</div>
-            <div className="-mx-1 rounded bg-[#f5a52422] px-1 shadow-[inset_2px_0_0_var(--win-honey)]">+   assertSingleCustomer(rows);</div>
-            <div className="text-[var(--win-muted)]">+   fs.writeFileSync(path, json);</div>
-          </div>
-        </Reveal>
-      </div>
-  );
-}
-
-function Step({ n, title }: { n: number; title: string }) {
-  return (
-    <div className="flex items-center gap-3">
-      <span className="flex size-7 items-center justify-center rounded-full bg-fg text-[12.5px] font-semibold text-white">{n}</span>
-      <span className="text-[15px] font-semibold">{title}</span>
-    </div>
-  );
-}
-
-// The "three states" hive: at rest → learning → everyone knows.
+// The small hive in the closing section.
 const R = 15;
 const hex = (cx: number, cy: number, r: number) =>
   "M" +
@@ -267,143 +190,6 @@ const H = 1.5 * R + 2.2;
 const CELLS: [number, number][] = [
   [0, 0], [1, 0], [0, -1], [-1, 0], [-1, 1], [0, 1], [1, -1],
 ];
-const AGENTS: [number, number][] = [
-  [-62, -40], [62, -44], [70, 30], [-66, 36], [0, 70], [2, -72],
-];
-
-function HiveStates() {
-  const states = [
-    { label: "At rest", note: "Every agent loads the team's lessons." },
-    { label: "Learning", note: "A correction becomes a lesson, waiting on a lead." },
-    { label: "Everyone knows", note: "Approved. Every agent has it next session." },
-  ];
-  return (
-    <div className="hm-card grid gap-6 p-6 md:grid-cols-3 md:gap-2">
-      {states.map((s, i) => (
-        <div key={s.label} className="flex flex-col items-center text-center">
-          <svg viewBox="-90 -90 180 180" className="h-40 w-40 overflow-visible" aria-hidden>
-            {AGENTS.map(([x, y], k) => (
-              <motion.circle
-                key={k}
-                cx={x}
-                cy={y}
-                r={4}
-                initial={false}
-                whileInView={i === 2 ? { fill: ["#d4d7dd", "#e09a2b"] } : undefined}
-                viewport={{ once: true }}
-                transition={{ delay: 0.9 + k * 0.08, duration: 0.4 }}
-                fill={i === 2 ? "#e09a2b" : "#d4d7dd"}
-              />
-            ))}
-            {CELLS.map(([q, r], k) => {
-              const x = W * (q + r / 2);
-              const y = H * r;
-              const isNew = k === 6;
-              if (isNew && i === 0) return <path key={k} d={hex(x, y, R)} fill="none" stroke="var(--border)" />;
-              if (isNew && i === 1)
-                return (
-                  <path key={k} d={hex(x, y, R)} fill="#fff" stroke="var(--honey)" strokeWidth={1.4} strokeDasharray="3 2.5" className="hm-cell-wait" />
-                );
-              const locked = k === 0;
-              return (
-                <g key={k}>
-                  {isNew && i === 2 ? (
-                    <motion.path
-                      d={hex(x, y, R)}
-                      fill="none"
-                      stroke="var(--honey)"
-                      initial={{ scale: 1, opacity: 0 }}
-                      whileInView={{ scale: [1, 3.4], opacity: [0.8, 0] }}
-                      viewport={{ once: true }}
-                      transition={{ duration: 1.3, delay: 0.5, ease: EASE }}
-                      style={{ transformOrigin: `${x}px ${y}px`, transformBox: "view-box" }}
-                    />
-                  ) : null}
-                  <path d={hex(x, y, R)} fill="#fff" stroke={locked ? "var(--chip-lock)" : "var(--honey)"} strokeOpacity={locked ? 0.9 : 0.5} />
-                  <path d={hex(x, y, R * (locked ? 0.6 : 0.62))} fill={locked ? "var(--chip-lock)" : "var(--honey)"} />
-                </g>
-              );
-            })}
-          </svg>
-          <div className="mt-1 text-[14px] font-semibold">
-            <span className="mr-1.5 text-muted tabular-nums">{i + 1}.</span>
-            {s.label}
-          </div>
-          <p className="mt-1 max-w-[30ch] text-[13px] text-muted">{s.note}</p>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-// ── How it's built ─────────────────────────────────────────────────────────
-
-function Built() {
-  return (
-    <section className="px-4 pt-32">
-      <SectionHead id="built" one="How it's built." two="From the company to one lesson.">
-        Lessons live at the level they apply to. An agent loads its whole chain, locked rules first.
-      </SectionHead>
-      <Reveal className="mt-12">
-        <Structure />
-      </Reveal>
-    </section>
-  );
-}
-
-// ── While they work ─────────────────────────────────────────────────────────
-
-function WhileTheyWork() {
-  return (
-    <section className="px-4 pt-32 pb-10">
-      <SectionHead id="live" one="It watches while agents work." two="Two agents, one file: they find out.">
-        Every edit is recorded. If another engineer&apos;s agent touched the same file in the last 10 minutes, the next
-        agent is told before it edits.
-      </SectionHead>
-      <Reveal className="mt-20">
-        <WhileWorking />
-      </Reveal>
-    </section>
-  );
-}
-
-// ── In your terminal ────────────────────────────────────────────────────────
-
-// Since Michael's 17 Oct pivot the product surface is the terminal: `hivemind watch` in a pane next to the agent.
-// The windows are rendered from public/brand/terminal/tui-reference.mjs (see watch-terminal.tsx).
-function InYourTerminal() {
-  return (
-    <section className="px-4 pt-32">
-      <SectionHead id="terminal" one="It lives in your terminal." two="Next to any agent.">
-        <code className="rounded bg-panel px-1 font-mono text-[14px] text-fg">hivemind watch</code> runs in a split pane beside
-        Claude Code, Cursor, Codex or Gemini CLI. It flags a save that breaks a team rule, shows where every rule came from,
-        and holds the approval queue.
-      </SectionHead>
-      <Reveal className="mt-16">
-        <WatchStory />
-      </Reveal>
-      <Reveal className="relative mt-16">
-        <WatchPair />
-        <Note dir="up-right" className="absolute -bottom-14 left-[8%] hidden lg:flex" width={240} tone="rose" delay={0.3}>
-          a save that breaks a rule, underlined where it breaks
-        </Note>
-        <Note dir="up-left" className="absolute -bottom-14 right-[10%] hidden lg:flex" width={200} tone="honey" delay={0.6}>
-          and when your lesson is approved
-        </Note>
-      </Reveal>
-      <Reveal className="relative mx-auto mt-24 max-w-[1120px]">
-        <p className="mb-4 text-center text-[15px] text-muted">
-          One command connects a repo to the agents it already uses:{" "}
-          <code className="rounded bg-panel px-1 font-mono text-[14px] text-fg">hivemind init</code>
-        </p>
-        <InitMock />
-        <Note dir="up-left" className="absolute -bottom-12 left-[26%] hidden lg:flex" width={260} delay={0.4}>
-          finds the agents a repo already uses, by their files
-        </Note>
-      </Reveal>
-    </section>
-  );
-}
 
 // ── Locked rules ────────────────────────────────────────────────────────────
 
@@ -464,21 +250,23 @@ function LockedRules() {
           <Note dir="up-left" className="absolute top-1 left-[8%]" width={250} tone="rose" delay={1.2}>
             a model and a plain-code guard both check. either one can block it
           </Note>
-          <Note dir="up-right" className="absolute top-1 right-[6%]" width={170} delay={1.5}>
-            only Security can change it
-          </Note>
         </div>
       </Reveal>
-      <Reveal className="relative mx-auto mt-10 max-w-[900px]">
-        <p className="mb-4 text-center text-[15px] text-muted">
-          In the code, too: as a pre-commit hook,{" "}
-          <code className="rounded bg-panel px-1 font-mono text-[14px] text-fg">hivemind check --staged</code> stops a commit that breaks a 🔒 rule.
-        </p>
-        <CheckMock />
-        <Note dir="up-left" className="absolute -bottom-12 left-[40%] hidden lg:flex" width={250} tone="rose" delay={1.4}>
-          exits 1 while a 🔒 rule is broken, so it works as a pre-commit hook
-        </Note>
-      </Reveal>
+    </section>
+  );
+}
+
+// ── Under the hood ──────────────────────────────────────────────────────────
+
+function UnderHood() {
+  return (
+    <section className="px-4 pt-32">
+      <SectionHead id="hood" one="Under the hood." two="What it does while you work.">
+        Four things that happen without anyone asking.
+      </SectionHead>
+      <div className="mt-14">
+        <UnderTheHood />
+      </div>
     </section>
   );
 }
@@ -577,7 +365,7 @@ function Closing() {
           <PillLink href="/app" primary>
             Open the app <ArrowRight className="size-4" />
           </PillLink>
-          <PillLink href="#demo">Watch the demo</PillLink>
+          <PillLink href="#how">Watch the demo</PillLink>
         </div>
       </Reveal>
     </section>
