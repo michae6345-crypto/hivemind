@@ -4,6 +4,7 @@
 //   node scripts/e2e-demo.mjs                         # all beats against http://localhost:3104
 //   node scripts/e2e-demo.mjs --base https://<app>.vercel.app --beats a,b,d,e
 //   node scripts/e2e-demo.mjs --skip-claude           # beat (c) checks the pack only, no headless claude run
+//   node scripts/e2e-demo.mjs --beats c --lesson sec-lab-isolation   # (c) alone, against an existing active memory
 //
 // (a) Sam corrects the agent → POST /api/hooks/prompt → a pending lesson about assertSingleCustomer
 // (b) engineer approve → 403; Jordan (lead) approve → active
@@ -250,6 +251,13 @@ async function beatE() {
 }
 
 await health();
+// --lesson <slug>: run (c) against an existing active memory (e.g. the 🔒 sec-lab-isolation rule) without (a)/(b)
+const LESSON_SLUG = arg("lesson", "");
+if (LESSON_SLUG) {
+  const r = await call("GET", "/api/memories?status=active");
+  lesson = (r.json?.memories ?? []).find((m) => m.slug === LESSON_SLUG) ?? null;
+  console.log(lesson ? `using active memory ${lesson.slug} for (c)` : `✗ no active memory with slug ${LESSON_SLUG}`);
+}
 const BEAT_FNS = { a: beatA, b: beatB, c: beatC, d: beatD, e: beatE };
 for (const b of BEATS) await BEAT_FNS[b]?.();
 
