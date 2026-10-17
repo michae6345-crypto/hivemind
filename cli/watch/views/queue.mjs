@@ -1,113 +1,111 @@
-// Queue (owner: I), role-aware. Leads and security: WAITING ON YOU (a approves, r rejects; the card flashes green and
-// folds away, and if it was your own lesson the hex seal plays) plus STOPPED BY A LOCKED RULE. Engineers: YOUR LESSONS
-// with where each one stands. j/k move, enter opens, p switches persona (alex, noor, jordan, maya) for the demo.
-import { COLOR } from "../theme.mjs";
+// Queue (owner: I), role-aware, public/brand/terminal/terminal-spec.md "Queue (lead / engineer)".
+// Leads and security: WAITING ON YOU cards (title, quote, scope + age, "proposed by @alex's Claude Code agent", a
+// conflicts line, then `a approve   r reject`), WAITING ON SOMEONE ELSE, and STOPPED BY A LOCKED RULE. On approve the
+// card's wash goes green ("Approved · in every agent's next session") for ~600 ms, then it's removed; if the lesson was
+// yours the hex seal plays. Engineers: YOUR LESSONS with where each stands, then what's waiting on a lead.
+// 403s become plain sentences. j/k move · a/r decide · enter opens · p switches persona (alex, noor, jordan, maya).
 import { wrap } from "../term.mjs";
 import {
-  agentOf, allMemories, approval, approverOf, canDecide, isMine, origin, ownerHandle, plain403, quoteOf, ROLE,
-  staleExtra, switchPersona,
+  age, agentOf, allMemories, approval, approverOf, atoms, C, canDecide, isMine, origin, ownerHandle, plain403,
+  quoteOf, staleExtra, switchPersona,
 } from "./rulekit.mjs";
 
-const FLASH_MS = 320;
-const FOLD_MS = 300;
+const FLASH_MS = 600;
 const view = (state) => (state.view.queue ??= { index: 0, leaving: null, notes: {} });
-const strike = (s) => (COLOR ? `\x1b[9m${s}\x1b[29m` : s);
 const decider = (state) => state.role === "lead" || state.role === "security";
 
-/** { sections: [{ key, title, cards: [{ m, act }] }], cards: flat selectable list } */
+/** Sections of cards; `act` = this person can approve/reject it here. */
 function model(state, ctx) {
   const chain = new Set(state.chain ?? []);
   const all = allMemories(state, ctx);
   const inChain = (m) => chain.has(m.scopeId) || m.scopeId === `personal/${state.actor}`;
   const newest = (a, b) => Date.parse(b.updatedAt ?? b.createdAt) - Date.parse(a.updatedAt ?? a.createdAt);
+  const pool = state.role === "security" ? all : all.filter(inChain);
   const sections = [];
   if (decider(state)) {
-    const pool = state.role === "security" ? all : all.filter(inChain);
     sections.push({ key: "you", title: "WAITING ON YOU", cards: pool.filter((m) => m.status === "pending" && canDecide(m, state)).sort(newest).map((m) => ({ m, act: true })) });
-    const others = all.filter((m) => m.status === "pending" && inChain(m) && !canDecide(m, state)).sort(newest);
+    const others = pool.filter((m) => m.status === "pending" && !canDecide(m, state)).sort(newest);
     if (others.length) sections.push({ key: "others", title: "WAITING ON SOMEONE ELSE", cards: others.map((m) => ({ m, act: false })) });
-    sections.push({
-      key: "blocked",
-      title: "STOPPED BY A LOCKED RULE",
-      cards: pool.filter((m) => m.status === "blocked").sort(newest).map((m) => ({ m, act: state.role === "security" })),
-    });
   } else {
-    const mine = all.filter((m) => isMine(m, state.actor) && m.kind !== "owner").sort(newest);
+    const mine = all.filter((m) => isMine(m, state.actor) && m.kind !== "owner" && m.status !== "blocked").sort(newest);
     sections.push({ key: "mine", title: "YOUR LESSONS", cards: mine.map((m) => ({ m, act: false })) });
+    const waiting = pool.filter((m) => m.status === "pending" && !isMine(m, state.actor)).sort(newest);
+    if (waiting.length) sections.push({ key: "lead", title: "WAITING ON A LEAD", cards: waiting.map((m) => ({ m, act: false })) });
   }
+  sections.push({
+    key: "blocked",
+    title: "STOPPED BY A LOCKED RULE",
+    cards: pool.filter((m) => m.status === "blocked").sort(newest).map((m) => ({ m, act: state.role === "security" })),
+  });
   return { sections, cards: sections.flatMap((s) => s.cards) };
 }
 
-function statusLine(m, state, ctx) {
+/** "@alex's Claude Code agent" / "you" / "an agent"; the tool is plain faint text (spec §4). */
+function proposer(m, state, ctx, a) {
   const { t } = ctx.theme;
-  const th = ctx.theme;
-  if (m.status === "pending") return `${t.lessonText("waiting on")} ${th.handleChip(approverOf(m.scopeId, state))}`;
-  if (m.status === "blocked") return t.lockedText("blocked by a locked rule");
-  if (m.status === "rejected") return t.muted("rejected");
-  const a = approval(m);
-  return a ? `${t.ok("live")}${t.faint(" · approved by ")}${th.handleChip(a.actor)}` : t.ok("live");
+  const tool = ctx.theme.toolName(agentOf(m, state));
+  const who = ownerHandle(m);
+  if (who === state.actor) return t.text("you") + (tool ? t.faint(` via ${tool}`) : "");
+  if (!who || String(who).startsWith("agent")) return t.muted(tool ? `a ${tool} agent` : "an agent");
+  return `${a.handle(who, { pos: !!tool })}${tool ? t.faint(` ${tool} agent`) : ""}`;
 }
 
-/** Lines for one card (bar added by the caller). */
-function cardLines(m, act, state, ctx, w) {
+/** Lines of one card (without the left rule). */
+function card(m, act, state, ctx, a, w, flash) {
   const th = ctx.theme;
   const { t } = th;
   const o = origin(m);
-  const who = ownerHandle(m);
-  const tool = th.toolName(agentOf(m, state));
-  const when = relTime(o?.at ?? m.createdAt, ctx.now);
-  const head = `${isMine(m, state.actor) ? t.text("you") : String(who).startsWith("agent") ? t.muted("an agent") : th.handleChip(who)}${tool ? " " + th.badge(tool) : ""}${t.faint(`  ${when}`)}`;
-  const lines = [head];
-  const title = th.rich(th.plain(m.title), { base: (s) => th.bold(t.text(s)) });
-  lines.push(m.status === "blocked" || m.status === "rejected" ? strike(title) : title);
-  const q = quoteOf(m);
-  if (q) lines.push(...wrap(th.ital(t.muted(`"${th.plain(q)}"`)), w, 2));
-
-  // scope + conflicts
-  let conflict;
+  const lines = [];
   if (m.status === "blocked") {
+    lines.push(a.title(m, { base: (s) => th.bold(t.muted(s)) }));
     const slug = String(m.blockedReason ?? "").match(/\[\[([^\]]+)\]\]/)?.[1];
     const rule = slug ? allMemories(state, ctx).find((x) => x.slug === slug) : null;
-    conflict = rule ? `${t.lockedText("contradicts ")}${t.handle(`@${rule.author}`)}${t.lockedText(`'s "${th.plain(rule.title)}"`)}` : t.lockedText(th.plain(m.blockedReason ?? "contradicts a locked rule"));
-  } else if (m.blockedReason) conflict = t.lockedText(`conflicts: ${th.plain(m.blockedReason)}`);
-  else {
-    const locked = (state.rules ?? []).filter((r) => r.locked).length;
-    conflict = m.status !== "pending" ? "" : t.faint(locked ? `no conflict with the ${locked} locked rule${locked === 1 ? "" : "s"}` : "no conflict with locked rules");
+    lines.push(
+      rule
+        ? `${t.lockedText("Blocked: contradicts ")}${a.handle(rule.author, { pos: true })}${t.lockedText(" locked rule")}`
+        : t.lockedText(`Blocked: ${th.plain(m.blockedReason ?? "contradicts a locked rule")}`),
+    );
+    lines.push(`${t.faint("from ")}${proposer(m, state, ctx, a)}${t.faint(`  ${age(o?.at ?? m.createdAt, ctx.now)}`)}`);
+    if (flash) lines.push(th.bold(t.muted(flash === "approve" ? "Let through" : "Dismissed")));
+    else lines.push(act ? `${a.chromeText("a")}${t.faint(" let it through   ")}${a.chromeText("r")}${t.faint(" dismiss")}` : t.faint("only security can let it through"));
+    return lines;
   }
-  lines.push(`${th.scopeChip(m.scopeId)}${conflict ? th.sep() + conflict : ""}`);
-  if (m.status !== "blocked" && (!act || m.status !== "pending")) lines.push(statusLine(m, state, ctx));
+  lines.push(a.title(m));
+  const q = quoteOf(m);
+  if (q) lines.push(...wrap(t.muted(`"${th.plain(q)}"`), w - 2, 2));
+  lines.push(`${a.scope(m.scopeId)}${t.faint(`  ${age(o?.at ?? m.createdAt, ctx.now)}`)}`);
+  lines.push(`${t.faint("proposed by ")}${proposer(m, state, ctx, a)}`);
+  if (m.status === "pending") {
+    const locked = (state.rules ?? []).filter((r) => r.locked).length;
+    lines.push(
+      m.blockedReason
+        ? t.lockedText(`conflicts: ${th.plain(m.blockedReason)}`)
+        : t.faint(locked ? `no conflict with the ${locked} locked rule${locked === 1 ? "" : "s"}` : "no conflict with a locked rule"),
+    );
+  }
+  if (flash) lines.push(flash === "approve" ? `${th.bold(a.ok("Approved"))}${a.ok(" · in every agent's next session")}` : th.bold(t.muted("Rejected")));
+  else if (m.status === "pending")
+    lines.push(act ? `${a.chromeText("a")}${t.faint(" approve   ")}${a.chromeText("r")}${t.faint(" reject")}` : `${t.faint("Waiting on ")}${a.handle(approverOf(m.scopeId, state))}`);
+  else if (m.status === "active") {
+    const ap = approval(m);
+    lines.push(`${a.ok("Live")}${ap ? `${t.faint(" · approved by ")}${a.handle(ap.actor)}` : ""}${t.faint(" · in every agent's context")}`);
+  } else if (m.status === "rejected") lines.push(t.muted("Rejected"));
   return lines;
-}
-
-function relTime(iso, now) {
-  const s = Math.max(0, (now - Date.parse(iso)) / 1000);
-  if (s < 45) return "just now";
-  if (s < 3600) return `${Math.round(s / 60)}m ago`;
-  if (s < 86400) return `${Math.round(s / 3600)}h ago`;
-  return `${Math.round(s / 86400)}d ago`;
 }
 
 async function decide(m, how, state, ctx) {
   const v = view(state);
   delete v.notes[m.id];
   try {
-    const res = await ctx.actions.busy(how === "approve" ? "Approving" : "Rejecting", () =>
-      how === "approve" ? ctx.api.approve(m.id) : ctx.api.reject(m.id),
-    );
+    const res = await ctx.actions.busy(how === "approve" ? "Approving" : "Rejecting", () => (how === "approve" ? ctx.api.approve(m.id) : ctx.api.reject(m.id)));
     v.leaving = { id: m.id, at: Date.now(), how };
-    ctx.actions.animate(FLASH_MS + FOLD_MS + 100);
-    const title = ctx.theme.plain(m.title);
-    ctx.actions.toast(
-      how === "approve" ? `Approved "${title}". Every agent on #${m.scopeId} gets it next session.` : `Rejected "${title}".`,
-      how === "approve" ? "ok" : "muted",
-      3500,
-    );
+    ctx.actions.animate(FLASH_MS + 100);
     if (how === "approve" && isMine(m, state.actor)) ctx.actions.celebrate(res?.id ? res : { ...m, status: "active" });
     setTimeout(() => {
       v.leaving = null;
       staleExtra(state);
       ctx.actions.refresh();
-    }, FLASH_MS + FOLD_MS + 50);
+    }, FLASH_MS);
   } catch (e) {
     const msg = plain403(e, m, state, ctx);
     v.notes[m.id] = msg;
@@ -120,58 +118,53 @@ export default {
   title: "Queue",
   count: (state) => {
     const ms = state.memories ?? [];
-    if (decider(state)) return ms.filter((m) => m.status === "pending" && canDecide(m, state)).length || null;
-    return ms.filter((m) => m.status === "pending" && isMine(m, state.actor)).length || null;
+    return (decider(state) ? ms.filter((m) => m.status === "pending" && canDecide(m, state)) : ms.filter((m) => m.status === "pending")).length || null;
   },
   keys: (state) =>
     decider(state)
-      ? [["j/k", "move"], ["a", "approve"], ["r", state.role === "security" ? "reject/dismiss" : "reject"], ["enter", "open"], ["p", "persona"]]
+      ? [["a", "approve"], ["r", "reject"], ["j/k", "move"], ["enter", "open"], ["p", "persona"]]
       : [["j/k", "move"], ["enter", "open"], ["p", "persona"]],
 
   render(state, ctx) {
     const th = ctx.theme;
     const { t } = th;
     const w = ctx.width;
+    const a = atoms(state, ctx);
     const v = view(state);
     const { sections, cards } = model(state, ctx);
+    if (v.leaving && ctx.now - v.leaving.at > FLASH_MS) v.leaving = null;
     v.index = Math.max(0, Math.min(v.index, cards.length - 1));
     const sel = cards[v.index]?.m;
-    const persona = `${t.faint("viewing as ")}${th.handleChip(state.actor)}${t.faint(` ${ROLE[state.role] ?? state.role}  p switch `)}`;
 
-    const out = [th.spread("", persona, w)];
-    let selLine = 0;
+    const out = [];
+    let selFrom = 0;
+    let selTo = 0;
     for (const s of sections) {
       if (!s.cards.length && s.key !== "you" && s.key !== "mine") continue;
-      const tone = s.key === "blocked" ? th.label("blocked", s.title) : s.key === "you" ? th.label("you") : th.bold(t.muted(s.title));
-      out.push(th.clip(` ${tone}${t.faint(` ${s.cards.length}`)}`, w));
+      if (out.length) out.push("");
+      out.push(a.section(s.title, s.cards.length));
+      out.push("");
       if (!s.cards.length) {
-        out.push(th.clip(`   ${t.muted(s.key === "mine" ? "You haven't taught Hivemind anything yet. Press t, or correct an agent." : "Nothing waiting.")}`, w));
-        if (s.key === "you") out.push(th.clip(`   ${t.faint("Every lesson has an owner's sign-off.")}`, w));
-        out.push("");
+        out.push(t.muted(s.key === "mine" ? "You haven't taught Hivemind anything yet." : "Nothing waiting."));
+        out.push(t.faint(s.key === "mine" ? "Correct an agent, or press t." : "Every lesson has an owner's sign-off."));
         continue;
       }
-      for (const { m, act } of s.cards) {
-        const isSel = m === sel;
-        const lv = v.leaving?.id === m.id ? v.leaving : null;
-        const age = lv ? ctx.now - lv.at : 0;
-        if (lv && age > FLASH_MS + FOLD_MS) continue;
-        let lines = cardLines(m, act, state, ctx, w - 4);
+      s.cards.forEach(({ m, act }, i) => {
+        const flash = v.leaving?.id === m.id ? v.leaving.how : null;
+        const isSel = m === sel && !flash;
+        const bg = flash === "approve" ? C.okBg : isSel ? C.selBg : null;
+        const rule = flash === "approve" ? a.ok("▎ ") : isSel ? a.chrome("▎ ") : m.status === "blocked" || m.locked ? t.locked("▎ ") : t.lesson("▎ ");
+        const lines = card(m, act, state, ctx, a, w, flash);
         if (v.notes[m.id]) lines.push(t.lockedText(v.notes[m.id]));
-        if (lv) {
-          const word = lv.how === "approve" ? th.bold(t.ok("APPROVED")) : th.bold(t.muted("REJECTED"));
-          lines = [word, ...lines.slice(1)];
-          if (age > FLASH_MS) lines = lines.slice(0, Math.max(0, Math.round(lines.length * (1 - th.ease((age - FLASH_MS) / FOLD_MS)))));
-        }
-        const barCol = lv ? (lv.how === "approve" ? t.ok : t.faint) : isSel ? t.blue : m.status === "blocked" ? t.locked : m.status === "pending" ? t.lesson : t.hair;
-        const bar = barCol(isSel || lv ? "┃" : "│");
-        if (isSel) selLine = out.length;
-        for (const l of lines) out.push(th.clip(` ${bar} ${l}`, w));
-        if (lines.length) out.push("");
-      }
+        if (isSel) selFrom = out.length;
+        lines.forEach((l, j) => out.push(a.wash((j === 0 ? rule : "  ") + l, bg, w)));
+        if (isSel) selTo = out.length;
+        if (i < s.cards.length - 1) out.push("");
+      });
     }
     const room = Math.max(3, ctx.height);
-    const start = Math.max(0, Math.min(selLine - 1, out.length - room));
-    return start ? [out[0], ...out.slice(start + 1, start + room)] : out.slice(0, room);
+    const start = selTo > room ? Math.min(selFrom - 2, out.length - room) : 0;
+    return out.slice(Math.max(0, start), Math.max(0, start) + room).map((l) => th.clip(l, w));
   },
 
   onKey(key, state, ctx) {
@@ -182,11 +175,15 @@ export default {
     if (key.name === "p") return switchPersona(state, ctx), true;
     const c = cards[v.index];
     if (!c) return false;
-    if (key.name === "return" || key.name === "enter") return ctx.actions.openDetail(c.m.id), true;
+    if (key.name === "return" || key.name === "enter") {
+      (state.view.detail ??= {}).from = "Queue";
+      ctx.actions.openDetail(c.m.id);
+      return true;
+    }
     if (key.name === "a" || key.name === "r") {
       if (v.leaving) return true;
       if (!decider(state)) {
-        const msg = `You can't ${key.name === "a" ? "approve" : "reject"} lessons as an engineer. @${approverOf(c.m.scopeId, state)} decides.`;
+        const msg = `Engineers can't ${key.name === "a" ? "approve" : "reject"} lessons. @${approverOf(c.m.scopeId, state)} decides this one.`;
         v.notes[c.m.id] = msg;
         ctx.actions.toast(msg, "locked", 4000);
         return true;

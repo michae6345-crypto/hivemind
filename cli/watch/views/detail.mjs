@@ -1,13 +1,16 @@
-// Rule detail (owner: I): one rule over the current tab, provenance first. Kind label, title, rule text, a facts row,
-// then the timeline of how it got here (correction → proposed → approved → reached) or, for locked rules,
-// set → locked → blocked N lessons → reaches every agent. Then where it's broken right now. esc goes back (shell).
+// Rule detail (owner: I), public/brand/terminal/terminal-spec.md "Rule detail": replaces the hover card, esc goes
+// back. Kind label + scope chip, title, rule text, then the provenance timeline as the hero:
+//   ○ 14 Oct  @alex corrected Claude Code: "…"  →  ○ Hivemind proposed it as a lesson for #…  →  ● @jordan approved it
+//   →  ● now  in every agent's context · reached N agents
+// Locked rules: ○ Set by @maya → ● Locked → ● Blocked N lessons → ● now in every agent's context.
+// Then the facts (scope · owner · status · in context · related · broken right now).
 import { wrap } from "../term.mjs";
 import {
-  agentOf, allMemories, approval, approverOf, canDecide, findMemory, inContext, isAgentActor, origin, ownerHandle,
-  quoteOf, reachOf, ROLE, stamp, stampAfter,
+  age, agentOf, allMemories, approval, approverOf, atoms, canDecide, findMemory, inContext, isAgentActor, origin,
+  ownerHandle, quoteOf, reachOf, ROLE,
 } from "./rulekit.mjs";
 
-const view = (state) => (state.view.detail ??= { index: 0, scroll: 0, key: null });
+const view = (state) => (state.view.detail ??= { scroll: 0, key: null, from: null });
 
 /** A VsRule from /api/vscode/rules shaped like a memory (when the rule isn't in the polled memories). */
 function fromVsRule(r) {
@@ -16,167 +19,184 @@ function fromVsRule(r) {
   const quote = String(r.learnedFrom ?? "").match(/"(.+)"/)?.[1] ?? "";
   return {
     id: r.id, slug: r.slug, title: r.title, body: r.summary, scopeId: r.scopeId, kind: r.kind, locked: r.locked,
-    status: r.status, author: r.ownerId, source: "human", createdAt: r.taughtAt, updatedAt: r.taughtAt,
+    status: r.status, author: r.ownerId, source: "human", createdAt: r.taughtAt, updatedAt: r.taughtAt, symbols: r.symbols,
     evidence: via ? [{ type, actor: String(via.by).replace(/^@/, ""), at: via.at, quote }] : [],
   };
 }
 
-function kindLabel(m, th) {
-  if (m.status === "blocked") return th.label("blocked", "BLOCKED LESSON");
-  if (m.locked) return th.label("locked");
-  if (m.status === "pending") return th.label("captured", "PROPOSED LESSON");
-  if (m.status === "rejected") return th.label("rejected", "REJECTED LESSON");
-  if (m.kind === "owner") return th.label("fact", "OWNER");
-  if (m.kind === "fact") return th.label("fact");
+function kindWord(m) {
+  if (m.status === "blocked") return ["BLOCKED LESSON", "locked"];
+  if (m.locked) return ["LOCKED RULE", "locked"];
+  if (m.status === "pending") return ["PROPOSED LESSON", "lesson"];
+  if (m.status === "rejected") return ["REJECTED LESSON", "muted"];
+  if (m.kind === "owner") return ["OWNER", "muted"];
+  if (m.kind === "fact") return ["FACT", "muted"];
   const layer = m.scopeId === "org" ? "ORG" : m.scopeId.startsWith("repo/") ? "REPO" : m.scopeId.startsWith("personal/") ? "YOUR" : "TEAM";
-  return th.label("lesson", `${layer} LESSON`);
+  return [`${layer} LESSON`, "lesson"];
 }
 
-/** Timeline steps: { dot, text, sub?: string[], tone } top to bottom. */
-function timeline(m, state, ctx) {
+/** Timeline nodes: { dot: "○"|"●", tone, when, body, quote? } top to bottom. */
+function timeline(m, state, ctx, a) {
   const th = ctx.theme;
   const { t } = th;
-  const h = (id) => t.handle(`@${String(id).replace(/^@/, "")}`); // plain handle in sentences (chips carry their own dot)
-  const steps = [];
+  const nodes = [];
   const o = origin(m);
-  const a = approval(m);
+  const ap = approval(m);
   const tool = th.toolName(agentOf(m, state));
   const q = quoteOf(m);
-  const quoteLines = q ? wrap(th.ital(t.muted(`"${th.plain(q)}"`)), ctx.width - 10, 3) : [];
+  const when = (iso) => a.day(iso);
 
   if (m.locked) {
     const p = state.people.find((x) => x.id === m.author);
-    steps.push({ tone: "locked", text: `Set by ${h(m.author)}${p ? th.sep() + t.muted(p.title) : ""}${th.sep()}${t.muted(stamp(o?.at ?? m.createdAt))}`, sub: quoteLines });
-    steps.push({ tone: "locked", text: `${th.bold(t.locked("Locked"))}${t.muted(" · applies to ")}${th.scopeChip(m.scopeId)}${t.muted(m.scopeId === "org" ? " and everything below it" : " and below")}` });
+    nodes.push({ dot: "○", tone: "muted", when: when(o?.at ?? m.createdAt), body: `${t.muted("Set by ")}${a.handle(m.author)}${p ? t.faint(` ${p.title}`) : ""}`, quote: q });
+    nodes.push({ dot: "●", tone: "locked", when: when(o?.at ?? m.createdAt), body: `${th.bold(t.lockedText("Locked"))}${t.muted(" · applies to ")}${t.text(m.scopeId === "org" ? "#org and everything below it" : `#${m.scopeId} and below`)}` });
     const blocked = allMemories(state, ctx).filter((x) => x.status === "blocked" && String(x.blockedReason ?? "").includes(`[[${m.slug}]]`));
-    steps.push({
-      tone: blocked.length ? "locked" : "muted",
-      text: blocked.length ? t.lockedText(`Blocked ${blocked.length} lesson${blocked.length > 1 ? "s" : ""}`) : t.muted("Hasn't had to block a lesson yet"),
-      sub: blocked.slice(0, 3).map((x) => t.faint(`"${th.plain(x.title)}"`) + t.faint(` · @${ownerHandle(x)}`)),
-    });
-    steps.push({ tone: "text", text: `${t.text("Reaches every agent")}  ${th.TOOLS.slice(0, 5).map(th.badge).join(" ")}` });
-    return steps;
+    if (blocked.length)
+      nodes.push({
+        dot: "●",
+        tone: "locked",
+        when: when(blocked[0].updatedAt ?? blocked[0].createdAt),
+        body: t.lockedText(`Blocked ${blocked.length} lesson${blocked.length > 1 ? "s" : ""}`),
+        lines: blocked.slice(0, 3).map((x) => `${t.faint('"')}${t.muted(th.plain(x.title))}${t.faint('"')}  ${a.handle(ownerHandle(x))}`),
+      });
+    nodes.push({ dot: "●", tone: "lesson", when: "now", body: t.text(`in every agent's context on #${m.scopeId}`), lines: [t.faint(th.TOOLS.slice(0, 5).join(" · "))] });
+    return nodes;
   }
 
   // where it came from
-  if (o?.type === "correction")
-    steps.push({ tone: "lesson", text: `${h(o.actor)} ${t.text(`corrected ${tool || "an agent"}`)}${th.sep()}${t.muted(stamp(o.at))}`, sub: quoteLines });
-  else if (o?.type === "review_comment")
-    steps.push({ tone: "lesson", text: `${h(o.actor)} ${t.text("left a review comment")}${th.sep()}${t.muted(stamp(o.at))}`, sub: quoteLines });
-  else if (o?.type === "agent")
-    steps.push({ tone: "lesson", text: `${t.text(`${tool ? `A ${tool} agent` : "An agent"} proposed it`)}${th.sep()}${t.muted(stamp(o.at))}`, sub: quoteLines });
-  else steps.push({ tone: "text", text: `${h(isAgentActor(m.author) ? "agent" : m.author)} ${t.text("wrote it")}${th.sep()}${t.muted(stamp(o?.at ?? m.createdAt))}`, sub: quoteLines.length ? quoteLines : [] });
+  if (o?.type === "correction") nodes.push({ dot: "○", tone: "muted", when: when(o.at), body: `${a.handle(o.actor)} ${t.muted(`corrected ${tool || "an agent"}:`)}`, quote: q });
+  else if (o?.type === "review_comment") nodes.push({ dot: "○", tone: "muted", when: when(o.at), body: `${a.handle(o.actor)} ${t.muted("left a review comment:")}`, quote: q });
+  else if (o?.type === "agent") nodes.push({ dot: "○", tone: "muted", when: when(o.at), body: t.muted(`${tool ? `a ${tool} agent` : "an agent"} proposed it:`), quote: q });
+  else nodes.push({ dot: "○", tone: "muted", when: when(o?.at ?? m.createdAt), body: `${a.handle(isAgentActor(m.author) ? "agent" : m.author)} ${t.muted("wrote it")}`, quote: q });
 
-  if (o && o.type !== "manual")
-    steps.push({ tone: "lesson", text: `${t.text("Hivemind proposed it as a lesson for ")}${th.scopeChip(m.scopeId)}${th.sep()}${t.muted(stampAfter(m.createdAt, o.at))}` });
-
-  // the decision
+  const scopeText = t.text(`#${m.scopeId}`);
   if (m.status === "pending") {
-    const who = approverOf(m.scopeId, state);
-    steps.push({ tone: "wait", text: `${t.lessonText("Waiting on ")}${h(who)}${canDecide(m, state) ? t.faint("  (that's you: a approves, r rejects)") : ""}` });
-    return steps;
+    nodes.push({
+      dot: "○",
+      tone: "lesson",
+      when: when(m.createdAt),
+      body: `${t.muted("Hivemind proposed it for ")}${scopeText}`,
+      lines: [
+        `${t.faint("waiting on ")}${a.handle(approverOf(m.scopeId, state))}`,
+        ...(canDecide(m, state) ? [`${a.chromeText("a")}${t.faint(" approve   ")}${a.chromeText("r")}${t.faint(" reject")}`] : []),
+      ],
+    });
+    return nodes;
   }
+  if (o && o.type !== "manual") nodes.push({ dot: "○", tone: "muted", when: when(m.createdAt), body: `${t.muted("Hivemind proposed it for ")}${scopeText}` });
+
   if (m.status === "blocked") {
     const slug = String(m.blockedReason ?? "").match(/\[\[([^\]]+)\]\]/)?.[1];
     const rule = slug ? findMemory(slug, state, ctx) : null;
     const why = th.plain(String(m.blockedReason ?? "").split(/\):\s*/)[1] ?? "");
-    steps.push({
+    nodes.push({
+      dot: "●",
       tone: "locked",
-      text: `${t.lockedText("Blocked by ")}${rule ? h(rule.author) + t.lockedText(`'s locked rule "${th.plain(rule.title)}"`) : t.lockedText("a locked rule")}`,
-      sub: why ? [t.faint(why)] : [],
+      when: when(m.updatedAt ?? m.createdAt),
+      body: rule ? `${t.lockedText("Blocked: contradicts ")}${a.handle(rule.author, { pos: true })}${t.lockedText(` locked rule "${th.plain(rule.title)}"`)}` : t.lockedText("Blocked by a locked rule"),
+      lines: why ? [t.faint(why)] : [],
     });
-    steps.push({ tone: "muted", text: t.muted("Never sent to agents") });
-    return steps;
+    nodes.push({ dot: "○", tone: "muted", when: "", body: t.faint("never sent to agents") });
+    return nodes;
   }
   if (m.status === "rejected") {
-    steps.push({ tone: "muted", text: t.muted(`Rejected${th.sep()}${stampAfter(m.updatedAt, m.createdAt)}`) });
-    return steps;
+    nodes.push({ dot: "○", tone: "muted", when: when(m.updatedAt), body: t.muted("rejected; agents never got it") });
+    return nodes;
   }
-  if (a) steps.push({ tone: "ok", text: `${h(a.actor)} ${t.ok("approved")}${th.sep()}${t.ok(stampAfter(a.at, o?.at ?? m.createdAt))}` });
+  if (ap) nodes.push({ dot: "●", tone: "ok", when: when(ap.at), body: `${a.handle(ap.actor)} ${a.ok("approved it")}` });
 
-  // who has it
   const reach = reachOf(m, state, ctx).filter((p) => p !== ownerHandle(m));
-  const badges = th.TOOLS.slice(0, 5).map(th.badge).join(" ");
-  steps.push(
-    reach.length
-      ? { tone: "text", text: `${t.text(`Reached ${reach.length} agent${reach.length > 1 ? "s" : ""}`)}  ${badges}`, sub: [reach.slice(0, 6).map(h).join(" ")] }
-      : { tone: "text", text: `${t.text("In every agent's next session")}  ${badges}` },
-  );
-  return steps;
+  nodes.push({
+    dot: "●",
+    tone: "lesson",
+    when: "now",
+    body: `${t.text(`in every agent's context on #${m.scopeId}`)}${reach.length ? t.muted(` · reached ${reach.length} agent${reach.length > 1 ? "s" : ""}`) : ""}`,
+    lines: [
+      ...(reach.length ? [reach.slice(0, 5).map((h) => a.handle(h)).join(" ")] : []),
+      t.faint(th.TOOLS.slice(0, 5).join(" · ")),
+    ],
+  });
+  return nodes;
 }
 
 export default {
   id: "detail",
   title: "Rule",
   keys: (state) => {
-    const m = state.detail ? (state.memories ?? []).find((x) => x.id === state.detail || x.slug === state.detail) : null;
-    const decide = m && m.status === "pending" ? [["a", "approve"], ["r", "reject"]] : [];
-    return [["esc", "back"], ["j/k", "scroll"], ...decide];
+    const m = (state.memories ?? []).find((x) => x.id === state.detail || x.slug === state.detail);
+    return [["esc", "back"], ["j/k", "scroll"], ...(m?.status === "pending" ? [["a", "approve"], ["r", "reject"]] : [])];
   },
 
   render(state, ctx) {
     const th = ctx.theme;
     const { t } = th;
     const w = ctx.width;
+    const a = atoms(state, ctx);
     const v = view(state);
     if (v.key !== state.detail) Object.assign(v, { key: state.detail, scroll: 0 });
     const vs = (state.rules ?? []).find((r) => r.id === state.detail || r.slug === state.detail);
-    const m = findMemory(state.detail, state, ctx) ?? (vs ? fromVsRule(vs) : null);
-    const out = ["", th.clip(`  ${t.faint("‹ esc back")}`, w), ""];
-    if (!m) return [...out, th.clip(`  ${t.muted("This rule isn't in Hivemind anymore.")}`, w)];
+    const found = findMemory(state.detail, state, ctx);
+    const m = found ? { ...found, symbols: vs?.symbols ?? found.symbols } : vs ? fromVsRule(vs) : null;
+    const back = { here: "Here", rules: "Rules", queue: "Queue", feed: "Feed" }[state.tab] ?? v.from ?? "Rules";
+    const out = [a.chromeText(`‹ ${back}`), ""];
+    if (!m) return [...out, t.muted("This rule isn't in Hivemind anymore.")];
 
-    const pad = "  ";
     // kind · scope, title, rule text
-    out.push(th.clip(`${pad}${kindLabel(m, th)}${th.sep()}${th.scopeChip(m.scopeId)}`, w));
-    out.push(th.clip(`${pad}${th.bold(th.rich(th.plain(m.title), { locked: m.locked }))}`, w));
-    const body = th.plain(String(m.body ?? "").replace(/\*\*/g, "").replace(/\s*\n+\s*/g, " "));
-    if (body && body !== th.plain(m.title)) for (const l of wrap(th.rich(body, { locked: m.locked, base: t.muted }), w - 4, 4)) out.push(pad + l);
-    out.push("");
-
-    // facts: scope · owner · status · in context (N agents)
-    const owner = ownerHandle(m);
-    const status =
-      m.status === "active" ? (m.locked ? t.locked("locked") : t.ok("active")) : m.status === "pending" ? t.lessonText("waiting") : m.status === "blocked" ? t.lockedText("blocked") : t.muted(m.status);
-    const n = inContext(m, state);
-    const ctxWord = m.status !== "active" ? t.faint("not in context") : t.muted(n ? `in context (${n} agent${n > 1 ? "s" : ""})` : "in context (no agents running)");
-    const p = state.people.find((x) => x.id === owner);
-    out.push(
-      th.clip(
-        `${pad}${th.scopeChip(m.scopeId)}${th.sep()}${isAgentActor(owner) ? t.muted("an agent") : th.handleChip(owner)}${p ? t.faint(` ${ROLE[p.role]}`) : ""}${th.sep()}${status}${th.sep()}${ctxWord}`,
-        w,
-      ),
+    const [word, tone] = kindWord(m);
+    const kcol = { locked: t.lockedText, lesson: t.lessonText, muted: t.muted }[tone];
+    out.push(`${th.bold(kcol(word))}${t.faint(" · ")}${a.scope(m.scopeId)}`);
+    out.push(a.title(m));
+    const linked = (slug) => findMemory(slug, state, ctx)?.title ?? slug;
+    const body = th.plain(
+      String(m.body ?? "")
+        .replace(/\[\[([^\]]+)\]\]/g, (_, s) => `"${linked(s)}"`)
+        .replace(/\*\*/g, "")
+        .replace(/`/g, "")
+        .replace(/\s*\n+\s*/g, " "),
     );
+    if (body && body !== th.plain(m.title)) out.push(...wrap(t.muted(body), w, 3));
     out.push("");
 
     // the timeline (hero)
-    out.push(th.clip(`${pad}${th.bold(t.faint("HOW IT GOT HERE"))}`, w));
-    const steps = timeline(m, state, ctx);
-    const dotFor = { ok: t.ok("●"), locked: t.locked("●"), lesson: t.lesson("●"), wait: t.lesson("○"), muted: t.faint("●"), text: t.text("●") };
-    steps.forEach((s, i) => {
-      const last = i === steps.length - 1;
-      out.push(th.clip(`${pad}${dotFor[s.tone] ?? t.text("●")} ${s.text}`, w));
-      const rail = last ? " " : t.hair("│");
-      for (const l of s.sub ?? []) out.push(th.clip(`${pad}${rail}   ${l}`, w));
-      if (!last) out.push(`${pad}${rail}`);
+    const rail = a.hair(" │");
+    const nodes = timeline(m, state, ctx, a);
+    nodes.forEach((n, i) => {
+      const dotCol = { ok: a.ok, locked: t.locked, lesson: t.lesson, muted: t.muted }[n.tone] ?? t.muted;
+      out.push(`${dotCol(` ${n.dot} `)}${t.faint(String(n.when).padEnd(8))}${n.body}`);
+      if (n.quote) for (const l of wrap(t.text(`"${th.plain(n.quote)}"`), w - 13, 3)) out.push(`${rail}          ${l}`);
+      for (const l of n.lines ?? []) out.push(`${rail}          ${l}`);
+      if (i < nodes.length - 1) out.push(rail);
     });
     out.push("");
 
-    // broken right now (from the watcher's flags)
+    // facts
+    const fact = (k, val) => `${t.faint(k.padEnd(13))}${val}`;
+    const owner = ownerHandle(m);
+    const p = state.people.find((x) => x.id === owner);
+    const status =
+      m.status === "active" ? (m.locked ? t.lockedText("locked") : a.ok("active")) : m.status === "pending" ? t.lessonText("waiting") : m.status === "blocked" ? t.lockedText("blocked") : t.muted(m.status);
+    const n = inContext(m, state);
+    out.push(fact("Scope", a.scope(m.scopeId)));
+    out.push(fact("Owner", `${a.handle(owner)}${p ? t.faint(` ${ROLE[p.role]}`) : ""}`));
+    out.push(fact("Status", status));
+    out.push(fact("In context", m.status !== "active" ? t.faint("not yet") : n ? t.text(`${n} agent${n > 1 ? "s" : ""}`) + t.faint(" working now") : t.faint("no agents running")));
+    const related = [...new Set([...String(m.body ?? "").matchAll(/\[\[([^\]]+)\]\]/g)].map((x) => x[1]))]
+      .map((slug) => findMemory(slug, state, ctx))
+      .filter((x) => x && x.id !== m.id);
+    if (related.length) out.push(fact("Related", related.map((r) => (r.locked ? t.lockedText : t.lessonText)(th.plain(r.title))).join(t.faint(" · "))));
+
+    // broken right now (the watcher's flags)
     const hits = [];
     for (const [file, list] of Object.entries(state.flags ?? {}))
       for (const f of list ?? []) if (f.ruleId === m.id) hits.push({ file, f, text: (state.files?.[file]?.text ?? "").split(/\r?\n/)[f.startLine] ?? "" });
     if (hits.length) {
-      out.push(th.clip(`${pad}${th.bold(t.lockedText("BROKEN RIGHT NOW"))}${t.faint(` ${hits.length}`)}`, w));
-      for (const { file, f, text } of hits.slice(0, 6)) {
-        const where = (m.locked ? t.locked : t.lesson)(`${file}:${f.startLine + 1}`);
-        out.push(th.clip(`${pad}${where}  ${t.muted(text.trim())}`, w));
-      }
-    } else if (m.status === "active") out.push(th.clip(`${pad}${t.faint("Nothing breaks it in the files you've changed.")}`, w));
+      out.push("", th.bold(t.lockedText("BROKEN RIGHT NOW")) + t.faint(` · ${hits.length}`));
+      for (const { file, f, text } of hits.slice(0, 5)) out.push(`${(m.locked ? t.lockedText : t.lessonText)(`${file}:${f.startLine + 1}`)}  ${t.muted(text.trim())}`);
+    } else if (m.status === "active") out.push(fact("Broken now", t.faint("nowhere in the files you've changed")));
 
-    // scroll
     const room = Math.max(3, ctx.height);
     v.scroll = Math.max(0, Math.min(v.scroll, out.length - room));
-    return out.slice(v.scroll, v.scroll + room);
+    return out.slice(v.scroll, v.scroll + room).map((l) => th.clip(l, w));
   },
 
   onKey(key, state, ctx) {
@@ -184,7 +204,7 @@ export default {
     if (key.name === "j" || key.name === "down") return (v.scroll += 1), true;
     if (key.name === "k" || key.name === "up") return (v.scroll = Math.max(0, v.scroll - 1)), true;
     const m = findMemory(state.detail, state, ctx);
-    if (m && m.status === "pending" && (key.name === "a" || key.name === "r")) {
+    if (m?.status === "pending" && (key.name === "a" || key.name === "r")) {
       (key.name === "a" ? ctx.actions.approve : ctx.actions.reject)(m);
       return true;
     }

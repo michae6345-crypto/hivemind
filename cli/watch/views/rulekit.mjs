@@ -27,10 +27,8 @@ const TEN_MIN = 10 * 60 * 1000;
 /** Approved (or turned active) in the last 10 minutes: the green "new" dot. */
 export function isNew(m, now) {
   if (m.status !== "active") return false;
-  const a = approval(m);
-  if (a) return now - Date.parse(a.at) < TEN_MIN;
-  const changed = Date.parse(m.updatedAt) - Date.parse(m.createdAt) > 1000;
-  return changed && m.source !== "human" && now - Date.parse(m.updatedAt) < TEN_MIN;
+  const a = approval(m); // only a real "Approved by" counts (a reseed also bumps updatedAt)
+  return !!a && now - Date.parse(a.at) < TEN_MIN;
 }
 
 /** Which tool an agent used for this memory, from the live feed (memoryId → agent). */
@@ -92,6 +90,88 @@ export function inContext(m, state) {
   const covers = m.scopeId === "org" || chainOf(repoScope, state.scopes).includes(m.scopeId);
   if (!covers) return 0;
   return new Set((state.live?.items ?? []).filter((i) => m.scopeId === "org" || i.repo === short).map((i) => i.sessionId)).size;
+}
+
+// ---------- atoms (public/brand/terminal/terminal-spec.md §2 + §4, lifted from tui-reference.mjs) ----------
+export const C = {
+  chipBg: "#2A2A2E",
+  selBg: "#232A45", // chrome blue ~14% on #1C1C1E
+  okBg: "#1D3A2B",
+  hair: "#2E2E32",
+  chrome: "#4C6EF5",
+  chromeText: "#91A7FF",
+  ok: "#3DD68C",
+  team: "#8B93FF",
+  repo: "#2DD4BF",
+  org: "#E4E4E7",
+  person: "#A1A1AA",
+};
+
+/** Theme-bound atoms for one render: chips, titles with code tokens, washes. */
+export function atoms(state, ctx) {
+  const th = ctx.theme;
+  const { t } = th;
+  const on = th.COLOR;
+  const chipBg = (s) => th.bg(C.chipBg)(s);
+  const ul = (s) => (on ? `\x1b[4m${s}\x1b[24m` : s);
+  const layerOfPerson = (id) => {
+    const r = state.people?.find((p) => p.id === id)?.role;
+    return r === "security" ? C.org : r === "lead" ? C.team : C.repo;
+  };
+  const scopeDot = (id) => (id === "org" ? C.org : id.startsWith("team/") ? C.team : id.startsWith("repo/") ? C.repo : C.person);
+  /** ` ● #repo/export-service ` (your personal scope: ` ○ #you `). */
+  const scope = (id) => {
+    const mine = id === `personal/${state.actor}`;
+    const label = mine ? "#you" : id === "org" ? "#org" : `#${id}`;
+    return chipBg(` ${th.fg(scopeDot(id))(id.startsWith("personal/") ? "○" : "●")} ${t.text(label)} `);
+  };
+  /** ` ● @jordan ` with the person's layer dot; possessive inside the chip: ` ● @alex's `. Agents: plain "an agent". */
+  const handle = (id, { pos = false } = {}) => {
+    const h = String(id ?? "").replace(/^@/, "");
+    if (!h || isAgentActor(h)) return t.muted(pos ? "an agent's" : "an agent");
+    return chipBg(` ${th.fg(layerOfPerson(h))("●")} ${t.text(`@${h}${pos ? "'s" : ""}`)} `);
+  };
+  /** Title in bold text; `code` and the rule's symbols underlined in the rule's colour. */
+  const title = (m, { bold = true, base } = {}) => {
+    const tone = m.locked ? t.lockedText : t.lessonText;
+    const syms = [...(m.symbols ?? []), ...(String(m.body ?? "").match(/`([^`(]+)/g) ?? []).map((x) => x.slice(1))].filter((x) => x.length > 2);
+    const txt = base ?? ((s) => (bold ? th.bold(t.text(s)) : t.text(s)));
+    const plainTitle = th.plain(m.title).replace(/`/g, "");
+    if (!syms.length) return txt(plainTitle);
+    const esc = (x) => x.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const re = new RegExp(`((?:${syms.map(esc).join("|")})(?:\\(\\))?)`, "g");
+    return plainTitle
+      .split(re)
+      .map((part, i) => (i % 2 ? ul(tone(part)) : part ? txt(part) : ""))
+      .join("");
+  };
+  /** Paint a whole row on a solid wash (chips' own bg resets are re-opened so the wash survives them). */
+  const wash = (line, hex, w) => {
+    if (!on || !hex) return th.fit(line, w);
+    const open = th.bg(hex)("").replace("\x1b[49m", "");
+    const body = th.fit(line, w).replace(/\x1b\[49m/g, "\x1b[49m" + open).replace(/\x1b\[0m/g, "\x1b[0m" + open);
+    return open + body + "\x1b[49m";
+  };
+  const section = (label, n, scopeText) =>
+    th.bold(t.faint(label)) + (scopeText ? t.faint(" · ") + t.faint(scopeText) : "") + t.faint(" · ") + t.faint(String(n));
+  const day = shortDay;
+  return { scope, handle, title, wash, section, day, ul, chrome: th.fg(C.chrome), chromeText: th.fg(C.chromeText), ok: th.fg(C.ok), hair: th.fg(C.hair) };
+}
+
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+/** "14 Oct" */
+export const shortDay = (iso) => {
+  const d = new Date(iso);
+  return `${d.getDate()} ${MONTHS[d.getMonth()]}`;
+};
+/** "2m" / "3h" / "4d" / "14 Oct". */
+export function age(iso, now = Date.now()) {
+  const s = Math.max(0, (now - Date.parse(iso)) / 1000);
+  if (s < 60) return "now";
+  if (s < 3600) return `${Math.round(s / 60)}m`;
+  if (s < 86400) return `${Math.round(s / 3600)}h`;
+  if (s < 86400 * 14) return `${Math.round(s / 86400)}d`;
+  return shortDay(iso);
 }
 
 // ---------- 403s, in words ----------
