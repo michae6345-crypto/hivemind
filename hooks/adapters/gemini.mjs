@@ -2,7 +2,7 @@
 // Gemini CLI hook adapter (.gemini/settings.json "hooks"). Docs: https://geminicli.com/docs/hooks/
 //   SessionStart → context pack           → hookSpecificOutput.additionalContext
 //   BeforeAgent  → /api/hooks/prompt      → hookSpecificOutput.additionalContext (only if the server says something)
-//   AfterTool    → /api/hooks/tool        → additionalContext for the model + systemMessage for the user
+//   AfterTool    → /api/hooks/tool        → additionalContext for the model (+ collisions as systemMessage for the user)
 //   SessionEnd   → /api/hooks/session-end → {}
 // Edit tools: write_file, replace (matcher in the template). Usage: node hooks/adapters/gemini.mjs [event]
 import { briefing, context, edits, filesFrom, prompt, run, sessionEnd, unavailable } from "./lib.mjs";
@@ -28,8 +28,8 @@ run(async (p) => {
     }
     case "AfterTool": {
       if (!EDIT_TOOLS.test(String(p.tool_name ?? ""))) return {};
-      const note = await edits(c, filesFrom(p.tool_input));
-      return note ? { ...inject(event, note), systemMessage: note } : {};
+      const { context: note, message } = await edits(c, filesFrom(p.tool_input));
+      return note ? { ...inject(event, note), ...(message ? { systemMessage: message } : {}) } : {};
     }
     case "SessionEnd":
       await sessionEnd(c, p.reason);

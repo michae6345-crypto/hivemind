@@ -110,7 +110,7 @@ const P = {
 
 // ---- 1. briefing ----
 console.log("\n1. Briefing at session start");
-const lab = (t) => /🔒/.test(t ?? "") && /lab customers/i.test(t ?? "");
+const lab = (t) => /🔒|LOCKED RULE/.test(t ?? "") && /lab customers/i.test(t ?? "");
 const briefs = [
   ["cursor", "sessionStart", P.cursor("sessionStart", { session_id: `smoke-cursor-${stamp}`, is_background_agent: false, composer_mode: "agent" }), (j) => j?.additional_context],
   ["gemini", "SessionStart", P.gemini("SessionStart", { source: "startup" }), (j) => j?.hookSpecificOutput?.additionalContext],
@@ -121,7 +121,7 @@ const briefs = [
 for (const [tool, event, payload, pick] of briefs) {
   const r = await adapter(tool, event, payload);
   const text = pick(r.json);
-  check(r.code === 0 && lab(text), `${tool} ${event} briefing has the 🔒 lab rule`, `${text?.length ?? 0} chars`);
+  check(r.code === 0 && lab(text), `${tool} ${event} briefing has the locked lab rule`, `${text?.length ?? 0} chars`);
   check(hdrOk(r.reqs[0], tool) && /^\/api\/context-pack\?/.test(r.reqs[0]?.path ?? ""), `${tool} ${event} → GET /api/context-pack with x-hm-agent: ${AGENT[tool]}`);
 }
 
@@ -195,7 +195,7 @@ check(claude.ok, "Claude Code PostToolUse recorded", `HTTP ${claude.status}`);
 const cur = await adapter("cursor", "afterFileEdit", P.cursor("afterFileEdit", { conversation_id: `smoke-cursor-x-${stamp}`, file_path: `${repoDir}/${shared}`, edits: [] }), { user: "michael" });
 const warnText = cur.json?.additional_context ?? "";
 console.log("   cursor ←", warnText.replace(/\n/g, " | "));
-check(/@adrian's Claude Code agent edited smoke-shared/.test(warnText), "Cursor session is warned about the Claude Code session's edit");
+check(/@adrian's Claude Code agent edited (src.)?smoke-shared/.test(warnText), "Cursor session is warned about the Claude Code session's edit");
 const gem = await adapter("gemini", "AfterTool", P.gemini("AfterTool", { session_id: `smoke-gemini-x-${stamp}`, tool_name: "write_file", tool_input: { file_path: `${repoDir}/${shared}`, content: "x" } }), { user: "sam" });
 check(/@michael's Cursor agent edited/.test(gem.json?.systemMessage ?? "") && /@adrian's Claude Code agent/.test(gem.json?.systemMessage ?? ""), "…and a Gemini CLI session after that is warned about both, by tool", (gem.json?.systemMessage ?? "").split("\n").length - 1 + " warnings");
 

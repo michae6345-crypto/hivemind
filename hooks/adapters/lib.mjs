@@ -100,9 +100,14 @@ export async function prompt(c, text) {
   return out?.hookSpecificOutput?.additionalContext ?? out?.systemMessage ?? "";
 }
 
-/** File edits → activity + collision / rule warnings. Accepts several files (Codex patches touch many). */
+/**
+ * File edits → activity + collision / rule warnings. Accepts several files (Codex patches touch many).
+ * Returns { context, message }: context = every line, for the model; message = the server's user-facing
+ * systemMessage (collisions only), "" when there's nothing to show the engineer.
+ */
 export async function edits(c, files) {
   const notes = [];
+  const shown = [];
   for (const f of [...new Set(files.filter(Boolean))].slice(0, 10)) {
     const out = await call(c, "/api/hooks/tool", {
       method: "POST",
@@ -115,9 +120,10 @@ export async function edits(c, files) {
       }),
     });
     const t = out?.hookSpecificOutput?.additionalContext;
-    if (t) notes.push(String(t).replace(/^Hivemind:\n/, ""));
+    if (t) notes.push(String(t).replace(/^Hivemind:\r?\n/, ""));
+    if (out?.systemMessage) shown.push(String(out.systemMessage));
   }
-  return notes.length ? `Hivemind:\n${notes.join("\n")}` : "";
+  return { context: notes.join("\n"), message: shown.join("\n") };
 }
 
 /** Session end → confidence update for the lessons that were in this session's pack. */

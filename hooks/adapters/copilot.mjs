@@ -6,7 +6,7 @@
 //    Docs: https://docs.github.com/en/copilot/reference/hooks-configuration
 //   SessionStart | sessionStart              → context pack           → additionalContext
 //   UserPromptSubmit | userPromptSubmitted   → /api/hooks/prompt      → {}
-//   PostToolUse | postToolUse (edit tools)   → /api/hooks/tool        → additionalContext (+ systemMessage in VS Code)
+//   PostToolUse | postToolUse (edit tools)   → /api/hooks/tool        → additionalContext (+ collisions as systemMessage in VS Code)
 //   sessionEnd (CLI only; VS Code has none)  → /api/hooks/session-end → {}
 // Usage: node hooks/adapters/copilot.mjs [event]
 import { briefing, context, edits, filesFrom, prompt, run, sessionEnd, unavailable } from "./lib.mjs";
@@ -17,9 +17,9 @@ const isCli = (event) => /^[a-z]/.test(event); // CLI events are camelCase
 const ctx = (p) => context("copilot", { cwd: p.cwd, session: p.session_id || p.sessionId });
 
 /** VS Code wants hookSpecificOutput (Claude-compatible); the CLI takes a top-level additionalContext. */
-function inject(event, text, warn = false) {
+function inject(event, text, message = "") {
   if (isCli(event)) return { additionalContext: text };
-  return { hookSpecificOutput: { hookEventName: event, additionalContext: text }, ...(warn ? { systemMessage: text } : {}) };
+  return { hookSpecificOutput: { hookEventName: event, additionalContext: text }, ...(message ? { systemMessage: message } : {}) };
 }
 
 function args(p) {
@@ -50,8 +50,8 @@ run(async (p) => {
     case "PostToolUse":
     case "postToolUse": {
       if (!EDIT_TOOL.test(String(p.tool_name ?? p.toolName ?? ""))) return {};
-      const note = await edits(c, filesFrom(args(p)));
-      return note ? inject(event, note, true) : {};
+      const { context: note, message } = await edits(c, filesFrom(args(p)));
+      return note ? inject(event, note, message) : {};
     }
     case "sessionEnd":
       await sessionEnd(c, p.reason);

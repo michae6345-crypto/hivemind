@@ -19,7 +19,7 @@ run(
         await prompt(c, info.user_prompt ?? info.prompt);
         return "";
       case "post_write_code":
-        return await edits(c, [info.file_path]);
+        return (await edits(c, [info.file_path])).context; // the user is the only audience: every line
       default:
         return "";
     }

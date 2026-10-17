@@ -32,12 +32,12 @@ run(async (p) => {
       await prompt(c, p.prompt);
       return { continue: true };
     case "afterFileEdit": {
-      const note = await edits(c, [p.file_path]);
+      const { context: note } = await edits(c, [p.file_path]);
       return note ? { additional_context: note } : {};
     }
     case "postToolUse": {
       if (!/edit|write|replace|create|patch/i.test(String(p.tool_name ?? ""))) return {};
-      const note = await edits(c, filesFrom(p.tool_input));
+      const { context: note } = await edits(c, filesFrom(p.tool_input));
       return note ? { additional_context: note } : {};
     }
     case "sessionEnd":
