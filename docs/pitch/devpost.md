@@ -55,13 +55,14 @@ Hivemind is shared memory for AI coding agents, with a chain of command.
 
 1. **It learns from corrections.** When an engineer corrects their agent, Hivemind turns the correction into a short,
    attributed lesson ("Exports call `assertSingleCustomer(rows)` before writing", evidence: Alex's correction on
-   `src/export.ts`). Agents can also propose lessons through MCP. Every proposal starts as ⏳ **pending**.
+   `src/export.ts`). Agents can also propose lessons through MCP. Every proposal starts as **pending**, and the agent's terminal says so:
+   "Hivemind · Lesson captured: … Waiting on @jordan."
 2. **A human approves it.** The lead who owns that scope (team, repo) approves or rejects it in the Approvals inbox.
    Agents can only propose. They can never approve.
 3. **Every agent gets it.** When any engineer starts a new agent session, a session-start hook injects a context pack:
    locked policies first, then lessons ranked by confidence and scope, the code owners, and who else is editing the
    repo right now. It stays under 6,000 characters (Claude Code caps hook context at 10,000).
-4. **Locked rules can't be overridden.** Security can 🔒 lock an org-wide rule ("Never mix data from different lab
+4. **Locked rules can't be overridden.** Security can lock an org-wide rule ("Never mix data from different lab
    customers in one export"). Locked rules always come first in the pack and never decay. A proposed lesson that
    contradicts one is blocked.
 5. **It watches agents while they work.** A PostToolUse hook records every file edit. If another engineer's agent
@@ -75,9 +76,14 @@ Hivemind is shared memory for AI coding agents, with a chain of command.
    already uses: Claude Code, Cursor, Gemini CLI, Codex, GitHub Copilot and Windsurf, each through its own hooks and
    MCP. Clients without hooks (claude.ai, Claude Desktop) call `get_team_rules` and `propose_memory` over MCP. In the
    terminal, `hivemind check --staged` flags code that breaks a locked rule before it's committed.
-   `hivemind watch` runs in a terminal pane next to the agent: the rules that apply to the file you're in, with who
-   taught each one, the approval queue for leads, and a live feed of what every agent is doing. *(⏳ check the build
-   table: delete this sentence if `hivemind watch` isn't on main.)*
+8. **It lives in the terminal, next to the agent.** `hivemind watch` runs in a split pane beside Claude Code (or any
+   agent) and uses the website terminal's palette: no emoji, one honey ⬢ for Hivemind. It has four tabs. **Here**
+   checks each file as it changes and shows any broken rule as a code frame: the line, the range underlined, the rule,
+   who locked it, and the fix. **Rules** lists what applies, by layer, with who taught each one. **Queue** lets a lead
+   approve with `a` or reject with `r`, and an approval plays a short honey-hex celebration ("@alex's lesson is
+   live"). **Feed** shows what every agent on the team is doing, labeled by tool. `hivemind statusline` prints one line
+   for Claude Code's status bar: "⬢ Hivemind · 10 rules · 2 waiting". The web app (Approvals, Results) has the same
+   queue and the eval, for people who'd rather click.
 
 ## How it's different from Greptile, CodeRabbit and the rest
 
@@ -182,6 +188,9 @@ per-task table and reproduction commands: `docs/eval.md`.
 - **Learning engine:** Claude Haiku 5.5 classifies corrections (generalizable rule vs one-off vs noise), merges
   them into existing lessons (Mem0-style ADD/UPDATE/NONE) and checks them against locked rules (a Graphiti-style
   "both can't be true" prompt).
+- **Terminal app:** `hivemind watch` is plain ANSI with zero dependencies: alternate screen, line-diffed redraws, raw
+  keys, resize, a non-TTY log mode, and `NO_COLOR` / reduced-motion support. It polls `/api/activity/live` every 2 s,
+  and `fs.watch` sends changed files to the same check endpoint `hivemind check` uses.
 - **Eval harness:** `eval/run.mjs` runs `claude -p` in fresh fixture copies, 6 at a time, diffs against the pristine
   copy, and grades with `eval/check.mjs`. Runs are cached, so the report can be rebuilt from `eval/out/`.
 - **How we worked:** two people, each running Claude Code with planner / implementer / verifier subagents on folders
@@ -249,8 +258,10 @@ per-task table and reproduction commands: `docs/eval.md`.
   doesn't come back. A bad lesson trying to get in is itself a failure, and it's blocked.
 - **Most Scalable To $1B (Outcast Ventures).** Per seat for every engineer who uses an agent, vendor-neutral, a fixed
   token budget per session, no model on the hot path, and a moat that compounds: a company's approved lessons.
-- **Best Visual Design (Figma).** One idea per screen, color that always means the same thing (honey = a lesson,
-  red = a locked rule, blue = interface), and a product that shows up in the terminal where engineers already work.
+- **Best Visual Design (Figma).** The main surface is a terminal, designed like a product: `hivemind watch` in a
+  split pane with the website's palette, code frames instead of popups, no emoji, a single honey ⬢ as the mark, and
+  one short celebration when a lesson goes live. Color means the same thing in the terminal, the web app and the
+  site: honey = a lesson, rose = a locked rule, blue = interface. The web app keeps one question per screen.
 
 ## Built with
 
@@ -262,7 +273,7 @@ per-task table and reproduction commands: `docs/eval.md`.
 
 ## Build status (internal, delete before submitting)
 
-Checked against `origin/main` at **673658d, Fri Oct 16, 11:20 PM**. Only ✅ rows may be described as working in
+Checked against `origin/main` at **234e8b4, Sat Oct 17, ~12:15 AM PT** (terminal pivot). Only ✅ rows may be described as working in
 the video or on Devpost. ⏳ rows are roadmap until they land. ✅ means the code is on main and deployed; the full run sheet
 (`scripts/e2e-demo.mjs`) has not been rehearsed end to end against the deployment yet.
 
@@ -284,8 +295,10 @@ the video or on Devpost. ⏳ rows are roadmap until they land. ✅ means the cod
 | Approve / reject (role-checked, 🔒 blocks only security can clear), `POST /api/memories` | ✅ | `src/app/api/memories/` |
 | Visible "Hivemind · Loaded N team rules for #repo/…" line at session start | ✅ | `hooks/session-start.mjs` |
 | VS Code overlay (agent H) | dropped from the demo and pitch (Michael, 17 Oct 07:08 UTC); code stays in the repo | `vscode-extension/` |
-| `hivemind watch` terminal app (Here · Rules · Queue · Feed) | ⏳ being built 17 Oct; check main | `cli/` |
-| Claude Code status line "Hivemind · N rules · N waiting" | ⏳ check main | |
+| `hivemind watch` shell: tabs, keys, 2 s polling, teach input, toasts, code frames | ✅ 234e8b4 | `cli/watch/app.mjs`, `frame.mjs` |
+| watch views: Here (code frames), Queue (`a` / `r`), Rules, Feed, the celebration | ✅ as working stubs; agents J / I / H are finishing them. Re-check before recording | `cli/watch/views/`, `celebrate.mjs` |
+| `hivemind statusline` ("⬢ Hivemind · N rules · N waiting") | ✅ stub. `hivemind init` doesn't wire it yet: add `statusLine` to `.claude/settings.json` by hand for the video | `cli/watch/statusline.mjs` |
+| `hivemind check <file…>` / `--staged [--fix]` (code frames, exits 1 on a locked rule) | ✅ | `cli/lib/check.mjs` |
 | Hook lines in plain "Hivemind · …" wording, no emoji | ✅ cee7840 | `src/lib/engine/pipeline.ts`, `hooks/` |
 | MCP chat cards for `get_team_rules` / `propose_memory` (MCP Apps) | ✅ | `src/app/api/mcp/` |
 | Vercel deploy (live link): https://hivemind-beta-virid.vercel.app | ✅ auto-deploys from main | `docs/deploy.md` |
