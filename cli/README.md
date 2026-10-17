@@ -2,6 +2,14 @@
 
 **Correct one agent. Every agent learns.** Persistent memory across your team's AI agents, in your terminal.
 
+```powershell
+irm https://hivemind-q17i.onrender.com/install.ps1 | iex     # Windows   (macOS/Linux: curl -fsSL https://hivemind-q17i.onrender.com/install.sh | sh)
+hm c                                                         # Claude Code on the left, Hivemind on the right
+```
+
+That's it. The installer checks for Node 20+, installs `hivemind` (and its short alias `hm`), runs `hivemind init` if
+you're in a git repo, and prints what's left (your token and handle). Details are in [Install](#install).
+
 - `hivemind init` connects every coding agent in a repo: Claude Code, Cursor, Gemini CLI, Copilot, Codex and Windsurf.
 - `hivemind watch` shows the team's memory live.
 - `hivemind check` and `hivemind teach` keep everyone's agents on the same rules.
@@ -10,9 +18,35 @@ It needs Node 20+ and has zero dependencies. It runs on Windows, macOS and Linux
 
 ## Install
 
+**One line** (served by the app from [`install/`](install/)):
+
+| | |
+|---|---|
+| Windows (PowerShell) | `irm https://hivemind-q17i.onrender.com/install.ps1 \| iex` |
+| macOS, Linux, Git Bash | `curl -fsSL https://hivemind-q17i.onrender.com/install.sh \| sh` |
+
+The installer:
+
+1. Checks Node.js 20+ and npm. If they're missing, it says how to get them (`winget install OpenJS.NodeJS.LTS`, `brew install node`).
+2. Finds the CLI source. The repo is private for now, so it looks in this order:
+   - `HIVEMIND_SRC=<your clone>`
+   - the hivemind checkout you're standing in
+   - `~/.hivemind/src`, cloned once with your own git access (credential manager, SSH agent, or `gh auth login`).
+     If that clone exists already, it pulls instead.
+3. Links the CLI globally with `npm i -g <src>/cli`, as `hivemind` and `hm`. If npm's global folder needs sudo, it
+   installs into `~/.local` instead.
+4. Runs `hivemind init` if you're in a git repo, unless `HIVEMIND_NO_INIT=1` is set or the repo is hivemind itself.
+5. Prints what's left: `HIVEMIND_TOKEN`, `HIVEMIND_USER` (guessed from your git email), PATH if needed, then `hm c`.
+
+It's safe to re-run. Already installed from a checkout before `hm` existed? Re-run the installer or `npm i -g ./cli`
+once to get the `hm` shim (auto-update moves the files, but only npm creates shims). TODO: publish `cli/` to npm as
+`@hivemind-dev/cli` (`hivemind-cli` is taken). Step 2 then becomes `npm i -g @hivemind-dev/cli`.
+
+**By hand:**
+
 ```bash
 git clone <hivemind repo> && cd hivemind
-npm i -g ./cli          # links `hivemind` onto your PATH (cmd, PowerShell and sh shims on Windows)
+npm i -g ./cli          # links `hivemind` and `hm` onto your PATH (cmd, PowerShell and sh shims on Windows)
 hivemind --version
 ```
 
@@ -123,6 +157,41 @@ Either way it prints one line and carries on:
   SessionStart command hook (`{"type": "command", "command": "hivemind open --auto"}`); it prints nothing. Off by
   default.
 
+### Claude Code + watch in one command: `hm c`
+
+`hivemind claude` (short: `hm c`) is `hivemind open` plus Claude Code in the left pane, in the current repo or, from
+anywhere else, your default or most recent one:
+
+- **Inside Windows Terminal:** splits this window. Hivemind goes on the right and `claude` starts in this pane.
+- **In another Windows terminal:** opens a new Windows Terminal window with both panes.
+- **iTerm2 or tmux:** splits this window and runs `claude` here.
+- **Outside tmux on macOS/Linux, with tmux installed:** starts a tmux session with Claude Code on the left and watch
+  on the right.
+- **Already inside Claude Code** (`!hm c`): only opens the pane.
+- **No `claude` on PATH:** says how to install it (`npm i -g @anthropic-ai/claude-code`).
+- **`--dry-run`:** prints the exact command instead of running it.
+
+**One click on Windows:** `hivemind setup-shortcut` adds a **Hivemind + Claude** profile to Windows Terminal's
+dropdown. The profile runs `hivemind claude` in this repo.
+
+- It inserts the profile into `settings.json` as text, so your comments and formatting stay.
+- It only adds the profile when no profile with that name exists. It writes a timestamped backup first
+  (`settings.json.hivemind-backup-…`), and it writes only if the merged file still parses.
+- `--dry-run` shows the profile. `--settings <path>` targets one file.
+
+### Startup speed
+
+Plain `hivemind`, `open`, `claude`/`c`, `--version` and a warm `statusline` never load the full CLI:
+
+- **The pane, right away.** `open` and `claude` spawn the pane straight off, and the pane fetches its own data.
+- **Status line from cache.** `statusline` prints its cached line in about 30 ms over bare Node. When the line is
+  stale, it prints the cached one anyway and refreshes in the background.
+- **No git subprocess.** The user comes from your git config files directly, not a `git` subprocess.
+- **Compiled-code cache.** On Node 22+, V8's compile cache is on.
+
+Measure with `node scripts/bench-cli.mjs --base origin/main`: cold and warm runs, interleaved with another ref,
+against a local mock API (`scripts/mock-api.mjs`), never prod.
+
 ## Commands
 
 | Command | What it does |
@@ -132,6 +201,8 @@ Either way it prints one line and carries on:
 | `status` | Pings the API, then shows the rules in the pack, pending lessons, and each agent's MCP, hooks and rules files |
 | `teach "<rule>" [--scope repo/x|team/x]` | Sends the rule to `/api/events` as a correction, so it gets the same extract, merge and 🔒 checks as any other correction. Prints `Lesson proposed — waiting on @<owner>`, or `Blocked by a locked rule`. A `team/…` scope is sent as a proposal for that scope |
 | `rules [--file path]` | Prints the rules that apply now. With `--file`, it prints that file's rules plus live edits, using MCP `get_team_rules`. Output is colored on a TTY and plain markdown when piped |
+| `claude` / `c` `[--user <id>] [--dry-run]` | Opens Claude Code on the left and `hivemind watch` on the right with one command (`hm c`). See [Claude Code + watch in one command](#claude-code--watch-in-one-command-hm-c) |
+| `setup-shortcut [--dry-run] [--settings <path>]` | Adds a **Hivemind + Claude** profile to Windows Terminal: one click opens the split. The profile is merged into `settings.json` after a backup and never overwrites an existing one |
 | `update` | Checks `origin/main` and fast-forwards this checkout now, using the same safety rules as the automatic update, then prints the new commits |
 | `use [<path> | --clear]` | Sets the default repo for runs outside a repo, such as from your home folder or with `!hivemind` in Claude Code. With no argument, it lists the recent repos from `~/.hivemind/state.json` |
 | `why [--last | <rule words> | <file>:<line>]` | The history behind one rule, in about 12 lines: who set or taught it and the quote, the evidence (PRs as clickable links), approvals, whether it's in every agent's session pack, how often it was reinforced, and what it blocked. `--last` (the default) picks your most recent block, or the most recent `hivemind check` flag. In Claude Code: `/hivemind why` |
