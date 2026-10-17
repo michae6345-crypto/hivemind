@@ -97,12 +97,12 @@ export function resultLine(res, { actor, scopes }) {
     const tone = act?.action === "blocked" ? "locked" : act?.action === "reinforced" || act?.action === "updated" ? "ok" : act ? "lesson" : "muted";
     return { text: res.message.trim(), tone, ...(m ? { memory: m } : {}) };
   }
-  if (!act || !m) return { text: "Hivemind · Saved your fix. The team already knows this one.", tone: "muted" };
-  if (act.action === "blocked") return { text: `Hivemind · Blocked: ${plain(act.note ?? `contradicts a locked rule`)}.`.replace(/\.\.$/, "."), tone: "locked", memory: m };
-  if (act.action === "reinforced" || act.action === "updated") return { text: `Hivemind · Reinforced: ${title}.`, tone: "ok", memory: m };
+  if (!act || !m) return { text: "⬢ Hivemind · Saved your fix. The team already knows this one.", tone: "muted" };
+  if (act.action === "blocked") return { text: `⬢ Hivemind · Blocked: ${plain(act.note ?? `contradicts a locked rule`)}.`.replace(/\.\.$/, "."), tone: "locked", memory: m };
+  if (act.action === "reinforced" || act.action === "updated") return { text: `⬢ Hivemind · Reinforced: ${title}.`, tone: "ok", memory: m };
   const owner = ownerOf(m.scopeId, scopes ?? []);
   const wait = m.status === "pending" ? ` Waiting on ${owner ? `@${owner}` : "a lead"}.` : "";
-  return { text: `Hivemind · Lesson captured from @${actor}'s fix: ${title}.${wait}`, tone: "lesson", memory: m };
+  return { text: `⬢ Hivemind · Lesson captured from @${actor}'s fix: ${title}.${wait}`, tone: "lesson", memory: m };
 }
 
 export function fixTracker({ root, cfg, state, actions, skip, code, onSeed }) {
