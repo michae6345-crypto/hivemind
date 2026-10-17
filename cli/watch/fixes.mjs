@@ -194,7 +194,8 @@ export function fixTracker({ root, cfg, state, actions, skip, code, onSeed }) {
     if (Date.now() - (lastSent.get(file) ?? 0) < PER_FILE_MS) return;
     const text = cache.get(file)?.text;
     const d = text != null ? compactDiff(file, base, text) : null;
-    if (!d || trivial(d.before, d.after)) return;
+    // A diff that cleared a flag is never "just a rename": console.log(…) → logger.info(…) has the same token shape.
+    if (!d || (!violationRuleId && trivial(d.before, d.after))) return;
     lastSent.set(file, Date.now());
     remember(file, { text, author: cfg.actor }); // the agent's lines are now the human's
 

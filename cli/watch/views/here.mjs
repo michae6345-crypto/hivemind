@@ -166,11 +166,21 @@ function followed(state, text, brokenIds) {
   for (const r of state.rules ?? []) {
     if (r.kind === "owner" || brokenIds.has(r.id)) continue;
     let where = null;
-    for (const sym of (r.symbols ?? []).filter((s) => s.length >= 3)) {
+    // Symbols are what a rule is about, including what it forbids ("…; never console.log"): a banned symbol is never
+    // "followed", and a file that uses one doesn't follow the rule (it was "Followed on line 4 console.log(…)").
+    const says = `${r.title} ${r.summary ?? ""}`.replace(/`/g, "");
+    const banned = (sym) => new RegExp(`\\b(never|not|no|don't|do not|instead of|avoid|without)\\s+(use |call |a |an |the |bare |raw |any )?${esc(sym)}`, "i").test(says);
+    const used = (sym) => {
       const re = new RegExp(`(?<![\\w$.])${esc(sym)}(?![\\w$])`);
-      // A use of the symbol, not its definition or a comment.
+      // A use of the symbol, not its definition, an import or a comment.
       const def = new RegExp(`\\b(function|def|const|let|var|class)\\s+${esc(sym)}\\b`);
-      const i = lines.findIndex((l) => re.test(l) && !def.test(l) && !/^\s*(\/\/|\*|#)/.test(l));
+      return lines.findIndex((l) => re.test(l) && !def.test(l) && !/^\s*(\/\/|\*|#|import\b|from\b)/.test(l));
+    };
+    const syms = (r.symbols ?? []).filter((s) => s.length >= 3);
+    if (syms.some((s) => banned(s) && used(s) >= 0)) continue;
+    for (const sym of syms.filter((s) => !banned(s))) {
+      const re = new RegExp(`(?<![\\w$.])${esc(sym)}(?![\\w$])`);
+      const i = used(sym);
       if (i < 0) continue;
       const l = lines[i];
       const s = l.search(re);

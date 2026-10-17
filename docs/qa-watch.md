@@ -24,6 +24,8 @@ Headless only. Nothing touched a real terminal window, and nothing was written t
 | 6 | Teach answer clipped in the box: `Blocked: contradicts @greg's locked rule "Never mix data…` (TRY-THIS step 7) | fixed b8ab6eb: wraps inside the box (≤3 lines) |
 | 7 | Offline / 500 said `Set HIVEMIND_TOKEN and restart watch` (wrong: it recovers on its own), cut at 64 cols | fixed b8ab6eb: token wording only for 401/403/no token; otherwise `Retrying every few seconds.`; wrapped |
 | 8 | `p` (persona) did nothing on Here and Feed; TRY-THIS says it works in the pane | fixed b8ab6eb: global key |
+| 13 | Here: `Followed on line 4 console.log("sent", …)` under "Use logger …; never console.log". A rule's symbols include what it forbids (`console.log`, `parseFloat`, `db.query`), so the forbidden call was shown as the rule being followed. `import { logger }` also counted | fixed (this push): a symbol the rule's text bans (`never/not/no/instead of/avoid X`) never counts, a file that uses one isn't "following" the rule, import lines don't count |
+| 14 | `f` (or a hand edit) that clears a flag by swapping `console.log(…)` → `logger.info(…)` sent **no** fix event: `trivial()` saw a same-shape token diff as a rename (DEMO.md says `f` counts as a fix) | fixed (this push): the rename filter only applies when no flag went away |
 | 9 | Deleted file stays on Here with its old flags (`src/x.ts · 1 rule broken` after `rm`) | open, low (not in the video) → K |
 | 10 | Feed: handles longer than the 11-cell chip column push the row out of alignment (`@michae6345`) | open, low; the only long handle is a real git-email user, not a persona |
 | 11 | A binary `.ts` shows "This file follows every team rule." | open, cosmetic |
