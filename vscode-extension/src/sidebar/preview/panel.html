@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- One sidebar instance with mock data. Query: ?tab=rules|here|queue|live&as=<person>&detail=<slug>&teach=<text> -->
+<!-- One sidebar instance with mock data. Query: ?tab=here|all|approvals&as=<person>&detail=<slug>&teach=<text>&feed=1&cele=1 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -34,17 +34,21 @@
       { id: "a0", sessionId: "s-riley", actor: "riley", repo: "eval-harness", file: "graders/rubric.py", createdAt: iso(6), agent: "gemini-cli" },
     ];
   D.live.feed.forEach((f, i) => { if (!f.agent && i % 3 === 0) f.agent = ["claude-code", "codex", "copilot"][i % 3]; });
-  const ctx = { type: "ctx", me: P.get("as") || "jordan", repo: "repo/export-service", workspaceName: "Meridian Data", dashboardUrl: "#", hasToken: true };
+  const ctx = { type: "ctx", me: P.get("as") || "jordan", repo: "repo/export-service", workspaceName: "", dashboardUrl: "#", apiUrl: "https://hivemind-beta-virid.vercel.app" };
+  const line = 14;
+  const here = { type: "here", file: "src/export.ts", line, ok: true, org: D.here.org, repo: D.here.repo, approver: "jordan",
+    rules: D.hereRules.map((r) => ({ ...r, atCursor: r.lines.includes(line) })).sort((a, b) => b.atCursor - a.atCursor) };
   window.acquireVsCodeApi = () => ({
-    getState: () => ({ tab: P.get("tab") || "rules" }),
+    getState: () => ({ tab: P.get("tab") || "here", feedOpen: !!P.get("feed"), collapsed: { you: true } }),
     setState() {},
     postMessage(m) {
       const reply = (x) => setTimeout(() => window.postMessage(x, "*"), 10);
       if (m.type === "ready") {
         reply(ctx);
-        reply({ type: "here", file: "src/export.ts", data: D.here });
+        reply(here);
         reply({ type: "live", ok: true, data: D.live });
-        if (P.get("detail")) reply({ type: "detail", id: P.get("detail") });
+        if (P.get("detail")) setTimeout(() => window.postMessage({ type: "detail", id: P.get("detail") }, "*"), 60);
+        if (P.get("cele")) setTimeout(() => window.postMessage({ type: "celebrate", ruleId: "export-assert-single-customer", title: "Every export calls assertSingleCustomer()", approver: "@jordan", scope: "team/data-pipelines" }, "*"), 120);
       }
       if (m.type === "rpc") {
         if (m.op === "load") reply({ type: "rpc", id: m.id, ok: true, status: 200, data: { scopes: D.scopes, people: D.people, chain: D.chain, all: D.all, transfer: D.transfer } });
@@ -59,10 +63,10 @@
 </script>
 </head>
 <body>
-<div id="app"></div>
+<div class="hm" id="app"></div>
 <script src="../../../media/sidebar/sidebar.js"></script>
 <script>
-  if (P.get("teach")) setTimeout(() => { const f = document.querySelector("[data-form=teach]"); f.teach.value = P.get("teach"); f.requestSubmit(); }, 300);
+  if (P.get("teach")) setTimeout(() => { const t = document.getElementById("teachIn"); t.value = P.get("teach"); t.dispatchEvent(new Event("input", { bubbles: true })); document.getElementById("teachForm").requestSubmit(); }, 300);
 </script>
 </body>
 </html>

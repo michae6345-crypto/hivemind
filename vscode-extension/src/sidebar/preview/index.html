@@ -6,19 +6,20 @@
 <title>Hivemind sidebar preview</title>
 <style>
   body { margin: 0; padding: 28px; background: #0e0f12; font: 12px -apple-system, "Segoe UI", sans-serif; color: #a1a1aa; }
-  .grid { display: flex; gap: 20px; }
+  .grid { display: flex; gap: 16px; }
   figure { margin: 0; }
   figcaption { margin-bottom: 8px; }
-  iframe { width: 320px; height: 760px; border: 1px solid #2b2b2b; border-radius: 8px; background: #181818; display: block; }
+  iframe { width: 300px; height: 760px; border: 1px solid #2b2b2b; border-radius: 8px; background: #181818; display: block; }
 </style>
 </head>
 <body>
 <div class="grid">
-  <figure><figcaption>Rules by layer · @jordan (Lead)</figcaption><iframe src="panel.html?tab=rules&as=jordan"></iframe></figure>
-  <figure><figcaption>Rule card · provenance</figcaption><iframe src="panel.html?tab=rules&as=jordan&detail=export-assert-single-customer"></iframe></figure>
-  <figure><figcaption>Your queue · @jordan (Lead)</figcaption><iframe src="panel.html?tab=queue&as=jordan&teach=Write%20exports%20to%20a%20temp%20file%2C%20then%20rename"></iframe></figure>
-  <figure><figcaption>Your queue · @maya (Security)</figcaption><iframe src="panel.html?tab=queue&as=maya"></iframe></figure>
-  <figure><figcaption>Live feed · @alex (Engineer)</figcaption><iframe src="panel.html?tab=live&as=alex"></iframe></figure>
+  <figure><figcaption>Here · @alex · lesson approved</figcaption><iframe src="panel.html?tab=here&as=alex&cele=1&feed=1"></iframe></figure>
+  <figure><figcaption>All rules · @jordan</figcaption><iframe src="panel.html?tab=all&as=jordan"></iframe></figure>
+  <figure><figcaption>Rule detail</figcaption><iframe src="panel.html?tab=all&as=jordan&detail=use-logger"></iframe></figure>
+  <figure><figcaption>Approvals · @jordan (Lead)</figcaption><iframe src="panel.html?tab=approvals&as=jordan"></iframe></figure>
+  <figure><figcaption>Approvals · @alex (Engineer)</figcaption><iframe src="panel.html?tab=approvals&as=alex&teach=Write%20exports%20to%20a%20temp%20file%2C%20then%20rename"></iframe></figure>
+  <figure><figcaption>Approvals · @maya (Security)</figcaption><iframe src="panel.html?tab=approvals&as=maya"></iframe></figure>
 </div>
 </body>
 </html>
