@@ -1,26 +1,25 @@
 // Small zero-dep helpers: colors, tables, safe file writes, JSON merge, HTTP.
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { delimiter, dirname, join } from "node:path";
+import { t } from "./style.mjs";
 
-// ---------- ANSI ----------
-const force = process.env.FORCE_COLOR;
-const useColor = !process.env.NO_COLOR && force !== "0" && (process.stdout.isTTY || !!force);
-const truecolor = /truecolor|24bit/i.test(process.env.COLORTERM ?? "") || !!process.env.WT_SESSION || force === "3";
-const wrap = (open, close) => (s) => (useColor ? `\x1b[${open}m${s}\x1b[${close}m` : String(s));
+// ---------- Colours: every command paints through the shared theme (lib/style.mjs → watch/theme.mjs) ----------
 export const c = {
-  bold: wrap(1, 22),
-  dim: wrap(2, 22),
-  red: wrap(31, 39),
-  green: wrap(32, 39),
-  yellow: wrap(33, 39),
-  blue: wrap(34, 39),
-  magenta: wrap(35, 39),
-  cyan: wrap(36, 39),
-  gray: wrap(90, 39),
-  amber: (s) => (useColor ? `\x1b[38;5;214m${s}\x1b[39m` : String(s)),
-  rose: (s) => (useColor ? `\x1b[38;5;204m${s}\x1b[39m` : String(s)),
-  // Lesson blue #4C6EF5 (truecolor where the terminal says so, else the nearest 256-color)
-  lesson: (s) => (!useColor ? String(s) : truecolor ? `\x1b[38;2;76;110;245m${s}\x1b[39m` : `\x1b[38;5;69m${s}\x1b[39m`),
+  bold: t.bold,
+  dim: t.dim,
+  red: t.locked,
+  green: t.ok,
+  yellow: t.warn,
+  blue: t.link,
+  magenta: t.team,
+  cyan: t.teal, // files, paths, commands
+  gray: t.muted,
+  faint: t.faint,
+  amber: t.lesson,
+  rose: t.locked, // locked rule
+  lesson: t.lesson, // team lesson
+  link: t.link,
+  handle: t.handle, // @handles
 };
 export const sym = { ok: c.green("✓"), warn: c.yellow("!"), fail: c.red("✗"), dot: c.gray("·"), arrow: c.amber("›") };
 

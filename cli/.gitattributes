@@ -1,0 +1,2 @@
+# The CLI runs on macOS/Linux too: keep LF so the #!/usr/bin/env node shebang works after a Windows checkout.
+* text=auto eol=lf

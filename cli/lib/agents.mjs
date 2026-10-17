@@ -3,7 +3,7 @@
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { hasTemplates, wireFromTemplates } from "./templates.mjs";
-import { examplePath, mergeJson, read, write } from "./util.mjs";
+import { examplePath, mergeJson, onPath, read, write } from "./util.mjs";
 
 const mcpUrl = (ctx) => `${ctx.url}/api/mcp`;
 const has = (root, p) => (read(join(root, p)) ?? "").includes("hivemind");
@@ -49,7 +49,9 @@ function wireClaude(ctx) {
     },
   };
   const hooks = claudeHooks(ctx);
-  const settings = () => ({ enabledMcpjsonServers: ["hivemind"], hooks });
+  // Claude Code status line → `hivemind statusline` (one line: rules in force, pending lessons, who else is editing).
+  const statusLine = { type: "command", command: `${cliCommand(ctx)} statusline`, padding: 0 };
+  const settings = () => ({ enabledMcpjsonServers: ["hivemind"], hooks, ...(ctx.noStatusline ? {} : { statusLine }) });
   return [
     mergeJson(join(ctx.root, ".mcp.json"), () => ({ mcpServers: { hivemind: mcp } }), (o) => addKey(o, "mcpServers", "hivemind", mcp), ctx.dryRun),
     mergeJson(
@@ -60,6 +62,10 @@ function wireClaude(ctx) {
         if (!Array.isArray(o.enabledMcpjsonServers)) o.enabledMcpjsonServers = [];
         if (!o.enabledMcpjsonServers.includes("hivemind")) {
           o.enabledMcpjsonServers.push("hivemind");
+          changed = true;
+        }
+        if (!ctx.noStatusline && !o.statusLine) {
+          o.statusLine = statusLine; // someone's own status line always wins
           changed = true;
         }
         o.hooks ??= {};
@@ -80,11 +86,17 @@ function wireClaude(ctx) {
 // /hivemind skill (rules · teach · status). Its CLI fallback points at this CLI, or <--hivemind-dir>/cli when given.
 const SKILL_TEMPLATE = join(dirname(fileURLToPath(import.meta.url)), "..", "templates", "claude-skill", "SKILL.md");
 export const SKILL_FILE = ".claude/skills/hivemind/SKILL.md";
+/** How generated configs invoke this CLI: `hivemind` when it's on PATH (npm i -g), else `node "<path>/hivemind.mjs"`. */
+export function cliCommand(ctx) {
+  if (ctx.hivemindDirFlag) return `node "${ctx.hivemindDir}/cli/hivemind.mjs"`;
+  if (onPath("hivemind")) return "hivemind";
+  return `node "${fileURLToPath(new URL("../hivemind.mjs", import.meta.url)).replace(/\\/g, "/")}"`;
+}
+
 function installSkill(ctx) {
   const p = join(ctx.root, ...SKILL_FILE.split("/"));
   if (read(p) !== null) return { action: "unchanged", file: p };
-  const cliPath = ctx.hivemindDirFlag ? `${ctx.hivemindDir}/cli/hivemind.mjs` : fileURLToPath(new URL("../hivemind.mjs", import.meta.url)).replace(/\\/g, "/");
-  write(p, read(SKILL_TEMPLATE).replaceAll("{{HIVEMIND_CLI}}", `node "${cliPath}"`), ctx.dryRun);
+  write(p, read(SKILL_TEMPLATE).replaceAll("{{HIVEMIND_CLI}}", cliCommand(ctx)), ctx.dryRun);
   return { action: "created", file: p };
 }
 

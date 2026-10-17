@@ -1,22 +1,46 @@
-# hivemind CLI
+# hivemind
 
-`hivemind init` connects every coding agent in a repo to Hivemind team memory. `hivemind sync` keeps rules files
-fresh for agents that have no hooks. Node 20+, zero dependencies.
+**Correct one agent. Every agent learns.** Persistent memory across your team's AI agents, in your terminal.
 
-## 30-second quickstart
+- `hivemind init` connects every coding agent in a repo: Claude Code, Cursor, Gemini CLI, Copilot, Codex and Windsurf.
+- `hivemind watch` shows the team's memory live.
+- `hivemind check` and `hivemind teach` keep everyone's agents on the same rules.
+
+It needs Node 20+ and has zero dependencies. It runs on Windows, macOS and Linux.
+
+## Install
 
 ```bash
-npm i -g ./cli                                       # from the hivemind checkout; or run node <hivemind>/cli/hivemind.mjs
+git clone <hivemind repo> && cd hivemind
+npm i -g ./cli          # links `hivemind` onto your PATH (cmd, PowerShell and sh shims on Windows)
+hivemind --version
+```
+
+`npm i -g ./cli` links to the checkout, so `git pull` updates the CLI, and the hook adapters in `hooks/` and the
+templates in `integrations/` stay available. You can also run it without installing: `npx ./cli <command>`, or
+`node cli/hivemind.mjs <command>`. The package layout is publish-ready (`npm pack` gives a 26 kB tarball), but a
+published tarball has no `hooks/` or `integrations/`, so `init` falls back to MCP + rules files.
+
+## 20-second quickstart
+
+```bash
 export HIVEMIND_TOKEN=<token> HIVEMIND_USER=<you>    # PowerShell: setx HIVEMIND_TOKEN <token>; setx HIVEMIND_USER <you>
 cd your-repo
 hivemind init                                        # --url <api> for a self-hosted or local server
-git add -A && git commit -m "Connect coding agents to Hivemind"
-hivemind status
+hivemind watch                                       # in a split pane, next to your agent
 ```
 
 `init` detects the agents your team uses from repo markers (`.claude/`, `.cursor/`, `.gemini/`, `.vscode/`,
-`AGENTS.md`, `.windsurf/`) and from CLIs on your PATH. It wires each one, saves `.hivemind.json`, then runs `sync`.
-To choose agents yourself, pass `--agents cursor,codex`.
+`AGENTS.md`, `.windsurf/`) and from CLIs on your PATH. It wires each one, saves `.hivemind.json`, then runs `sync`. For
+Claude Code it also adds the `/hivemind` skill and a `statusLine` (`hivemind statusline`), but only when you don't
+already have one. To choose agents yourself, pass `--agents cursor,codex`.
+
+All commands share the `hivemind watch` theme (`watch/theme.mjs`):
+
+- rose: locked rules
+- honey: team lessons
+- `@handles` for people
+- no emojis
 
 ## Commands
 
@@ -27,7 +51,7 @@ To choose agents yourself, pass `--agents cursor,codex`.
 | `status` | Pings the API, then shows the rules in the pack, pending lessons, and each agent's MCP, hooks and rules files |
 | `teach "<rule>" [--scope repo/x|team/x]` | Sends the rule to `/api/events` as a correction, so it gets the same extract, merge and 🔒 checks as any other correction. Prints `Lesson proposed — waiting on @<owner>`, or `Blocked by a locked rule`. A `team/…` scope is sent as a proposal for that scope |
 | `rules [--file path]` | Prints the rules that apply now. With `--file`, it prints that file's rules plus live edits, using MCP `get_team_rules`. Output is colored on a TTY and plain markdown when piped |
-| `check <file…>` / `check --staged` `[--fix] [--deep]` | Checks files against the team's rules via `POST /api/vscode/check`, the same regex + Haiku engine as the VS Code squiggles. Each violation prints as a code frame: `file:line:col`, 2 lines of context, the range underlined `~~~~` (rose for locked rules, blue for lessons), the rule, the owner's `@handle` and the quick fix as a diff. `--fix` applies the quick fixes (deduped, bottom-up) and re-checks. Exits 1 while a locked rule is broken, so `hivemind check --staged` works as a pre-commit hook |
+| `check <file…>` / `check --staged` `[--fix] [--deep]` | Checks files against the team's rules via `POST /api/vscode/check`, the same regex + Haiku engine as the VS Code squiggles. Each violation prints as a code frame: `file:line:col`, 2 lines of context, the range underlined `~~~~` (rose for locked rules, honey for lessons), the rule, the owner's `@handle` and the quick fix as a diff. `--fix` applies the quick fixes (deduped, bottom-up) and re-checks. Exits 1 while a locked rule is broken, so `hivemind check --staged` works as a pre-commit hook |
 
 Every command accepts `--agent <kind>`, which sets the `x-hm-agent` header. The default is `$HIVEMIND_AGENT`, else `cli`.
 
@@ -69,7 +93,7 @@ locked rule: Never log expert personal info
 Hivemind · 2 locked rules broken · 1 lesson · run with --fix to apply 2 quick fixes
 ```
 
-The house style is no emojis: color carries the meaning (rose = locked rule, blue #4C6EF5 = team lesson), and people
+The house style is no emojis: color carries the meaning (rose = locked rule, honey = team lesson), and people
 are `@handles`.
 
 By default `check` prints only the API's deterministic detectors, so a file gives byte-identical output on every run:

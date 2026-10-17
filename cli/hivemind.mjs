@@ -15,6 +15,7 @@ import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { AGENTS, SKILL_FILE, byId, mcpWired } from "./lib/agents.mjs";
 import { cmdCheck } from "./lib/check.mjs";
+import { handleChip, label, scopeChip } from "./lib/style.mjs";
 import { rulesFrontmatter } from "./lib/templates.mjs";
 import { END, START, api, banner, c, callerAgent, mcpCall, mergeJson, onPath, post, read, readEnvFile, rel, sym, table, plain, upsertBlock, write } from "./lib/util.mjs";
 
@@ -25,7 +26,7 @@ const GENERIC = { id: "other", label: "Any MCP agent", rules: { file: "AGENTS.md
 const agentOf = (id) => byId[id] ?? (id === "other" ? GENERIC : null);
 
 // ---------- args ----------
-const BOOLEAN = new Set(["dry-run", "no-sync", "no-vscode", "copilot-cli", "personal", "help", "json", "staged", "fix", "deep", "once", "snapshot", "notify", "no-motion"]);
+const BOOLEAN = new Set(["dry-run", "no-sync", "no-vscode", "copilot-cli", "no-statusline", "personal", "help", "json", "staged", "fix", "deep", "version", "once", "snapshot", "notify", "no-motion"]);
 function parseArgs(argv) {
   const [cmd = "help", ...rest] = argv;
   const flags = {};
@@ -181,7 +182,7 @@ async function cmdInit(cfg) {
   const sessionStartScript = join(HM_ROOT, "hooks", "session-start.mjs").replace(/\\/g, "/");
   // Hook commands point at <hivemind>/hooks/…; --hivemind-dir overrides (e.g. "../.." for a repo inside the checkout).
   const hivemindDir = String(typeof cfg.flags["hivemind-dir"] === "string" ? cfg.flags["hivemind-dir"] : HM_ROOT).replace(/\\/g, "/");
-  const ctx = { ...cfg, hmRoot: HM_ROOT, hivemindDir, hivemindDirFlag: typeof cfg.flags["hivemind-dir"] === "string", sessionStartScript, skipVscode: !!cfg.flags["no-vscode"], copilotCli: !!cfg.flags["copilot-cli"] };
+  const ctx = { ...cfg, hmRoot: HM_ROOT, hivemindDir, hivemindDirFlag: typeof cfg.flags["hivemind-dir"] === "string", sessionStartScript, skipVscode: !!cfg.flags["no-vscode"], copilotCli: !!cfg.flags["copilot-cli"], noStatusline: !!cfg.flags["no-statusline"] };
 
   const rows = [];
   const notes = [];
@@ -238,13 +239,15 @@ async function cmdInit(cfg) {
   if (failed.length) notes.push(`sync failed (${failed[0].detail}); run \`hivemind sync\` once the server is reachable.`);
   for (const n of notes) console.log(`${sym.warn} ${n}`);
 
-  console.log(`\n${c.bold("Next")}`);
+  console.log(`\n${c.bold("Setup")}`);
   const user = cfg.flags.user && typeof cfg.flags.user === "string" ? cfg.flags.user : "<you>";
   if (!cfg.token) console.log(`  ${sym.arrow} set ${c.cyan("HIVEMIND_TOKEN")} (ask your Hivemind admin)`);
   if (!process.env.HIVEMIND_USER || cfg.flags.user)
     console.log(`  ${sym.arrow} ${c.cyan(process.platform === "win32" ? `setx HIVEMIND_USER ${user}` : `export HIVEMIND_USER=${user}`)}`);
   console.log(`  ${sym.arrow} commit the files above, then run ${c.cyan("hivemind sync")} whenever rules change (or in CI)`);
   console.log(`  ${sym.arrow} ${c.cyan("hivemind status")} to check the connection`);
+  console.log(`
+${c.bold("Next:")} run ${c.cyan("hivemind watch")} in a split pane ${c.gray("(live rules, lessons and who else is editing)")}`);
 }
 const ids = (agents) => agents.map((a) => a.id);
 
@@ -341,13 +344,13 @@ async function cmdTeach(cfg, positional) {
   for (const m of res.lessons) {
     const act = actionOf.get(m.id);
     const owner = ownerOf(m.scopeId, scopes);
-    const meta = c.gray(`"${plain(m.title)}" · #${m.scopeId} · ${m.status}`);
+    const meta = `${c.gray(`"${plain(m.title)}"`)} ${scopeChip(m.scopeId)} ${c.gray(m.status)}`;
     if (m.status === "blocked") {
-      console.log(`${c.bold(c.rose("Blocked by a locked rule"))}${act?.note || m.blockedReason ? c.rose(` — ${plain(act?.note || m.blockedReason)}`) : ""}`);
+      console.log(`${label("blocked")}  ${c.rose("by a locked rule")}${act?.note || m.blockedReason ? c.gray(` — ${plain(act?.note || m.blockedReason)}`) : ""}`);
     } else if (act?.action === "reinforced" || act?.action === "updated" || m.status === "active") {
       console.log(`${sym.ok} Already known — your correction was added as evidence${m.status === "pending" && owner ? ` (still waiting on @${owner})` : ""}`);
     } else {
-      console.log(`${c.bold(c.lesson("Lesson proposed"))} — waiting on ${c.bold(`@${owner ?? "a lead"}`)}`);
+      console.log(`${label("captured", "LESSON PROPOSED")}  waiting on ${handleChip(`@${owner ?? "a lead"}`)}`);
     }
     console.log(`   ${meta}`);
   }
@@ -377,30 +380,56 @@ async function cmdRules(cfg) {
 }
 
 // ---------- main ----------
-const HELP = `${banner("team memory for every coding agent")}
+// ---------- help / version (styled like the website hero) ----------
+const VERSION = JSON.parse(read(join(dirname(fileURLToPath(import.meta.url)), "package.json")) ?? "{}").version ?? "0.0.0";
+const SITE = "https://hivemind-beta-virid.vercel.app";
 
-${c.bold("Usage")}
-  hivemind init   [--agents claude-code,cursor,gemini-cli,copilot,codex,windsurf,other]
-                  [--repo repo/<name>] [--user <id>] [--url <api>] [--dir <path>]
-                  [--hivemind-dir <path>] [--no-sync] [--no-vscode] [--copilot-cli] [--dry-run]
-  hivemind sync   [--agents …] [--repo …] [--url …] [--dir …] [--dry-run] [--personal --user <id>]
-  hivemind status [--repo …] [--url …] [--dir …]
-  hivemind teach  "<rule>" [--scope repo/<name>|team/<name>]   propose a lesson (a human approves it)
-  hivemind rules  [--file <path>]                              print the rules that apply (to a file)
-  hivemind check  <file…> | --staged [--fix] [--deep]          team-rule violations as code frames; --fix applies quick fixes,
-                                                               --deep adds the LLM pass (default: deterministic only)
-
-  Any command: --agent <claude-code|cursor|…> (x-hm-agent; default HIVEMIND_AGENT or "cli"), --user <id>
-
-${c.bold("Env")}  HIVEMIND_API_URL  HIVEMIND_TOKEN  HIVEMIND_USER  HIVEMIND_REPO`;
+function help() {
+  const cmd = (name, args, what) => `    ${c.cyan(name.padEnd(9))}${c.gray(args.padEnd(33))}${what}`;
+  const group = (title) => `  ${c.faint(title.toUpperCase())}`;
+  return [
+    "",
+    `  ${c.bold("Hivemind")}  ${c.faint(`v${VERSION}`)}`,
+    `  ${c.bold("Correct one agent.")}`,
+    `  ${c.gray("Every agent learns.")}`,
+    "",
+    group("Start"),
+    cmd("init", "[--agents a,b] [--url <api>]", "connect every coding agent in this repo"),
+    cmd("watch", "", "live team memory; run it in a split pane"),
+    "",
+    group("While you work"),
+    cmd("check", "<file…> | --staged [--fix]", "team-rule violations as code frames"),
+    cmd("rules", "[--file <path>]", "the rules that apply here, or to one file"),
+    cmd("teach", '"<rule>" [--scope team/<name>]', "propose a lesson; a human approves it"),
+    "",
+    group("Keep in sync"),
+    cmd("sync", "[--dry-run]", "refresh rules files for agents without hooks"),
+    cmd("status", "", "API, rules, pending lessons, wired agents"),
+    "",
+    group("Flags"),
+    `    ${c.gray("--repo repo/<name>  --user <id>  --agent <kind>  --url <api>  --dir <path>  --dry-run  --json")}`,
+    `    ${c.gray("init: --hivemind-dir <path>  --no-sync  --no-statusline  --no-vscode  --copilot-cli   check: --deep   sync: --personal")}`,
+    "",
+    group("Env"),
+    `    ${c.gray("HIVEMIND_TOKEN  HIVEMIND_USER  HIVEMIND_REPO  HIVEMIND_API_URL")} ${c.faint(`(default ${SITE})`)}`,
+    "",
+    `  ${c.faint("Docs")}  ${c.link(SITE)}`,
+    "",
+  ].join("\n");
+}
 
 const { cmd, flags, positional } = parseArgs(process.argv.slice(2));
 if (typeof flags.agent === "string") process.env.HIVEMIND_AGENT = flags.agent;
 // watch / statusline live in cli/watch (the terminal app); they parse their own flags from argv too.
 const watchCmd = (file) => async (cfg) => (await import(`./watch/${file}`)).run(process.argv.slice(3), cfg);
 const commands = { watch: watchCmd("index.mjs"), statusline: watchCmd("statusline.mjs"), init: cmdInit, sync: cmdSync, status: cmdStatus, teach: cmdTeach, rules: cmdRules, check: (cfg, pos) => cmdCheck(cfg, pos, fail) };
+if (cmd === "--version" || cmd === "-v" || cmd === "version" || (flags.version && cmd !== "watch")) {
+  console.log(`hivemind ${VERSION}`);
+  process.exit(0);
+}
 if (!commands[cmd] || (flags.help && cmd !== "watch" && cmd !== "statusline")) {
-  console.log(HELP);
-  process.exit(commands[cmd] || cmd === "help" || cmd === "--help" ? 0 : 1);
+  if (!["help", "--help", "-h"].includes(cmd) && !commands[cmd]) console.error(`${sym.fail} unknown command: ${cmd}`);
+  console.log(help());
+  process.exit(commands[cmd] || ["help", "--help", "-h"].includes(cmd) ? 0 : 1);
 }
 commands[cmd](resolveConfig(flags), positional).catch((e) => fail(e?.stack ?? e));

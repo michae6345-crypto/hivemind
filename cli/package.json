@@ -1,17 +1,26 @@
 {
   "name": "hivemind-cli",
-  "version": "0.1.0",
-  "description": "Connect every coding agent in a repo (Claude Code, Cursor, Gemini CLI, Copilot, Codex, Windsurf) to Hivemind team memory.",
+  "version": "0.2.0",
+  "description": "Persistent memory across your team's AI agents. Correct one agent; every agent learns. Wires Claude Code, Cursor, Gemini CLI, Copilot, Codex and Windsurf to Hivemind, and watches it live in your terminal.",
+  "keywords": ["ai", "agents", "claude-code", "cursor", "codex", "gemini-cli", "copilot", "mcp", "team-memory", "cli"],
+  "homepage": "https://hivemind-beta-virid.vercel.app",
   "type": "module",
   "bin": {
-    "hivemind": "./hivemind.mjs"
+    "hivemind": "hivemind.mjs"
   },
   "files": [
     "hivemind.mjs",
-    "lib/"
+    "lib/",
+    "watch/",
+    "templates/",
+    "README.md"
   ],
+  "scripts": {
+    "smoke": "node hivemind.mjs --version && node hivemind.mjs help"
+  },
   "engines": {
     "node": ">=20"
   },
+  "os": ["win32", "darwin", "linux"],
   "license": "MIT"
 }

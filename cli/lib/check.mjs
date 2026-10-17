@@ -3,6 +3,7 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { isAbsolute, relative, resolve } from "node:path";
+import { handleChip, label } from "./style.mjs";
 import { api, c, plain, post } from "./util.mjs";
 
 const CODE_EXT = /\.(m?[jt]sx?|cjs|cts|py|go|rb|java|kt|rs|sql|cs|php|swift|scala|sh)$/i;
@@ -79,9 +80,9 @@ function frame(file, lines, v, rule) {
   const bar = c.gray(`${" ".repeat(width)} │`);
   const [sc] = colsFor(v, v.startLine, lines[v.startLine] ?? "", rule);
 
-  const badge = v.locked ? c.bold(c.rose("locked rule:")) : c.bold(c.lesson("team lesson:"));
+  const badge = label(v.locked ? "locked" : "lesson"); // "LOCKED RULE" / "TEAM LESSON", same as hivemind watch
   const out = [
-    `${badge} ${c.bold(plain(v.ruleTitle))}`,
+    `${badge}  ${c.bold(plain(v.ruleTitle))}`,
     `${" ".repeat(width)} ${c.gray("╭─[")}${c.cyan(file)}${c.gray(`:${v.startLine + 1}:${sc + 1}]`)}`,
     bar,
   ];
@@ -107,7 +108,7 @@ function frame(file, lines, v, rule) {
   }
   out.push(bar);
   const title = ownerTitle(v, rule);
-  out.push(`${" ".repeat(width)} ${c.gray("├─")} ${c.gray(v.locked ? "owner " : "taught")} ${c.bold(handle(v, rule))}${title ? c.gray(` · ${title}`) : ""}`);
+  out.push(`${" ".repeat(width)} ${c.gray("├─")} ${c.gray(v.locked ? "owner " : "taught")} ${handleChip(handle(v, rule))}${title ? c.gray(` · ${title}`) : ""}`);
   if (v.fix) {
     out.push(`${" ".repeat(width)} ${c.gray("╰─")} ${c.gray("fix   ")} ${c.green(v.fix.title.replace(/^Fix:\s*/i, ""))}`);
     for (const f of fixLines) out.push(`${c.gray(String(f.n).padStart(width) + " │")} ${f.sign === "+" ? c.green(`+ ${f.text}`) : c.red(`- ${f.text}`)}`);
@@ -250,8 +251,8 @@ export async function cmdCheck(cfg, positional, fail) {
         for (const v of after.violations) {
           const what = explanation(v) || v.ruleTitle;
           const who = handle(v, after.rules.get(v.ruleId));
-          const icon = v.locked ? c.rose("locked rule") : c.lesson("team lesson");
-          console.log(`  ${c.gray("re-check:")} ${icon} ${tone(v.locked)(`${p.file}:${v.startLine + 1}`)} ${what} ${c.gray(`— needs a human fix; ask ${c.bold(who)}`)}`);
+          const icon = label(v.locked ? "locked" : "lesson");
+          console.log(`  ${c.gray("re-check:")} ${icon} ${tone(v.locked)(`${p.file}:${v.startLine + 1}`)} ${what} ${c.gray(`— needs a human fix; ask ${handleChip(who)}`)}`);
         }
       }
     }
