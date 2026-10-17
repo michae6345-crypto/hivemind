@@ -17,8 +17,8 @@ import { AGENTS, SKILL_FILE, byId, mcpWired } from "./agents.mjs";
 import { USE_HINT, locateRepo } from "./locate.mjs";
 import { NOT_IN_REPO, WHO_ARE_YOU, explicitUser, findRepoRoot, nativePath, resolveUser } from "./root.mjs";
 import { liveRecent, readState, remember, setDefault } from "./state.mjs";
-import { brand, handleChip, label, rich, scopeChip } from "./style.mjs";
-import { card, chip, dot, padEnd, printHeader, rows, spin } from "./ui.mjs";
+import { brand, handleChip, label, rich, scopeChip, useColor } from "./style.mjs";
+import { card, chip, dot, header, padEnd, printHeader, rows, spin } from "./ui.mjs";
 import { rulesFrontmatter } from "./templates.mjs";
 import { END, START, api, banner, c, callerAgent, mcpCall, mergeJson, onPath, post, read, readEnvFile, rel, sym, table, plain, upsertBlock, write } from "./util.mjs";
 
@@ -339,7 +339,7 @@ function ownerOf(scopeId, scopes) {
 async function cmdTeach(cfg, positional) {
   if (!cfg.actor) fail(WHO_ARE_YOU); // a lesson needs a person behind it
   const rule = positional.join(" ").trim();
-  if (!rule) fail('usage: hivemind teach "<rule>" [--scope repo/<name>|team/<name>]');
+  if (!rule) fail('usage: hivemind teach "<rule>" [--scope repo/<name>|team/<name>] [--dry-run]');
   const scope = typeof cfg.flags.scope === "string" ? cfg.flags.scope : null;
   // A correction goes through the learning engine (extract → merge → locked-rule conflict check). The engine scopes corrections
   // itself, so an explicit team/org scope is sent as a proposal for that scope instead.
@@ -347,39 +347,55 @@ async function cmdTeach(cfg, positional) {
   const event = explicit
     ? { type: "agent_proposal", actor: cfg.actor, repo: cfg.repo, payload: { title: rule.slice(0, 80), body: rule, scope, via: callerAgent() } }
     : { type: "correction", actor: cfg.actor, repo: scope ?? cfg.repo, sessionId: `cli-${Date.now()}`, payload: { text: rule, via: callerAgent() } };
-  if (!cfg.flags.json) console.log(banner("teach"), c.gray(`${scope ?? event.repo} · @${cfg.actor} · ${callerAgent()}`));
+  const target = scope ?? event.repo;
+  if (!cfg.flags.json) console.log(`${header("teach", `#${target} · @${cfg.actor}`)}\n`);
+  const sep = c.faint(" · ");
+  /** One outcome: a coloured label (+ quiet note), the lesson in quotes, then a faint meta line. */
+  const block = (lbl, note, title, meta) => {
+    console.log(`  ${lbl}${note ? `   ${c.gray(note)}` : ""}`);
+    if (title) console.log(`  ${c.text(`"${plain(title)}"`)}`);
+    if (meta?.length) console.log(`  ${meta.join(sep)}`);
+  };
+
   // --dry-run: show what would be proposed and who'd review it. Nothing is posted (reads /api/scopes only).
   if (cfg.dryRun) {
-    const scopes = await api(cfg, "/api/scopes").then((r) => r.data.scopes ?? []).catch(() => []);
-    const target = scope ?? event.repo;
+    const scopes = await spin("looking up the reviewer", api(cfg, "/api/scopes").then((r) => r.data.scopes ?? []).catch(() => []));
     const owner = ownerOf(target, scopes);
-    console.log(`${label("waiting", "WOULD PROPOSE")}  ${c.gray("(dry run, nothing sent)")}`);
-    console.log(`   ${c.gray(`"${plain(rule)}"`)} ${scopeChip(target)} ${c.gray(event.type === "correction" ? "as a correction" : "as a proposal")}`);
-    console.log(`   ${c.gray("reviewed by")} ${handleChip(`@${owner ?? "a lead"}`)} ${c.gray("· checked against locked rules first")}`);
+    block(label("waiting", "WOULD PROPOSE"), "dry run · nothing sent", rule, [
+      scopeChip(target),
+      c.gray(event.type === "correction" ? "as a correction" : "as a proposal"),
+      `${c.gray("reviewed by")} ${handleChip(`@${owner ?? "a lead"}`)}`,
+      c.faint("checked against locked rules first"),
+    ]);
     return;
   }
-  const [res, scopes] = await Promise.all([
-    post(cfg, "/api/events", event).catch((e) => fail(e.message)),
-    api(cfg, "/api/scopes").then((r) => r.data.scopes ?? []).catch(() => []),
-  ]);
+  const [res, scopes] = await spin(
+    "teaching Hivemind",
+    Promise.all([post(cfg, "/api/events", event).catch((e) => fail(e.message)), api(cfg, "/api/scopes").then((r) => r.data.scopes ?? []).catch(() => [])]),
+  );
   if (cfg.flags.json) return console.log(JSON.stringify(res, null, 2));
   const actionOf = new Map((res.actions ?? []).map((a) => [a.memoryId, a]));
   if (!res.lessons?.length) {
-    console.log(`${sym.dot} Nothing new to learn: Hivemind didn't find a reusable rule in that, or already knows it.`);
+    console.log(`  ${c.gray("nothing new to learn")}${sep}${c.faint("Hivemind didn't find a reusable rule in that, or already knows it")}`);
     return;
   }
   for (const m of res.lessons) {
     const act = actionOf.get(m.id);
     const owner = ownerOf(m.scopeId, scopes);
-    const meta = `${c.gray(`"${plain(m.title)}"`)} ${scopeChip(m.scopeId)} ${c.gray(m.status)}`;
     if (m.status === "blocked") {
-      console.log(`${label("blocked")}  ${c.rose("by a locked rule")}${act?.note || m.blockedReason ? c.gray(` — ${plain(act?.note || m.blockedReason)}`) : ""}`);
+      block(label("blocked"), "by a locked rule", m.title, [c.gray(plain(act?.note || m.blockedReason || "conflicts with a locked rule")), `${c.faint("history:")} ${c.cyan("hivemind why --last")}`]);
     } else if (act?.action === "reinforced" || act?.action === "updated" || m.status === "active") {
-      console.log(`${sym.ok} Already known — your correction was added as evidence${m.status === "pending" && owner ? ` (still waiting on @${owner})` : ""}`);
+      block(label("approved", "ALREADY KNOWN"), "your correction was added as evidence", m.title, [
+        scopeChip(m.scopeId),
+        m.status === "pending" && owner ? `${c.gray("still waiting on")} ${handleChip(`@${owner}`)}` : c.gray(m.status),
+      ]);
     } else {
-      console.log(`${label("captured", "LESSON PROPOSED")}  waiting on ${handleChip(`@${owner ?? "a lead"}`)}`);
+      block(label("captured", "LESSON PROPOSED"), "", m.title, [
+        scopeChip(m.scopeId),
+        `${c.gray("waiting on")} ${handleChip(`@${owner ?? "a lead"}`)}`,
+        c.faint("not active until approved"),
+      ]);
     }
-    console.log(`   ${meta}`);
   }
 }
 
@@ -396,23 +412,26 @@ async function cmdRules(cfg) {
     markdown = (await api(cfg, `/api/context-pack?${qs}`).catch((e2) => fail(e2.message))).data.markdown;
   }
   if (cfg.flags.json) return process.stdout.write(markdown.trimEnd() + "\n");
-  if (!process.stdout.isTTY) return process.stdout.write(plain(markdown).trimEnd() + "\n");
+  if (!useColor) return process.stdout.write(plain(markdown).trimEnd() + "\n");
   // Same look as hivemind watch: kind labels in their colour, titles bold, provenance muted, @handles/#scopes rich.
+  const out = [header("rules", `#${cfg.repo}${file ? ` · ${file}` : ""}`), ""];
   let title = false; // the line after "LOCKED RULE · #org" is that rule's title
   for (const raw of markdown.split("\n")) {
     const line = plain(raw);
     const head = line.match(/^(LOCKED RULE|TEAM RULE|TEAM LESSON)( · .*)?$/);
     if (head) {
-      console.log(`${label(head[1] === "LOCKED RULE" ? "locked" : "lesson", head[1])}${c.gray(head[2] ?? "")}`);
+      out.push(`${label(head[1] === "LOCKED RULE" ? "locked" : "lesson", head[1])}${c.gray(head[2] ?? "")}`);
       title = true;
     } else if (title && line.trim()) {
-      console.log(c.bold(line));
+      out.push(c.bold(line));
       title = false;
-    } else if (line.startsWith("#")) console.log(c.bold(line));
-    else if (/^(Set by|Learned from|From) /.test(line)) console.log(c.gray(rich(line)));
-    else if (raw.includes("🔒")) console.log(c.rose(line)); // older packs: colour carries "locked" once the glyph is gone
-    else console.log(rich(line.replace(/\*\*(.+?)\*\*/g, (_, t) => c.bold(t))));
+    } else if (/^# /.test(line)) continue; // the pack's own title repeats the header
+    else if (/^## /.test(line)) out.push(c.faint(line.slice(3))); // section → a quiet group label, like help
+    else if (/^(Set by|Learned from|From) /.test(line)) out.push(c.gray(rich(line)));
+    else if (raw.includes("🔒")) out.push(c.rose(line)); // older packs: colour carries "locked" once the glyph is gone
+    else out.push(rich(line.replace(/\*\*(.+?)\*\*/g, (_, t) => c.bold(t))));
   }
+  console.log(out.map((l, i) => (i < 2 || !l ? l : `  ${l}`)).join("\n").replace(/\n{3,}/g, "\n\n"));
 }
 
 // ---------- main ----------

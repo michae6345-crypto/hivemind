@@ -98,7 +98,7 @@ const LABEL = { locked: ["LOCKED RULE", "locked"], lesson: ["TEAM LESSON", "less
 export const label =
   external?.label ?? ((kind, text) => { const [w, tok] = LABEL[kind] ?? [String(kind).toUpperCase(), "muted"]; return t.bold(t[tok](text ?? w)); });
 /** "@jordan" in the handle style. */
-export const handleChip = external?.handleChip ?? ((h) => t.bold(t.handle(h.startsWith("@") ? h : `@${h}`)));
+export const handleChip = external?.handleChip ?? ((h) => t.handle(h.startsWith("@") ? h : `@${h}`)); // plain colour, like watch
 /** "#repo/export-service" in its layer colour. */
 export const scopeChip = external?.scopeChip ?? ((id) => (id.startsWith("team/") ? t.team : id.startsWith("repo/") ? t.repo : t.text)(`#${id}`));
 

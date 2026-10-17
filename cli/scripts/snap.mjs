@@ -1,8 +1,25 @@
 // Render CLI output to PNG for design review: run each command with truecolor forced, ANSI → HTML (a dark terminal
 // window, Adrian's palette), then a headless Chrome screenshot. No real terminal windows are opened.
 //   node cli/scripts/snap.mjs <outDir> <prefix> [--only name,name]
-// Commands run from playground/ as @kevin. Prod reads only, except `rules` (the MCP call logs a pack session).
-import { execFileSync, spawnSync } from "node:child_process";
+// Commands run from playground/ as @kevin. Without --mock they read prod (and `rules` logs a pack session); with --mock
+// nothing leaves this machine except `update`'s git fetch from GitHub.
+import { execFileSync, spawn, spawnSync } from "node:child_process";
+
+/** spawn → { stdout, stderr } without blocking the event loop (120s cap). */
+function run(cmd, args, opts) {
+  return new Promise((resolveP) => {
+    const p = spawn(cmd, args, opts);
+    let stdout = "";
+    let stderr = "";
+    p.stdout.on("data", (d) => (stdout += d));
+    p.stderr.on("data", (d) => (stderr += d));
+    const timer = setTimeout(() => p.kill(), 120000);
+    p.on("close", () => {
+      clearTimeout(timer);
+      resolveP({ stdout, stderr });
+    });
+  });
+}
 import { existsSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
@@ -13,6 +30,9 @@ const CLI = join(REPO, "cli", "hivemind.mjs");
 const PLAY = join(REPO, "playground");
 const [outDir = join(REPO, "..", "mockups"), prefix = "cli", ...rest] = process.argv.slice(2);
 const only = rest.includes("--only") ? rest[rest.indexOf("--only") + 1].split(",") : null;
+// --mock: point every command at a local canned API (cli/scripts/mock-api.mjs), e.g. while prod is frozen for a recording.
+const mock = rest.includes("--mock") ? await (await import("./mock-api.mjs")).startMock() : null;
+const apiEnv = mock ? { HIVEMIND_API_URL: mock.url, HIVEMIND_TOKEN: "mock-token" } : {};
 
 // A throwaway git repo for `init --dry-run`.
 const initDir = mkdtempSync(join(tmpdir(), "hm-snap-init-"));
@@ -121,11 +141,11 @@ const work = mkdtempSync(join(tmpdir(), "hm-snap-"));
 
 for (const shot of SHOTS) {
   if (only && !only.includes(shot.name)) continue;
-  const r = spawnSync(process.execPath, [CLI, ...shot.args], {
+  // Async: the --mock API lives in this process, so a blocking spawnSync would starve it.
+  if (process.env.SNAP_DEBUG) console.error("run", shot.name);
+  const r = await run(process.execPath, [CLI, ...shot.args], {
     cwd: shot.cwd ?? PLAY,
-    encoding: "utf8",
-    env: { ...process.env, FORCE_COLOR: "3", COLUMNS: "110", HIVEMIND_USER: "kevin", HIVEMIND_NO_UPDATE: "1", ...(shot.env ?? {}) },
-    timeout: 120000,
+    env: { ...process.env, FORCE_COLOR: "3", COLUMNS: "110", HIVEMIND_USER: "kevin", HIVEMIND_NO_UPDATE: "1", ...apiEnv, ...(shot.env ?? {}) },
   });
   const text = `${r.stdout ?? ""}${r.stderr ?? ""}`.replace(/\r/g, "").replace(/\n+$/, "");
   const lines = text.split("\n").length;
@@ -137,6 +157,8 @@ for (const shot of SHOTS) {
   const w = Math.max(940, Math.ceil(longest * 8.2) + 110);
   const h = Math.ceil((lines + 1) * 21 + 130);
   const png = join(outDir, `${prefix}-${shot.name}.png`);
+  if (process.env.SNAP_DEBUG) console.error("chrome", shot.name, (r.stdout + r.stderr).length);
   execFileSync(CHROME, ["--headless=new", "--disable-gpu", "--hide-scrollbars", `--window-size=${w},${h}`, `--screenshot=${png}`, `file:///${file.replace(/\\/g, "/")}`], { stdio: "ignore" });
   console.log(`${png}  (${lines} lines)`);
 }
+mock?.close();
