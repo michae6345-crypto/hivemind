@@ -4,7 +4,7 @@ import { GeistMono } from "geist/font/mono";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Hivemind",
+  title: "Hivemind · Shared memory for your team's AI coding agents",
   description:
     "Every correction any engineer gives any AI agent becomes a lesson every agent at the company learns, safely, with a chain of command.",
   openGraph: {

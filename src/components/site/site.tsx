@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Fragment, useRef, type ReactNode } from "react";
-import { ArrowRight, Lock, Play, ShieldX } from "lucide-react";
+import { ArrowRight, Lock, ShieldX } from "lucide-react";
 import { MotionConfig, motion, useScroll, useTransform, type Variants } from "motion/react";
 import { Logo, Wordmark } from "@/components/hm/bits";
 import { WORKS_WITH } from "@/components/hm/activity";
@@ -10,6 +10,7 @@ import { evalDetail } from "@/mocks/data";
 import { cn } from "@/components/hm/utils";
 import { Dither } from "./dither";
 import { MacDesktop } from "./mac-desktop";
+import { HeroHive } from "./hero-hive";
 import { ScrollStory } from "./scroll-story";
 import { ChatMock, EditorMock } from "./editor-mocks";
 import { LESSON, LOCKED_RULE, PROMPTS } from "./demo-script";
@@ -101,37 +102,15 @@ function Hero() {
   );
 
   return (
-    <section id="top" className="px-4 pt-32 sm:pt-40">
-      <motion.div
-        initial="hidden"
-        animate="show"
-        variants={{ show: { transition: { staggerChildren: 0.12, delayChildren: 0.05 } } }}
-        className="mx-auto flex max-w-[880px] flex-col items-center text-center"
-      >
-        <motion.span variants={rise} className="hm-glass rounded-full px-4 py-1.5 text-[12.5px] text-fg/75">
-          {WORKS_WITH}
-        </motion.span>
-        <h1 className="hm-display mt-7 text-[44px] sm:text-[72px]">
-          <motion.span variants={rise} className="block">
-            Correct one agent.
-          </motion.span>
-          <motion.span variants={rise} className="tone-2 block">
-            Every agent learns.
-          </motion.span>
-        </h1>
-        <motion.p variants={rise} className="mt-6 max-w-[56ch] text-[16px] leading-relaxed text-muted sm:text-[17px]">
-          When an engineer corrects their AI coding agent, Hivemind turns the correction into a lesson. Once a lead
-          approves it, every agent on the team starts its next session knowing it.
-        </motion.p>
-        <motion.div variants={rise} className="mt-8 flex flex-wrap justify-center gap-3">
-          {/* TODO: point at the video once it's uploaded. Until then it plays the demo on the screen below. */}
-          <PillLink href="#demo" primary>
-            <Play className="size-4 fill-current" /> Watch the 2-minute demo
-          </PillLink>
-          <PillLink href="/app">Open the app</PillLink>
-        </motion.div>
-      </motion.div>
+    <section id="top" className="px-4 pt-28 sm:pt-32">
+      <HeroHive evalOff={evalDetail.targetViolations.off} evalOn={evalDetail.targetViolations.on} runs={evalDetail.n.off} />
 
+      <p className="mx-auto mt-24 max-w-[60ch] text-center text-[15px] leading-relaxed text-muted">
+        <span className="font-medium text-fg">The same thing in a real terminal.</span>{" "}
+        <span className="hm-chip" data-kind="person">@alex</span> corrects Claude Code,{" "}
+        <span className="hm-chip" data-kind="person">@jordan</span> approves, and{" "}
+        <span className="hm-chip" data-kind="person">@noor</span>&apos;s next session gets it right the first time.
+      </p>
       <motion.div
         id="demo"
         ref={screen}
@@ -139,7 +118,7 @@ function Hero() {
         initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 1.1, ease: EASE, delay: 0.45 }}
-        className="mx-auto mt-16 max-w-[1120px] scroll-mt-24 rounded-[22px]"
+        className="mx-auto mt-8 max-w-[1120px] scroll-mt-24 rounded-[22px]"
       >
         <MacDesktop />
       </motion.div>
