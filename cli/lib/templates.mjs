@@ -43,12 +43,16 @@ export function mergeMissing(dst, src) {
     if (d === undefined) {
       dst[k] = v;
       changed = true;
+    } else if (k === "hivemind") {
+      continue; // an existing hivemind server entry is someone's deliberate config: never add keys inside it
     } else if (isObj(d) && isObj(v)) {
       changed = mergeMissing(d, v) || changed;
     } else if (Array.isArray(d) && Array.isArray(v)) {
       if (JSON.stringify(d).includes("hooks/adapters/")) continue; // this hook event is already wired
+      // Items with an id (VS Code `inputs`) match by id; everything else by value.
+      const dup = (item) => d.some((x) => (isObj(item) && item.id !== undefined ? x?.id === item.id : same(x, item)));
       for (const item of v)
-        if (!d.some((x) => same(x, item))) {
+        if (!dup(item)) {
           d.push(item);
           changed = true;
         }
