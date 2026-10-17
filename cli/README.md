@@ -27,7 +27,7 @@ published tarball has no `hooks/` or `integrations/`, so `init` falls back to MC
 export HIVEMIND_TOKEN=<token> HIVEMIND_USER=<you>    # PowerShell: setx HIVEMIND_TOKEN <token>; setx HIVEMIND_USER <you>
 cd your-repo
 hivemind init                                        # --url <api> for a self-hosted or local server
-hivemind watch                                       # in a split pane, next to your agent
+hivemind                                             # opens hivemind watch on the right (Windows Terminal split)
 ```
 
 `init` detects the agents your team uses from repo markers (`.claude/`, `.cursor/`, `.gemini/`, `.vscode/`,
@@ -41,6 +41,45 @@ All commands share the `hivemind watch` theme (`watch/theme.mjs`):
 - honey: team lessons
 - `@handles` for people
 - no emojis; `⬢ Hivemind · …` is the one glyph, as in the watch header
+
+## Open the side pane: `hivemind`
+
+Plain `hivemind`, with no command, opens `hivemind watch` next to your terminal, the same way typing `claude` opens Claude:
+
+- In Windows Terminal, it splits the same window, with Hivemind on the right:
+  `wt -w 0 split-pane -V --size 0.45 -d <cwd> --title Hivemind …`
+- On other Windows terminals, it opens a new Windows Terminal window, or a PowerShell window if Windows Terminal isn't
+  installed.
+- On macOS, it splits the window in iTerm2, or opens a new Terminal.app window.
+- On Linux, it runs `tmux split-window -h` inside tmux.
+
+The pane gets the same cwd, repo and `HIVEMIND_USER` as the shell you ran it from, so it shows that session's hook
+events. `hivemind` prints one line:
+
+```text
+⬢ Hivemind opened on the right · watching #repo/export-service as @kevin
+```
+
+Opening is instant. Nothing calls the API before the pane spawns, because the pane fetches its own data.
+
+- `hivemind open --claude` also runs `claude` in the left pane, which sets up the whole demo layout in one command.
+- `hivemind help` still prints help.
+
+**Inside Claude Code**
+
+- `!hivemind` is the instant path. Claude Code's `!` prefix runs the command directly, without a model turn. Inside
+  Windows Terminal, plain `hivemind` opens the pane even though stdout isn't a TTY.
+- `/hivemind` runs the same command through the skill: one Bash call, and Claude replies with that one line.
+- `/hivemind rules`, `/hivemind teach <rule>` and `/hivemind status` do the rest.
+
+**Troubleshooting**
+
+- If the split lands in a different Windows Terminal window, set `HIVEMIND_OPEN_FOCUS=1`. That window was probably
+  focused since you typed the command. With this setting, `hivemind` focuses its own window first, which costs one
+  PowerShell start.
+- `HIVEMIND_AUTOOPEN=1` makes `hivemind open --auto` open the pane once per Claude Code session. Add it as a
+  SessionStart command hook (`{"type": "command", "command": "hivemind open --auto"}`); it prints nothing. Off by
+  default.
 
 ## Commands
 

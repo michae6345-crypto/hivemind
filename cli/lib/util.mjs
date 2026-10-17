@@ -20,6 +20,7 @@ export const c = {
   lesson: t.lesson, // team lesson
   link: t.link,
   handle: t.handle, // @handles
+  repo: t.repo, // #repo/… scopes
 };
 export const sym = { ok: c.green("✓"), warn: c.yellow("!"), fail: c.red("✗"), dot: c.gray("·"), arrow: c.amber("›") };
 
