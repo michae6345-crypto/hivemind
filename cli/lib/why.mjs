@@ -8,6 +8,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, relative, resolve } from "node:path";
 import { brand, handleChip, label, scopeChip, useColor } from "./style.mjs";
+import { header, padEnd, rows, width } from "./ui.mjs";
 import { api, c, plain, post } from "./util.mjs";
 
 const STATE = join(tmpdir(), "hivemind", "last-flag.json");
@@ -124,44 +125,60 @@ export async function cmdWhy(cfg, positional, fail) {
 
   const ev = [...(rule.evidence ?? [])].sort((a, b) => a.at.localeCompare(b.at));
   const first = ev[0];
+  const W = Math.min(width(), 100) - 2;
+  /** A timeline row: dot or rail, the text, and the date right-aligned in a faint column. */
+  const tl = (mark, text, date = "") => {
+    const left = `  ${mark} ${text}`;
+    return date ? `${padEnd(left, W - 8)}${c.faint(date.padStart(8))}` : left;
+  };
+  const rail = c.faint("│");
   const out = [];
-  out.push(`${brand()} ${c.gray("· why")}${target.why ? c.gray(` · ${target.why}`) : ""}`);
-  out.push(`${label(rule.locked ? "locked" : "lesson", rule.locked ? "LOCKED RULE" : rule.kind === "directive" ? "TEAM RULE" : "TEAM LESSON")}${c.gray(" · ")}${scopeChip(rule.scopeId)}`);
-  out.push(c.bold(plain(rule.title)));
-  const origin = rule.locked || rule.source === "human" ? "Set by" : rule.source === "review" ? "From a review by" : "Learned from";
-  out.push(`${c.gray(origin)} ${who(first?.actor ?? rule.author)} ${c.gray(`· ${day(first?.at ?? rule.createdAt)}`)}${first?.ref ? ` ${c.gray("·")} ${refLink(first)}` : ""}`);
-  if (first?.quote) out.push(`  "${clip(first.quote, 96)}"`);
+  out.push(header("why", target.why ?? ""), "");
+  out.push(`  ${label(rule.locked ? "locked" : "lesson", rule.locked ? "LOCKED RULE" : rule.kind === "directive" ? "TEAM RULE" : "TEAM LESSON")}${c.gray(" · ")}${scopeChip(rule.scopeId)}`);
+  out.push(`  ${c.bold(plain(rule.title))}`, "");
 
-  // Timeline: the rest of the evidence plus approvals from the feed, newest last, at most 4 lines.
+  // Timeline: origin (●), later evidence and approvals (○), the latest block (rose), oldest first.
+  const origin = rule.locked || rule.source === "human" ? "set by" : rule.source === "review" ? "from a review by" : "learned from";
+  out.push(tl(rule.locked ? c.rose("●") : c.lesson("●"), `${c.gray(origin)} ${who(first?.actor ?? rule.author)}`, day(first?.at ?? rule.createdAt)));
+  if (first?.quote || first?.ref) out.push(tl(rail, `${first?.quote ? `"${clip(first.quote, 80)}"` : ""}${first?.ref ? `  ${refLink(first)}` : ""}`));
   const approvals = (live.feed ?? []).filter((f) => f.memoryId === rule.id && f.type === "approval").map((f) => ({ at: f.at, actor: f.actor, type: "approval" }));
   const steps = [...ev.slice(1), ...approvals].sort((a, b) => a.at.localeCompare(b.at)).slice(-4);
-  steps.forEach((e, i) => {
+  for (const e of steps) {
     const what =
       e.type === "approval" || /^approved/i.test(e.quote ?? "")
         ? c.green("approved it")
         : `${c.gray(KIND[e.type] ?? e.type)}${e.quote && e.type !== "fix" && !/^[-+] /.test(e.quote) ? ` ${c.gray(`"${clip(e.quote, 54)}"`)}` : ""}`;
-    out.push(`  ${c.faint(i === steps.length - 1 ? "╰" : "├")} ${c.faint(day(e.at).padEnd(6))} ${person(e.actor)} ${what}${refLink(e) ? ` ${refLink(e)}` : ""}`);
-  });
-
-  // Reach: in today's pack → every agent wired to this repo gets it at session start.
-  const inPack = !!pack?.memoryIds?.includes(rule.id);
-  const agents = [...new Set([...(live.feed ?? []), ...(live.items ?? [])].filter((f) => f.agent && f.agent !== "other" && (!f.repo || cfg.repo.endsWith(f.repo))).map((f) => AGENT[f.agent] ?? f.agent))];
-  out.push(
-    `${c.gray("In context")} ${inPack ? `every agent in ${scopeChip(cfg.repo)} at session start` : c.gray(`not in ${cfg.repo}'s pack (ranked out or out of scope)`)}${inPack && agents.length ? c.gray(` · seen today: ${agents.join(", ")}`) : ""}`,
-  );
-
-  // Strength and blocks.
+    out.push(tl(c.faint("○"), `${person(e.actor)} ${what}${refLink(e) ? `  ${refLink(e)}` : ""}`, day(e.at)));
+  }
   const blocks = blocked.filter((m) => {
     const r = m.blockedReason ?? "";
     return r.includes(`[[${rule.slug}]]`) || r.includes(`"${plain(rule.title)}"`);
   });
+  const lastBlock = blocks.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0];
+  out.push(
+    lastBlock
+      ? tl(c.faint("╰"), `${c.rose("blocked")} ${c.gray(`"${clip(lastBlock.title, 56)}" from`)} ${person(lastBlock.author)}`, ago(lastBlock.updatedAt))
+      : tl(c.faint("╰"), c.faint("nothing blocked by it yet")),
+  );
+
+  // Reach, strength, owner: three aligned rows.
+  const inPack = !!pack?.memoryIds?.includes(rule.id);
+  const agents = [...new Set([...(live.feed ?? []), ...(live.items ?? [])].filter((f) => f.agent && f.agent !== "other" && (!f.repo || cfg.repo.endsWith(f.repo))).map((f) => AGENT[f.agent] ?? f.agent))];
   const reinforced = Math.max(0, Math.round(rule.alpha - 1));
   const conf = rule.locked ? "always applies" : `confidence ${Math.round((rule.alpha / (rule.alpha + rule.beta)) * 100)}%`;
-  out.push(`${c.gray("Reinforced")} ${reinforced}× ${c.gray(`· ${ev.length} evidence · ${conf}`)}${blocks.length ? ` ${c.gray("·")} ${c.rose(`blocked ${blocks.length} proposal${blocks.length === 1 ? "" : "s"}`)}` : ""}`);
-  const lastBlock = blocks.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0];
-  if (lastBlock) out.push(`  ${c.faint("╰")} ${c.gray(`latest: "${clip(lastBlock.title, 60)}" from`)} ${person(lastBlock.author)} ${c.gray(ago(lastBlock.updatedAt))}`);
-
   const owner = rule.locked ? (first?.actor ?? rule.author) : rule.author;
-  out.push(`${c.gray(rule.locked ? "Only" : "Owner")} ${handleChip(`@${owner}`)} ${c.gray(rule.locked ? "can change this rule" : "can update it; corrections reinforce it")} ${c.gray("·")} ${link(`${cfg.url}/app`, c.link("open in Hivemind"))}`);
+  out.push(
+    "",
+    ...rows([
+      {
+        key: "Reach",
+        value: inPack
+          ? `every agent in ${scopeChip(cfg.repo)} at session start${agents.length ? c.faint(` · seen today: ${agents.join(", ")}`) : ""}`
+          : c.gray(`not in ${cfg.repo}'s pack (ranked out or out of scope)`),
+      },
+      { key: "Strength", value: `reinforced ${reinforced}× ${c.faint(`· ${ev.length} evidence · ${conf}`)}${blocks.length ? `${c.faint(" · ")}${c.rose(`blocked ${blocks.length}`)}` : ""}` },
+      { key: "Owner", value: `${handleChip(`@${owner}`)} ${c.gray(rule.locked ? "is the only one who can change it" : "can update it; corrections reinforce it")}${c.faint(" · ")}${link(`${cfg.url}/app`, c.link("open in Hivemind"))}` },
+    ]).map((l) => `  ${l}`),
+  );
   console.log(out.join("\n"));
 }
