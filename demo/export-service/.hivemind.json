@@ -1,10 +1,11 @@
 {
   "repo": "repo/export-service",
-  "url": "http://localhost:3000",
+  "url": "https://hivemind-beta-virid.vercel.app",
   "agents": [
     "cursor",
     "gemini-cli",
     "copilot",
-    "codex"
+    "codex",
+    "claude-code"
   ]
 }
