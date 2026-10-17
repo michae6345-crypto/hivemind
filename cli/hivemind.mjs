@@ -16,7 +16,7 @@ import { fileURLToPath } from "node:url";
 import { AGENTS, SKILL_FILE, byId, mcpWired } from "./lib/agents.mjs";
 import { cmdCheck } from "./lib/check.mjs";
 import { rulesFrontmatter } from "./lib/templates.mjs";
-import { END, START, api, banner, c, callerAgent, mcpCall, mergeJson, onPath, post, read, readEnvFile, rel, sym, table, upsertBlock, write } from "./lib/util.mjs";
+import { END, START, api, banner, c, callerAgent, mcpCall, mergeJson, onPath, post, read, readEnvFile, rel, sym, table, plain, upsertBlock, write } from "./lib/util.mjs";
 
 const HM_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const CONFIG = ".hivemind.json";
@@ -113,7 +113,7 @@ function shapePack(markdown, cfg) {
     `<!-- Managed by \`hivemind sync\`. Edits inside this block are overwritten; propose changes in Hivemind instead. -->\n` +
     `# Hivemind — team memory for ${cfg.repo}\n` +
     `These are this repo's working rules, synced from Hivemind team memory. They come from teammates' corrections and ` +
-    `code reviews, approved by team leads. Follow them, and treat 🔒 rules as company policy that always applies.\n` +
+    `code reviews, approved by team leads. Follow them, and treat locked rules as company policy that always applies.\n` +
     `Call the Hivemind \`get_team_rules\` MCP tool at the start of every task for the live version; when the user corrects you, call \`propose_memory\`.\n` +
     withoutLive.replace(/^\n+/, "\n")
   );
@@ -271,7 +271,7 @@ async function cmdStatus(cfg) {
           ["API", `${sym.ok} ${cfg.url} ${c.gray(`${ms} ms`)}`],
           ["Token", tokenNote],
           ["Repo scope", known ? cfg.repo : `${cfg.repo} ${c.gray("(not in Hivemind yet; showing org memory)")}`],
-          ["Rules in pack", `${pack.memoryIds.length} ${c.gray(`(${locked} 🔒 locked, ~${pack.tokens} tokens)`)}`],
+          ["Rules in pack", `${pack.memoryIds.length} ${c.gray(`(${locked} locked, ~${pack.tokens} tokens)`)}`],
           ["Active memories", active ? String(active.length) : c.gray("n/a")],
           ["Pending lessons", pending ? (pending.length ? c.yellow(`${pending.length} awaiting review`) : "0") : c.gray("n/a")],
         ],
@@ -321,7 +321,7 @@ async function cmdTeach(cfg, positional) {
   const rule = positional.join(" ").trim();
   if (!rule) fail('usage: hivemind teach "<rule>" [--scope repo/<name>|team/<name>]');
   const scope = typeof cfg.flags.scope === "string" ? cfg.flags.scope : null;
-  // A correction goes through the learning engine (extract → merge → 🔒 conflict check). The engine scopes corrections
+  // A correction goes through the learning engine (extract → merge → locked-rule conflict check). The engine scopes corrections
   // itself, so an explicit team/org scope is sent as a proposal for that scope instead.
   const explicit = scope && !scope.startsWith("repo/");
   const event = explicit
@@ -341,13 +341,13 @@ async function cmdTeach(cfg, positional) {
   for (const m of res.lessons) {
     const act = actionOf.get(m.id);
     const owner = ownerOf(m.scopeId, scopes);
-    const meta = c.gray(`"${m.title}" · #${m.scopeId} · ${m.status}`);
+    const meta = c.gray(`"${plain(m.title)}" · #${m.scopeId} · ${m.status}`);
     if (m.status === "blocked") {
-      console.log(`🚫 Blocked by a 🔒 rule${act?.note || m.blockedReason ? ` — ${act?.note || m.blockedReason}` : ""}`);
+      console.log(`${c.bold(c.rose("Blocked by a locked rule"))}${act?.note || m.blockedReason ? c.rose(` — ${plain(act?.note || m.blockedReason)}`) : ""}`);
     } else if (act?.action === "reinforced" || act?.action === "updated" || m.status === "active") {
       console.log(`${sym.ok} Already known — your correction was added as evidence${m.status === "pending" && owner ? ` (still waiting on @${owner})` : ""}`);
     } else {
-      console.log(`📝 Lesson proposed — waiting on @${owner ?? "a lead"}`);
+      console.log(`${c.bold(c.lesson("Lesson proposed"))} — waiting on ${c.bold(`@${owner ?? "a lead"}`)}`);
     }
     console.log(`   ${meta}`);
   }
@@ -365,17 +365,19 @@ async function cmdRules(cfg) {
     const qs = new URLSearchParams({ repo: cfg.repo, user: cfg.actor, log: "0" });
     markdown = (await api(cfg, `/api/context-pack?${qs}`).catch((e2) => fail(e2.message))).data.markdown;
   }
-  if (!process.stdout.isTTY || cfg.flags.json) return process.stdout.write(markdown.trimEnd() + "\n");
-  for (const line of markdown.split("\n")) {
-    if (line.startsWith("#")) console.log(c.bold(c.amber(line)));
-    else if (line.includes("🔒")) console.log(c.red(line));
-    else if (line.includes("⚠️")) console.log(c.yellow(line));
+  if (cfg.flags.json) return process.stdout.write(markdown.trimEnd() + "\n");
+  if (!process.stdout.isTTY) return process.stdout.write(plain(markdown).trimEnd() + "\n");
+  for (const raw of markdown.split("\n")) {
+    const line = plain(raw);
+    if (line.startsWith("#")) console.log(c.bold(line));
+    else if (raw.includes("🔒")) console.log(c.rose(line)); // color carries "locked" now that the glyph is gone
+    else if (raw.includes("⚠️")) console.log(c.yellow(line));
     else console.log(line.replace(/\*\*(.+?)\*\*/g, (_, t) => c.bold(t)));
   }
 }
 
 // ---------- main ----------
-const HELP = `${banner("— team memory for every coding agent")}
+const HELP = `${banner("team memory for every coding agent")}
 
 ${c.bold("Usage")}
   hivemind init   [--agents claude-code,cursor,gemini-cli,copilot,codex,windsurf,other]

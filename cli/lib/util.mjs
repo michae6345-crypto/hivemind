@@ -5,6 +5,7 @@ import { delimiter, dirname, join } from "node:path";
 // ---------- ANSI ----------
 const force = process.env.FORCE_COLOR;
 const useColor = !process.env.NO_COLOR && force !== "0" && (process.stdout.isTTY || !!force);
+const truecolor = /truecolor|24bit/i.test(process.env.COLORTERM ?? "") || !!process.env.WT_SESSION || force === "3";
 const wrap = (open, close) => (s) => (useColor ? `\x1b[${open}m${s}\x1b[${close}m` : String(s));
 export const c = {
   bold: wrap(1, 22),
@@ -18,6 +19,8 @@ export const c = {
   gray: wrap(90, 39),
   amber: (s) => (useColor ? `\x1b[38;5;214m${s}\x1b[39m` : String(s)),
   rose: (s) => (useColor ? `\x1b[38;5;204m${s}\x1b[39m` : String(s)),
+  // Lesson blue #4C6EF5 (truecolor where the terminal says so, else the nearest 256-color)
+  lesson: (s) => (!useColor ? String(s) : truecolor ? `\x1b[38;2;76;110;245m${s}\x1b[39m` : `\x1b[38;5;69m${s}\x1b[39m`),
 };
 export const sym = { ok: c.green("✓"), warn: c.yellow("!"), fail: c.red("✗"), dot: c.gray("·"), arrow: c.amber("›") };
 
@@ -33,7 +36,19 @@ export function table(headers, rows) {
   return [line("┌", "┬", "┐"), row(headers.map((h) => c.bold(h))), line("├", "┼", "┤"), ...rows.map(row), line("└", "┴", "┘")].join("\n");
 }
 
-export const banner = (cmd) => `${c.amber("⬢")} ${c.bold("hivemind")} ${c.gray(cmd)}`;
+export const banner = (cmd) => `${c.bold("Hivemind")} ${c.gray(`· ${cmd}`)}`;
+
+/**
+ * House style: no emojis in UI. Server text (packs, block reasons, LLM explanations) still carries 🔒/⚠️, so CLI output
+ * maps them to words: "🔒 Locked policies" → "Locked policies", "- 🔒 **X**" → "- locked: **X**", "⚠️ x" → "x".
+ */
+export function plain(s) {
+  return String(s)
+    .replace(/🔒\s*(?=[Ll]ock)/g, "")
+    .replace(/(^|[-(\s])🔒\s*(?=\*\*)/g, "$1locked: ")
+    .replace(/\p{Extended_Pictographic}️?\s*/gu, "")
+    .replace(/[ \t]{2,}/g, " ");
+}
 
 // ---------- Files ----------
 export const rel = (root, p) => p.slice(root.length + 1).replace(/\\/g, "/");

@@ -25,9 +25,9 @@ To choose agents yourself, pass `--agents cursor,codex`.
 | `init [--agents …] [--repo repo/<name>] [--user <id>] [--url <api>] [--dir <path>] [--hivemind-dir <path>] [--no-sync] [--no-vscode] [--copilot-cli] [--dry-run]` | Writes the MCP, hook and rules config for each agent, then syncs the rules files |
 | `sync [--agents …] [--dry-run] [--personal --user <id>]` | Fetches `/api/context-pack` and writes it between `<!-- hivemind:start -->` / `<!-- hivemind:end -->` markers. Idempotent. Run it in CI or a cron to keep rules fresh |
 | `status` | Pings the API, then shows the rules in the pack, pending lessons, and each agent's MCP, hooks and rules files |
-| `teach "<rule>" [--scope repo/x|team/x]` | Sends the rule to `/api/events` as a correction, so it gets the same extract, merge and 🔒 checks as any other correction. Prints `📝 Lesson proposed — waiting on @<owner>`, or `🚫 Blocked by a 🔒 rule`. A `team/…` scope is sent as a proposal for that scope |
+| `teach "<rule>" [--scope repo/x|team/x]` | Sends the rule to `/api/events` as a correction, so it gets the same extract, merge and 🔒 checks as any other correction. Prints `Lesson proposed — waiting on @<owner>`, or `Blocked by a locked rule`. A `team/…` scope is sent as a proposal for that scope |
 | `rules [--file path]` | Prints the rules that apply now. With `--file`, it prints that file's rules plus live edits, using MCP `get_team_rules`. Output is colored on a TTY and plain markdown when piped |
-| `check <file…>` / `check --staged` `[--fix]` | Checks files against the team's rules via `POST /api/vscode/check`, the same regex + Haiku engine as the VS Code squiggles. Each violation prints as a code frame: `file:line:col`, 2 lines of context, the range underlined `~~~~` (rose for 🔒, amber for lessons), the rule, the owner's `@handle` and the quick fix as a diff. `--fix` applies the quick fixes (deduped, bottom-up) and re-checks. Exits 1 while a 🔒 rule is broken, so `hivemind check --staged` works as a pre-commit hook |
+| `check <file…>` / `check --staged` `[--fix]` | Checks files against the team's rules via `POST /api/vscode/check`, the same regex + Haiku engine as the VS Code squiggles. Each violation prints as a code frame: `file:line:col`, 2 lines of context, the range underlined `~~~~` (rose for locked rules, blue for lessons), the rule, the owner's `@handle` and the quick fix as a diff. `--fix` applies the quick fixes (deduped, bottom-up) and re-checks. Exits 1 while a locked rule is broken, so `hivemind check --staged` works as a pre-commit hook |
 
 Every command accepts `--agent <kind>`, which sets the `x-hm-agent` header. The default is `$HIVEMIND_AGENT`, else `cli`.
 
@@ -49,23 +49,37 @@ Settings are resolved in this order: flags, then `HIVEMIND_API_URL` / `HIVEMIND_
 
 ```text
 $ cd demo/export-service && hivemind check demo/violations.ts
-🔒 locked rule: Never mix data from different lab customers
-   ╭─[demo/violations.ts:8:23]
+locked rule: Never log expert personal info
+   ╭─[demo/violations.ts:15:3]
    │
- 7 │ /** Quarterly payout report across our two biggest lab customers. */
- 8 │ export async function exportQuarterlyReport(quarter: string): Promise<string> {
-   │                       ~~~~~~~~~~~~~~~~~~~~~ breaks a 🔒 locked rule
- 9 │   const labA = await rowsForCustomer("lab-a");
+13 │   const rows: Row[] = [...labA, ...labB];
+14 │   console.log("exporting quarterly report", { quarter, rows: rows.length });
+15 │   logger.info("report requested", { by: requestedBy.email });
+   │   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ breaks a locked rule
+16 │   return rows.map((r) => `${r.id},${r.lab_customer_id},${r.payout_cents}`).join("
+");
+17 │ }
    │
    ├─ owner  @maya · Head of Security
-   ╰─ fix    add assertSingleCustomer(rows)
-12 │ +   assertSingleCustomer(rows);
+   ╰─ fix    log the expert's id, not their contact details
+15 │ -   logger.info("report requested", { by: requestedBy.email });
+15 │ +   logger.info("report requested", { by: requestedBy.id });
 …
-⬢ Hivemind: 1 🔒 locked rule broken · 2 lessons · run with --fix to apply 2 quick fixes
+Hivemind · 3 locked rules broken · 1 lesson · run with --fix to apply 3 quick fixes
 ```
 
-`--fix` can't fix everything. After it adds `assertSingleCustomer(rows)`, the re-check still flags the 🔒 rule, because
-combining Lab A and Lab B rows is itself the violation. That one needs a human, so the output names `@maya`.
+The house style is no emojis: color carries the meaning (rose = locked rule, blue #4C6EF5 = team lesson), and owners
+are `@handles`. The regex pass is deterministic, so the fixture gives the same frames on every run:
+
+- It catches a missing `assertSingleCustomer` in an export function.
+- It catches rows from two lab customers being combined.
+- It catches `console.*`.
+- It catches an expert's email or phone in a log call.
+
+LLM hits for a rule the regex pass already flagged are dropped.
+
+`--fix` can't fix everything. Combining Lab A and Lab B rows stays flagged after the fixes, because that needs a human; the
+re-check names `@maya`.
 
 Pre-commit hook: `printf '#!/bin/sh
 hivemind check --staged

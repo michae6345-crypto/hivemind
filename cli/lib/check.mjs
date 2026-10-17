@@ -3,7 +3,7 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { isAbsolute, relative, resolve } from "node:path";
-import { api, c, post } from "./util.mjs";
+import { api, c, plain, post } from "./util.mjs";
 
 const CODE_EXT = /\.(m?[jt]sx?|cjs|cts|py|go|rb|java|kt|rs|sql|cs|php|swift|scala|sh)$/i;
 const CONTEXT = 2;
@@ -14,7 +14,7 @@ const clipLine = (s) => (s.length > MAX_COLS ? s.slice(0, MAX_COLS - 1) + "…" 
 const fixKey = (f) => (f.kind === "insertBefore" ? `ins:${f.text.trim()}` : `rep:${f.line}:${f.endLine ?? ""}:${f.text.trim()}`);
 
 // ---------- helpers ----------
-const tone = (locked) => (locked ? c.rose : c.amber);
+const tone = (locked) => (locked ? c.rose : c.lesson); // rose = locked rule, blue = team lesson
 const expand = (s) => s.replace(/\t/g, "  ");
 const toPosix = (p) => p.replace(/\\/g, "/");
 
@@ -28,7 +28,7 @@ const ownerTitle = (v, rule) => (v.owner.includes(",") ? v.owner.split(",").slic
 /** The LLM's one-line explanation, i.e. whatever follows the standard "…Locked by X, Role." / "…From X's lesson." wording. */
 function explanation(v) {
   const m = v.message.match(/(?:Locked by [^.]+\.|From [^.]+'s lesson\.)\s*(.*)$/);
-  return m?.[1]?.trim() || "";
+  return plain(m?.[1]?.trim() || "");
 }
 
 /** [start, end) columns to underline on `line`: a rule symbol (console.log(…) through its paren), a declared name, or the code. */
@@ -70,13 +70,13 @@ function frame(file, lines, v, rule) {
   const bar = c.gray(`${" ".repeat(width)} │`);
   const [sc] = span(lines[v.startLine] ?? "", rule);
 
-  const badge = v.locked ? c.bold(c.rose("🔒 locked rule")) : c.bold(c.amber("◆ team lesson"));
+  const badge = v.locked ? c.bold(c.rose("locked rule:")) : c.bold(c.lesson("team lesson:"));
   const out = [
-    `${badge}${c.gray(":")} ${c.bold(v.ruleTitle)}`,
+    `${badge} ${c.bold(plain(v.ruleTitle))}`,
     `${" ".repeat(width)} ${c.gray("╭─[")}${c.cyan(file)}${c.gray(`:${v.startLine + 1}:${sc + 1}]`)}`,
     bar,
   ];
-  const why = explanation(v) || (v.locked ? "breaks a 🔒 locked rule" : "doesn't follow a team lesson");
+  const why = explanation(v) || (v.locked ? "breaks a locked rule" : "doesn't follow a team lesson");
   const multi = v.endLine > v.startLine;
   for (let i = first; i <= last; i++) {
     const text = clipLine(expand(lines[i] ?? ""));
@@ -161,13 +161,13 @@ async function checkOne(cfg, file, text) {
 const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
 function summary(totLocked, totLessons, fixable, nFiles, { fixHint }) {
-  const mark = c.amber("⬢");
-  if (!totLocked && !totLessons) return `${mark} ${c.bold("Hivemind:")} ${c.green("✓")} no team-rule violations in ${plural(nFiles, "file")}`;
+  const dot = c.gray(" · ");
+  if (!totLocked && !totLessons) return `${c.bold("Hivemind")}${dot}${c.green("no team-rule violations")} in ${plural(nFiles, "file")}`;
   const parts = [];
-  if (totLocked) parts.push(c.rose(c.bold(`${totLocked} 🔒 locked rule${totLocked === 1 ? "" : "s"} broken`)));
-  if (totLessons) parts.push(c.amber(plural(totLessons, "lesson")));
+  if (totLocked) parts.push(c.rose(c.bold(`${plural(totLocked, "locked rule")} broken`)));
+  if (totLessons) parts.push(c.lesson(plural(totLessons, "lesson")));
   if (fixHint && fixable) parts.push(c.gray(`run with ${c.cyan("--fix")} to apply ${plural(fixable, "quick fix", "quick fixes")}`));
-  return `${mark} ${c.bold("Hivemind:")} ${parts.join(c.gray(" · "))}`;
+  return [c.bold("Hivemind"), ...parts].join(dot);
 }
 
 // ---------- command ----------
@@ -180,7 +180,7 @@ export async function cmdCheck(cfg, positional, fail) {
       fail(`--staged needs a git repo: ${e.message.split("\n")[0]}`);
     }
     if (!targets.length) {
-      console.log(`${c.amber("⬢")} ${c.bold("Hivemind:")} no staged code files to check`);
+      console.log(`${c.bold("Hivemind")}${c.gray(" · ")}no staged code files to check`);
       return;
     }
   } else {
@@ -230,7 +230,7 @@ export async function cmdCheck(cfg, positional, fail) {
         for (const v of after.violations) {
           const what = explanation(v) || v.ruleTitle;
           const who = handle(v, after.rules.get(v.ruleId));
-          const icon = v.locked ? c.rose("🔒") : c.amber("◆");
+          const icon = v.locked ? c.rose("locked rule") : c.lesson("team lesson");
           console.log(`  ${c.gray("re-check:")} ${icon} ${tone(v.locked)(`${p.file}:${v.startLine + 1}`)} ${what} ${c.gray(`— needs a human fix; ask ${c.bold(who)}`)}`);
         }
       }
@@ -239,6 +239,6 @@ export async function cmdCheck(cfg, positional, fail) {
     if (!cfg.dryRun) process.exitCode = stillLocked ? 1 : 0;
     return;
   }
-  process.exitCode = locked ? 1 : 0; // 🔒 violations fail the run (pre-commit friendly); lessons only warn
+  process.exitCode = locked ? 1 : 0; // locked-rule violations fail the run (pre-commit friendly); lessons only warn
 }
 
