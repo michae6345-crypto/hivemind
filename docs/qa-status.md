@@ -74,6 +74,11 @@ build OOMed, which points to machine memory pressure with 12 Claude sessions ope
 
 ## DB state
 
+- **Pre-recording cleanup (~4:30 AM):** `reset-demo` now always deletes junk, playground included: rows by actor `cli` / `michae6345` /
+  qa* / smoke*, "QA2 timing probe …" and QA/smoke test lessons. It also strips junk-actor evidence from kept lessons. After reseeding
+  it shifts lessons the mocks date "minutes ago" back one day (6 lessons: the blocked guardrail, Kevin's pending lesson, …).
+  Verified: a fresh reset leaves the watch Feed with an empty NOW (only EARLIER) and 0 junk rows.
+
 - `reset-demo.mjs` (latest):
   - never touches `repo/playground` (memories by scope; events/activity/pack_log by repo);
   - keeps hand-written non-seed memories (A's 18 scenario lessons) unless `--all-extra`;

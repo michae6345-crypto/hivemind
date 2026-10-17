@@ -44,7 +44,7 @@ const { memories: seedMemories } = await import(pathToFileURL(path.join(root, "s
 const seedSlugs = new Set(seedMemories.map((m) => m.slug));
 
 // ---- what would go ----
-const mems = must("memories", await sb.from("memories").select("id,slug,scope_id,title,status,source,author"));
+const mems = must("memories", await sb.from("memories").select("id,slug,scope_id,title,status,source,author,evidence"));
 // Known test leftovers are always removed (A's API tests, smoke runs), even if a seed slug ever collides.
 const TEST_SLUG = /^(api-test-|smoke-test-)/i;
 const TEST_TITLE = /^(smoke test lesson|api test:)/i;
@@ -60,20 +60,35 @@ const engineMade = (slug) => {
 const nonSeed = mems.filter((m) => !seedSlugs.has(m.slug));
 // Michael's experiments live in repo/playground: reset never touches its memories, events, activity or sessions.
 const isPlayground = (repo) => repo === "repo/playground" || repo === "playground";
+// Always deleted, playground included (they show on camera): rows by tool/test identities (`cli`, the GitHub login
+// `michae6345`, qa*/smoke* agents) and QA/smoke probe lessons ("QA2 timing probe …"). Junk evidence on kept lessons is stripped.
+const JUNK_ACTOR = /^(cli|michae6345|qa\d*|smoke[\w-]*|agent:(qa|smoke)[\w-]*)$/i;
+const JUNK_MEM = /\bqa\d+[- ](timing[- ])?probe|^qa\d+[- ]|smoke[- ]test|test lesson|^api[- ]test/i;
+const isJunkActor = (a) => JUNK_ACTOR.test(String(a ?? ""));
+const isJunkMem = (m) => isJunkActor(m.author) || JUNK_MEM.test(m.title ?? "") || JUNK_MEM.test(m.slug ?? "");
 const extraMems = mems.filter(
-  (m) => m.scope_id !== "repo/playground" && (isTestMem(m) || (!seedSlugs.has(m.slug) && (ALL_EXTRA || engineMade(m.slug)))),
+  (m) => isJunkMem(m) || (m.scope_id !== "repo/playground" && (isTestMem(m) || (!seedSlugs.has(m.slug) && (ALL_EXTRA || engineMade(m.slug))))),
 );
 const keptExtra = nonSeed.filter((m) => !extraMems.includes(m));
+const junkEvidence = mems
+  .filter((m) => !extraMems.includes(m) && (m.evidence ?? []).some((e) => isJunkActor(e.actor)))
+  .map((m) => ({ id: m.id, slug: m.slug, evidence: m.evidence.filter((e) => !isJunkActor(e.actor)), dropped: m.evidence.filter((e) => isJunkActor(e.actor)).length }));
 const events = must("events", await sb.from("events").select("id,type,actor,session_id,repo,payload").limit(10000));
 const liveEvents = events.filter(
   (e) =>
-    !isPlayground(e.repo) &&
-    (e.payload?.synthetic !== true || TEST_SLUG.test(String(e.payload?.slug ?? "")) || (e.type === "session_start" && isPreview(e.session_id))),
+    isJunkActor(e.actor) ||
+    (!isPlayground(e.repo) &&
+      (e.payload?.synthetic !== true || TEST_SLUG.test(String(e.payload?.slug ?? "")) || (e.type === "session_start" && isPreview(e.session_id)))),
 );
-const activity = must("activity", await sb.from("activity").select("id,session_id,actor,repo,file").limit(10000)).filter((a) => !isPlayground(a.repo));
+const activity = must("activity", await sb.from("activity").select("id,session_id,actor,repo,file").limit(10000)).filter(
+  (a) => !isPlayground(a.repo) || isJunkActor(a.actor),
+);
 const allPacks = must("pack_log", await sb.from("pack_log").select("id,session_id,actor,repo").limit(10000));
 const packs = allPacks.filter((p) => !isPlayground(p.repo));
-const livePacks = packs.filter((p) => isPreview(p.session_id) || !String(p.session_id).startsWith("hist-"));
+const livePacks = [
+  ...packs.filter((p) => isJunkActor(p.actor) || isPreview(p.session_id) || !String(p.session_id).startsWith("hist-")),
+  ...allPacks.filter((p) => isPlayground(p.repo) && isJunkActor(p.actor)),
+];
 const histCount = packs.length - livePacks.length;
 const playgroundKept = mems.filter((m) => m.scope_id === "repo/playground").length + (allPacks.length - packs.length);
 
@@ -85,7 +100,9 @@ const summarize = (rows, f) => {
 const sess = (s) => String(s ?? "∅").replace(/[0-9a-f]{8}-[0-9a-f-]{27}/i, "<uuid>").replace(/\d{6,}/g, "<n>");
 console.log(`${DRY ? "[dry-run] would delete" : "deleting"}:`);
 console.log(`  non-seed memories from live takes / tests (${extraMems.length}):`);
-for (const m of extraMems) console.log(`    - ${m.status.padEnd(8)} ${m.source.padEnd(10)} ${m.slug}  "${m.title}"${isTestMem(m) ? "  [test leftover]" : ""}`);
+for (const m of extraMems)
+  console.log(`    - ${m.status.padEnd(8)} ${m.source.padEnd(10)} ${m.slug}  "${m.title}"${isJunkMem(m) ? "  [junk, incl. playground]" : isTestMem(m) ? "  [test leftover]" : ""}`);
+console.log(`  junk evidence stripped from kept lessons (${junkEvidence.reduce((n, j) => n + j.dropped, 0)}): ${junkEvidence.map((j) => `${j.slug} −${j.dropped}`).join(", ") || "—"}`);
 console.log(`  non-synthetic events (${liveEvents.length}): ${summarize(liveEvents, (e) => `${e.type}[${sess(e.session_id)}]`)}`);
 console.log(`  activity (${activity.length}): ${summarize(activity, (a) => `${a.actor}:${sess(a.session_id)}`)}`);
 console.log(`  non-synthetic pack_log (${livePacks.length}, ${livePacks.filter((p) => isPreview(p.session_id)).length} preview/empty-session): ${summarize(livePacks, (p) => `${p.actor}:${sess(p.session_id)}`)}`);
@@ -104,6 +121,7 @@ if (extraIds.length) {
   must("clear invalidated_by", await sb.from("memories").update({ invalidated_by: null }).in("invalidated_by", extraIds));
   await delIn("memories", extraIds);
 }
+for (const j of junkEvidence) must(`strip evidence ${j.slug}`, await sb.from("memories").update({ evidence: j.evidence }).eq("id", j.id));
 await delIn("events", ids(liveEvents));
 await delIn("activity", ids(activity));
 await delIn("pack_log", ids(livePacks));
@@ -129,4 +147,21 @@ if (DROP.length) {
   }
   console.log(`✓ dropped ${drop.map((d) => d.slug).join(", ") || "(none found)"}`);
 }
+
+// Quiet NOW after a reset: /api/activity/live turns lessons changed in the last 24h into Feed rows ("approved a
+// lesson", "blocked by a locked rule"), and the mocks date some seed lessons minutes ago (the blocked guardrail at 1m,
+// Kevin's pending lesson at 3m). Shift every lesson dated within the last hour back one day (created_at, updated_at
+// and evidence[].at together, so ages stay consistent). Live takes then own NOW; seeded history reads as EARLIER.
+const DAY_MS = 24 * 3600e3;
+const shift = (iso) => (iso ? new Date(Date.parse(iso) - DAY_MS).toISOString() : iso);
+const freshSince = new Date(Date.now() - 3600e3).toISOString();
+const fresh = must(
+  "fresh lessons",
+  await sb.from("memories").select("id,slug,created_at,updated_at,evidence").or(`created_at.gte.${freshSince},updated_at.gte.${freshSince}`),
+);
+for (const m of fresh) {
+  const evidence = (m.evidence ?? []).map((e) => (e.at && e.at >= freshSince ? { ...e, at: shift(e.at) } : e));
+  must(`backdate ${m.slug}`, await sb.from("memories").update({ created_at: shift(m.created_at), updated_at: shift(m.updated_at), evidence }).eq("id", m.id));
+}
+console.log(`✓ backdated ${fresh.length} recently-dated seed lessons by 1 day (Feed NOW stays quiet)${fresh.length ? `: ${fresh.map((m) => m.slug).join(", ")}` : ""}`);
 console.log("✓ demo DB reset");
