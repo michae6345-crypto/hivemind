@@ -1,0 +1,98 @@
+{
+  "enabledMcpjsonServers": [
+    "hivemind"
+  ],
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/../hooks/session-start.mjs\"",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "http",
+            "url": "https://hivemind-beta-virid.vercel.app/api/hooks/prompt",
+            "headers": {
+              "Authorization": "Bearer $HIVEMIND_TOKEN",
+              "x-hm-user": "$HIVEMIND_USER",
+              "x-hm-repo": "$HIVEMIND_REPO"
+            },
+            "allowedEnvVars": [
+              "HIVEMIND_TOKEN",
+              "HIVEMIND_USER",
+              "HIVEMIND_REPO"
+            ],
+            "timeout": 10,
+            "onFailure": "continue"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "http",
+            "url": "https://hivemind-beta-virid.vercel.app/api/hooks/tool",
+            "headers": {
+              "Authorization": "Bearer $HIVEMIND_TOKEN",
+              "x-hm-user": "$HIVEMIND_USER",
+              "x-hm-repo": "$HIVEMIND_REPO"
+            },
+            "allowedEnvVars": [
+              "HIVEMIND_TOKEN",
+              "HIVEMIND_USER",
+              "HIVEMIND_REPO"
+            ],
+            "timeout": 5,
+            "onFailure": "continue"
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "http",
+            "url": "https://hivemind-beta-virid.vercel.app/api/hooks/session-end",
+            "headers": {
+              "Authorization": "Bearer $HIVEMIND_TOKEN",
+              "x-hm-user": "$HIVEMIND_USER",
+              "x-hm-repo": "$HIVEMIND_REPO"
+            },
+            "allowedEnvVars": [
+              "HIVEMIND_TOKEN",
+              "HIVEMIND_USER",
+              "HIVEMIND_REPO"
+            ],
+            "timeout": 5,
+            "onFailure": "continue"
+          }
+        ]
+      }
+    ]
+  },
+  "permissions": {
+    "allow": [
+      "mcp__hivemind__get_team_rules",
+      "mcp__hivemind__search_memory",
+      "mcp__hivemind__propose_memory"
+    ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "node \"${CLAUDE_PROJECT_DIR:-.}/../cli/hivemind.mjs\" statusline",
+    "refreshInterval": 5
+  }
+}

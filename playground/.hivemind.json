@@ -1,0 +1,7 @@
+{
+  "repo": "repo/playground",
+  "url": "https://hivemind-beta-virid.vercel.app",
+  "agents": [
+    "claude-code"
+  ]
+}

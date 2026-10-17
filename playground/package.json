@@ -1,0 +1,7 @@
+{
+  "name": "payouts-service",
+  "private": true,
+  "description": "Hivemind playground (fictional Meridian Data service). Testing sandbox, safe to break.",
+  "type": "module",
+  "scripts": { "check": "node ../cli/hivemind.mjs check scratch/legacy-report.ts" }
+}
