@@ -40,7 +40,7 @@ All commands share the `hivemind watch` theme (`watch/theme.mjs`):
 - rose: locked rules
 - honey: team lessons
 - `@handles` for people
-- no emojis
+- no emojis; `⬢ Hivemind · …` is the one glyph, as in the watch header
 
 ## Commands
 
@@ -90,7 +90,7 @@ locked rule: Never log expert personal info
 15 │ -   logger.info("report requested", { by: requestedBy.email });
 15 │ +   logger.info("report requested", { by: requestedBy.id });
 
-Hivemind · 2 locked rules broken · 1 lesson · run with --fix to apply 2 quick fixes
+⬢ Hivemind · 2 locked rules broken · 1 lesson · run with --fix to apply 2 quick fixes
 ```
 
 The house style is no emojis: color carries the meaning (rose = locked rule, honey = team lesson), and people

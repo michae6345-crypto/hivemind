@@ -3,7 +3,7 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { isAbsolute, relative, resolve } from "node:path";
-import { handleChip, label } from "./style.mjs";
+import { brand, handleChip, label } from "./style.mjs";
 import { api, c, plain, post } from "./util.mjs";
 
 const CODE_EXT = /\.(m?[jt]sx?|cjs|cts|py|go|rb|java|kt|rs|sql|cs|php|swift|scala|sh)$/i;
@@ -183,12 +183,12 @@ const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
 function summary(totLocked, totLessons, fixable, nFiles, { fixHint }) {
   const dot = c.gray(" · ");
-  if (!totLocked && !totLessons) return `${c.bold("Hivemind")}${dot}${c.green("no team-rule violations")} in ${plural(nFiles, "file")}`;
+  if (!totLocked && !totLessons) return `${brand()}${dot}${c.green("no team-rule violations")} in ${plural(nFiles, "file")}`;
   const parts = [];
   if (totLocked) parts.push(c.rose(c.bold(`${plural(totLocked, "locked rule")} broken`)));
   if (totLessons) parts.push(c.lesson(plural(totLessons, "lesson")));
   if (fixHint && fixable) parts.push(c.gray(`run with ${c.cyan("--fix")} to apply ${plural(fixable, "quick fix", "quick fixes")}`));
-  return [c.bold("Hivemind"), ...parts].join(dot);
+  return [brand(), ...parts].join(dot);
 }
 
 // ---------- command ----------
@@ -201,7 +201,7 @@ export async function cmdCheck(cfg, positional, fail) {
       fail(`--staged needs a git repo: ${e.message.split("\n")[0]}`);
     }
     if (!targets.length) {
-      console.log(`${c.bold("Hivemind")}${c.gray(" · ")}no staged code files to check`);
+      console.log(`${brand()}${c.gray(" · ")}no staged code files to check`);
       return;
     }
   } else {

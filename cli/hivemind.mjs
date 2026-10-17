@@ -15,7 +15,7 @@ import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { AGENTS, SKILL_FILE, byId, mcpWired } from "./lib/agents.mjs";
 import { cmdCheck } from "./lib/check.mjs";
-import { handleChip, label, rich, scopeChip } from "./lib/style.mjs";
+import { brand, handleChip, label, rich, scopeChip } from "./lib/style.mjs";
 import { rulesFrontmatter } from "./lib/templates.mjs";
 import { END, START, api, banner, c, callerAgent, mcpCall, mergeJson, onPath, post, read, readEnvFile, rel, sym, table, plain, upsertBlock, write } from "./lib/util.mjs";
 
@@ -402,7 +402,7 @@ function help() {
   const group = (title) => `  ${c.faint(title.toUpperCase())}`;
   return [
     "",
-    `  ${c.bold("Hivemind")}  ${c.faint(`v${VERSION}`)}`,
+    `  ${brand()}  ${c.faint(`v${VERSION}`)}`,
     `  ${c.bold("Correct one agent.")}`,
     `  ${c.gray("Every agent learns.")}`,
     "",

@@ -1,7 +1,7 @@
 // Small zero-dep helpers: colors, tables, safe file writes, JSON merge, HTTP.
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { delimiter, dirname, join } from "node:path";
-import { t } from "./style.mjs";
+import { brand, t } from "./style.mjs";
 
 // ---------- Colours: every command paints through the shared theme (lib/style.mjs → watch/theme.mjs) ----------
 export const c = {
@@ -35,7 +35,7 @@ export function table(headers, rows) {
   return [line("┌", "┬", "┐"), row(headers.map((h) => c.bold(h))), line("├", "┼", "┤"), ...rows.map(row), line("└", "┴", "┘")].join("\n");
 }
 
-export const banner = (cmd) => `${c.bold("Hivemind")} ${c.gray(`· ${cmd}`)}`;
+export const banner = (cmd) => `${brand()} ${c.gray(`· ${cmd}`)}`;
 
 /**
  * House style: no emojis in UI. Server text (packs, block reasons, LLM explanations) still carries 🔒/⚠️, so CLI output

@@ -91,5 +91,9 @@ export const scopeChip = external?.scopeChip ?? ((id) => (id.startsWith("team/")
 /** @handles, #scopes and `code` coloured in running text (watch/theme.mjs `rich`), else @handles only. */
 export const rich = external?.rich ?? ((s) => String(s).replace(/@[\w.-]+/g, (h) => t.handle(h)));
 
+/** "⬢ Hivemind": honey hexagon + bold name, exactly like the watch header. ⬢ is the one glyph Adrian's spec keeps. */
+export const HEX = external?.HEX ?? "⬢";
+export const brand = () => `${t.lesson(HEX)} ${t.bold(t.text("Hivemind"))}`;
+
 /** Whether the shared watch theme was found (shown in --version). */
 export const themeSource = external ? "watch/theme.mjs" : "built-in spec";
