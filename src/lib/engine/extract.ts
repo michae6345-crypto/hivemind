@@ -12,6 +12,8 @@ export type Candidate = {
   kind: "lesson" | "fact";
   scope: "repo" | "team";
   confidence: number;
+  /** Safety-net candidate: may only reinforce an existing lesson, never create one. */
+  reinforceOnly?: boolean;
 };
 export type ServedItem = { id: string; title: string; body: string };
 export type ItemRating = { memoryId: string; rating: "helpful" | "harmful" };

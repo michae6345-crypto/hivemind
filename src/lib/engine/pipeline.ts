@@ -2,7 +2,7 @@ import "server-only";
 import type { Evidence, EventInput, Memory, Scope } from "@/contracts";
 import { db } from "@/lib/db";
 import { scopeChain, toMemory } from "@/lib/map";
-import { extractLessons, overlap, passesFilter, polarity, tokens, type Candidate, type ItemRating, type ServedItem } from "./extract";
+import { extractLessons, heuristicExtract, overlap, passesFilter, polarity, tokens, type Candidate, type ItemRating, type ServedItem } from "./extract";
 import { checkConflict, contradicts, heuristicConflict } from "./conflict";
 import { decideMerge, heuristicMerge } from "./merge";
 import { bump, fmtConfidence, roleWeight } from "./score";
@@ -23,6 +23,7 @@ type MemRow = {
   status: string;
   author: string | null;
   evidence: Evidence[];
+  source: string;
   alpha: number;
   beta: number;
 };
@@ -41,6 +42,8 @@ export type Outcome = {
 };
 
 const MEM_COLS = "*";
+const ENGINE_SOURCES = new Set(["correction", "review", "agent"]);
+const LIVE = new Set(["pending", "active", "blocked"]);
 const sb = () => db();
 
 async function loadCtx(): Promise<Ctx> {
@@ -140,7 +143,8 @@ async function updateMemory(id: string, patch: Row): Promise<MemRow> {
 async function reinforce(target: MemRow, evidence: Evidence, w: number, mergedBody?: string): Promise<{ row: MemRow; promoted: boolean }> {
   const ev = [...(target.evidence ?? []), evidence];
   const patch: Row = { evidence: ev, alpha: Number(target.alpha) + w };
-  if (mergedBody && !target.locked) patch.body = mergedBody;
+  // The engine may rewrite only text it wrote itself — human-authored / seeded lessons and 🔒 rules keep their wording.
+  if (mergedBody && !target.locked && ENGINE_SOURCES.has(target.source)) patch.body = mergedBody;
   const promoted = target.status === "pending" && humanActors(ev).size >= 2;
   if (promoted) {
     patch.status = "active";
@@ -193,13 +197,27 @@ export async function ingestEvent(input: EventInput): Promise<Outcome> {
 
 async function learnFromEvent(eventId: string, input: EventInput): Promise<Outcome> {
   const t0 = Date.now();
-  const ctx = await loadCtx();
   const payload = (input.payload ?? {}) as Record<string, unknown>;
   const text = String(payload.text ?? payload.prompt ?? payload.body ?? "").trim();
   const actor = input.actor;
   const isAgent = input.type === "agent_proposal" || actor.startsWith("agent");
+  // Latency matters (UserPromptSubmit hook budget): overlap DB reads with each other and with the LLM calls.
+  const [ctx, served] = await Promise.all([loadCtx(), isAgent ? Promise.resolve([] as ServedItem[]) : servedFor(input.sessionId)]);
   const w = isAgent ? 0.3 : roleWeight(personOf(ctx, actor)?.role, actor);
   const repoScope = await ensureRepoScope(ctx, input.repo ?? null, actor);
+  const repoChain = scopeChain(repoScope, ctx.scopes);
+  const repoMems = chainMemories(repoChain);
+  repoMems.catch(() => {}); // awaited below; avoid an unhandled rejection if we return early
+  let cache: MemRow[] | null = null;
+  const memsFor = async (chain: string[]) => {
+    if (!chain.every((id) => repoChain.includes(id))) return chainMemories(chain);
+    cache ??= await repoMems;
+    return cache.filter((m) => chain.includes(m.scope_id));
+  };
+  const remember = (row: MemRow) => {
+    if (cache) cache = [...cache.filter((m) => m.id !== row.id), ...(LIVE.has(row.status) ? [row] : [])];
+    return row;
+  };
   const empty = { eventId, isCorrection: false, captured: [], lessons: [], ratings: [], path: "heuristic" as EnginePath };
 
   // ① + ② candidates
@@ -217,9 +235,7 @@ async function learnFromEvent(eventId: string, input: EventInput): Promise<Outco
       console.log(`[engine] filter: dropped "${text.slice(0, 40)}"`);
       return empty;
     }
-    const served = await servedFor(input.sessionId);
-    const existingTitles =
-      input.type === "review_comment" ? (await chainMemories(scopeChain(repoScope, ctx.scopes))).map((m) => m.title).slice(0, 40) : undefined;
+    // No existing-rule list in the prompt: the model tends to skip restated rules, but restatements are evidence (merge dedupes).
     const ex = await extractLessons({
       mode: input.type === "review_comment" ? "review_comment" : "correction",
       text,
@@ -227,9 +243,16 @@ async function learnFromEvent(eventId: string, input: EventInput): Promise<Outco
       context: payload.context ? String(payload.context) : undefined,
       file: payload.file ? String(payload.file) : undefined,
       served,
-      existingTitles,
     });
     ({ candidates, ratings, isCorrection, path } = ex);
+    if (path === "llm" && !candidates.length && (isCorrection || input.type === "review_comment")) {
+      // Safety net: a rule-like restatement of an existing lesson still counts as reinforcement (never a new lesson).
+      const known = (await memsFor(repoChain)).filter((m) => m.status !== "blocked");
+      candidates = heuristicExtract(text, ex.isCorrection ? "correction" : "review_comment").candidates
+        .filter((h) => heuristicMerge(h, known).event === "NONE")
+        .map((h) => ({ ...h, reinforceOnly: true }));
+      if (candidates.length) console.log(`[engine] extract: llm returned none; heuristic restatement of existing lesson → reinforce`);
+    }
   }
 
   const evidence: Evidence = {
@@ -247,32 +270,41 @@ async function learnFromEvent(eventId: string, input: EventInput): Promise<Outco
     const explicit = input.type === "agent_proposal" && ctx.scopes.some((s) => s.id === payload.scope) ? String(payload.scope) : null;
     const scopeId = explicit ?? (c.scope === "team" ? teamOf(ctx, repoScope) : repoScope);
     const chain = scopeChain(scopeId, ctx.scopes);
-    const mems = await chainMemories(chain);
+    const mems = await memsFor(chain);
     const locked = mems.filter((m) => m.locked && m.status !== "blocked");
+    // Guard on the engineer's own words too: the extractor may rephrase away the "…is fine" that breaks a 🔒 rule.
+    const rawLockHit = text && !isAgent ? heuristicConflict({ title: text, body: "" }, locked) : null;
     const owner = ownerFor(ctx, scopeId);
     const body = `${c.body}\n\nLearned from @${actor.replace(/^agent:/, "")} in #${repoScope}`;
 
-    const block = async (lock: MemRow) => {
+    const block = async (lock: MemRow, faithful?: Candidate) => {
+      const b = faithful ?? c; // when only the raw-text guard fired, show what the engineer actually said
       const lockOwner = displayName(ctx, lock.author ?? ownerFor(ctx, lock.scope_id));
       const reason = `Conflicts with 🔒 ${lock.title}${lockOwner ? ` (${lockOwner})` : ""}`;
       const blockedDupes = mems.filter((m) => m.status === "blocked" && !m.locked);
-      const dup = heuristicMerge(c, blockedDupes);
+      const dup = heuristicMerge(b, blockedDupes);
       const dupRow = dup.event === "NONE" && dup.target ? blockedDupes.find((m) => m.id === dup.target!.id) : undefined;
-      const row = dupRow
-        ? (await reinforce(dupRow, evidence, w)).row
-        : await insertMemory({
-            scope_id: scopeId, kind: c.kind, title: c.title, body, slug: slugify(c.title), status: "blocked",
-            status_reason: reason, source, author: actor, evidence: [evidence], alpha: 1 + w, beta: 1,
-          });
+      const row = remember(
+        dupRow
+          ? (await reinforce(dupRow, evidence, w)).row
+          : await insertMemory({
+              scope_id: scopeId, kind: b.kind, title: b.title, slug: slugify(b.title), status: "blocked",
+              body: `${b.body}\n\nLearned from @${actor.replace(/^agent:/, "")} in #${repoScope}`,
+              status_reason: reason, source, author: actor, evidence: [evidence], alpha: 1 + w, beta: 1,
+            }),
+      );
       captured.push({ action: "blocked", memory: toMemory(row), owner: lockOwner, note: reason });
     };
 
     // ④ conflict vs 🔒 and ③ merge are independent → run in parallel (hook latency budget); conflict decides first.
     const existing = mems.filter((m) => m.status !== "blocked");
     const [conflict, d] = await Promise.all([checkConflict(c, locked), decideMerge(c, existing)]);
-    const lockHit = conflict.conflict ? locked.find((m) => m.id === conflict.conflict!.id) : undefined;
+    if (c.reinforceOnly && d.event !== "NONE" && d.event !== "UPDATE") Object.assign(d, heuristicMerge(c, existing));
+    const lockHit = (conflict.conflict ? locked.find((m) => m.id === conflict.conflict!.id) : undefined) ?? rawLockHit;
+    if (!conflict.conflict && rawLockHit) console.log(`[engine] conflict guard: raw message contradicts 🔒 "${rawLockHit.title}"`);
     if (lockHit) {
-      await block(lockHit); // locked always wins
+      // locked always wins
+      await block(lockHit, !conflict.conflict && rawLockHit ? heuristicExtract(text, "correction").candidates[0] : undefined);
       continue;
     }
 
@@ -289,6 +321,7 @@ async function learnFromEvent(eventId: string, input: EventInput): Promise<Outco
     if ((d.event === "NONE" || d.event === "UPDATE") && target) {
       const merged = d.event === "UPDATE" && d.mergedText ? `${d.mergedText}\n\nLearned from @${actor} in #${repoScope}` : undefined;
       const { row, promoted } = await reinforce(target, evidence, w, merged);
+      remember(row);
       captured.push({
         action: promoted ? "promoted" : d.event === "UPDATE" ? "updated" : "reinforced",
         memory: toMemory(row),
@@ -301,10 +334,11 @@ async function learnFromEvent(eventId: string, input: EventInput): Promise<Outco
       scope_id: scopeId, kind: c.kind, title: c.title, body, slug: slugify(c.title), status: "pending",
       source, author: actor, evidence: [evidence], alpha: 1 + w, beta: 1,
     });
+    remember(row);
     captured.push({ action: "added", memory: toMemory(row), owner: displayName(ctx, owner) });
     // DELETE: the new lesson supersedes an old unlocked one → invalidate (never hard-delete). Agents can't invalidate.
     if (d.event === "DELETE" && target && !isAgent) {
-      const old = await updateMemory(target.id, { status: "invalid", invalidated_by: row.id, status_reason: `Superseded by "${c.title}"` });
+      const old = remember(await updateMemory(target.id, { status: "invalid", invalidated_by: row.id, status_reason: `Superseded by "${c.title}"` }));
       captured.push({ action: "invalidated", memory: toMemory(old), owner: displayName(ctx, owner), note: `superseded by ${row.id}` });
     }
   }

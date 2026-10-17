@@ -30,7 +30,7 @@ export async function checkConflict(candidate: { title: string; body: string }, 
  * Heuristic: same topic (≥2 shared significant stems) + opposite polarity, e.g. locked "Never mix … Lab A / Lab B"
  * vs candidate "Mixing Lab A and Lab B data is fine in tests" (prohibit vs permit), or locked "always X" vs "don't X".
  */
-export function heuristicConflict(candidate: { title: string; body: string }, locked: LockedRule[]): LockedRule | null {
+export function heuristicConflict<T extends LockedRule>(candidate: { title: string; body: string }, locked: T[]): T | null {
   const cText = `${candidate.title}. ${candidate.body}`;
   const cTok = tokens(cText);
   const cPol = polarity(cText);

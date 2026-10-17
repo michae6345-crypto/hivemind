@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Smoke test for the learning engine. Posts realistic events to a running dev server and prints the resulting memories.
 //   pnpm dev -p 3102   (in another terminal)
-//   node scripts/smoke-engine.mjs [--url http://localhost:3102] [--no-reset]
+//   node scripts/smoke-engine.mjs [--url http://localhost:3102] [--no-reset | --reset-only]
 // Works with or without ANTHROPIC_API_KEY (server falls back to heuristics). Ensures minimal fixtures exist
 // (scopes/people from the demo company, Maya's 🔒 lab-isolation rule, a "use logger" lesson) without overwriting a seed.
 import fs from "node:fs";
@@ -52,7 +52,10 @@ async function fixtures() {
       }).select("*").single(),
       "insert lock",
     );
-  let logger = must(await sb.from("memories").select("*").eq("scope_id", "team/data-pipelines").ilike("title", "%logger%").limit(1), "logger")[0];
+  // Prefer the seeded "use logger" lesson (any scope in the export-service chain); drop our own fixture copy if a seed exists.
+  const loggers = must(await sb.from("memories").select("*").in("scope_id", ["org", "team/data-pipelines", "repo/export-service"]).in("status", ["active", "pending"]).ilike("title", "%console.log%"), "logger");
+  let logger = loggers.find((m) => m.slug !== "use-logger-not-console-log") ?? loggers[0];
+  if (logger && logger.slug !== "use-logger-not-console-log") must(await sb.from("memories").delete().eq("slug", "use-logger-not-console-log"), "drop fixture dup");
   if (!logger)
     logger = must(
       await sb.from("memories").insert({
@@ -127,8 +130,9 @@ function check(name, ok, detail) {
 // ---------- run ----------
 const run = `smoke-${Date.now().toString(36)}`;
 const SESSION = `${run}-alex`;
-console.log(`Hivemind engine smoke → ${URL_}   (server LLM key ${env.ANTHROPIC_API_KEY ? "present" : "absent → heuristic path"})\n`);
+console.log(`Hivemind engine smoke → ${URL_}\n`);
 if (!args.includes("--no-reset")) await reset();
+if (args.includes("--reset-only")) process.exit(0);
 const { lock, logger } = await fixtures();
 must(await sb.from("pack_log").insert({ session_id: SESSION, actor: "alex", repo: "repo/export-service", memory_ids: [lock.id, logger.id], tokens: 180 }), "pack_log");
 
@@ -138,8 +142,16 @@ for (const pth of ["/api/hooks/prompt", "/api/hooks/session-end", "/api/events"]
 // 1) Real correction via the Claude Code UserPromptSubmit hook (new pending lesson, or reinforces the seeded one)
 const hook = (prompt) => ({ session_id: SESSION, transcript_path: "C:/Users/alex/.claude/projects/x.jsonl", cwd: "C:\\code\\export-service", hook_event_name: "UserPromptSubmit", prompt });
 const r1 = await post("/api/hooks/prompt", hook("no — exports must call assertSingleCustomer() before writing anything to disk"), H("alex"));
-const ctx1 = r1.json?.hookSpecificOutput?.additionalContext ?? "";
-check("1 correction → lesson captured/reinforced (hook answers < 5s)", r1.status === 200 && /captured a lesson|reinforced/.test(ctx1) && r1.ms < 5000, `${r1.ms}ms  ${ctx1 || JSON.stringify(r1.json)}`);
+let ctx1 = r1.json?.hookSpecificOutput?.additionalContext ?? "";
+if (!ctx1 && r1.status === 200) {
+  // Over the hook budget the route answers {} and after() finishes learning in the background → verify it landed.
+  for (let i = 0; i < 20 && !ctx1; i++) {
+    await new Promise((r) => setTimeout(r, 500));
+    const ev = must(await sb.from("events").select("processed,payload").eq("session_id", SESSION).eq("processed", true).ilike("payload->>text", "%assertSingleCustomer%"), "bg event")[0];
+    if (ev?.payload?.memoryIds?.length) ctx1 = `(background) ${ev.payload.actions.join(",")} ${ev.payload.memoryIds.join(",")}`;
+  }
+}
+check("1 correction → lesson captured/reinforced (hook answers < 5s)", r1.status === 200 && /captured a lesson|reinforced|background/.test(ctx1) && r1.ms < 5000, `${r1.ms}ms  ${ctx1 || JSON.stringify(r1.json)}`);
 
 // 2) One-off instruction → must NOT become a lesson
 const r2 = await post("/api/hooks/prompt", hook("rename this variable to rowCount"), H("alex"));
@@ -160,7 +172,7 @@ check("4 bad lesson → blocked by 🔒", !!blocked && /🔒/.test(blocked.block
 // 5) PR review comment by the lead that duplicates an existing team lesson → evidence + α += 2
 const r5 = await post("/api/events", { type: "review_comment", actor: "jordan", repo: "repo/export-service",
   payload: { smoke: true, text: "We never ship console.log in this service — always use the shared logger.", url: "https://github.com/meridian/export-service/pull/42#discussion_r1", file: "src/export.ts" } }, H("jordan"));
-const reinforced = (r5.json.actions ?? []).find((a) => a.memoryId === logger.id);
+const reinforced = (r5.json.actions ?? []).find((a) => a.memoryId === logger.id && /reinforced|updated|promoted/.test(a.action));
 check("5 review comment → reinforces existing logger lesson", !!reinforced, `${r5.ms}ms  actions=${JSON.stringify(r5.json.actions ?? r5.json)}`);
 
 // 6) Session end → α/β scoring of served memories + pack_log.corrections
@@ -184,5 +196,6 @@ const packs = must(await sb.from("pack_log").select("session_id,memory_ids,corre
 console.log("pack_log:", packs.map((p) => `${p.session_id} corrections=${p.corrections} served=${p.memory_ids.length}`).join("; "));
 
 const failed = results.filter((r) => !r.ok).length;
-console.log(`\n${results.length - failed}/${results.length} checks passed`);
+const paths = [...new Set([r3, r4, r5].map((r) => r.json.enginePath).filter(Boolean))];
+console.log(`\n${results.length - failed}/${results.length} checks passed   (server engine path: ${paths.join(", ") || "unknown"}; details in the [engine] server log)`);
 process.exit(failed ? 1 : 0);

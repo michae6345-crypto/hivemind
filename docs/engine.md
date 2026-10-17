@@ -16,7 +16,16 @@ event ─► ① filter     no LLM: drop short / "lgtm" / bot / slash-command ec
 session end ─► ⑥ score  α/β update for every memory served in that session's context pack
 ```
 
-The conflict check runs before the merge on purpose. A lesson that contradicts a locked rule never reaches the merge step, so it can't strengthen or overwrite anything.
+For latency, conflict and merge run in parallel, but the conflict verdict is applied first. A lesson that contradicts a locked rule never gets merged, so it can't strengthen or overwrite anything.
+
+### Guardrails (locked always wins)
+We hardened these after testing with the real model. Each one fixes a failure we actually saw:
+1. **Belt and braces:** a candidate is blocked if Haiku *or* the deterministic polarity guard says it contradicts a 🔒 rule. Low-effort Haiku once missed "mixing Lab A and Lab B data is fine in tests".
+2. **Guard the raw words:** the deterministic guard also runs on the engineer's original message. The extractor once "sanitized" the bad lesson into the policy itself. When only this guard fires, the blocked row keeps the engineer's own sentence, so the reviewer sees what was actually said.
+3. **Locked memories only absorb exact duplicates.** A merge UPDATE aimed at a 🔒 rule becomes a separate pending lesson. A DELETE, or an UPDATE that contradicts the rule, is blocked.
+4. **Human text is never rewritten:** an UPDATE replaces the body only for engine-authored lessons (`source` correction/review/agent). Seeded or human lessons just gain evidence and α.
+5. The extractor is told to restate faithfully, even when the message contradicts served memories, so the guardrail and not the extractor decides what's allowed.
+6. **Reinforcement safety net:** if Haiku returns no rule for a correction or review comment, a heuristic restatement that clearly duplicates an existing lesson still counts as evidence. It can never create a new lesson (`reinforceOnly`).
 
 ### Event sources
 | Source | Route | Event type | Weight w |
@@ -35,11 +44,11 @@ The conflict check runs before the merge on purpose. A lesson that contradicts a
 |---|---|
 | ADD | new memory, `status=pending`, `α = 1 + w`, `β = 1`, evidence `[e]` |
 | NONE (duplicate) | append evidence, `α += w`, check promotion |
-| UPDATE | as NONE, and the body is replaced with the merged text (locked bodies are never rewritten) |
+| UPDATE | as NONE, and the body is replaced with the merged text, but only for engine-authored lessons (never locked or human text) |
 | DELETE | new pending memory. The old one gets `status=invalid` and `invalidated_by=<new id>`. Nothing is hard-deleted (Graphiti's "invalidate, don't delete"). Agents can't invalidate. A DELETE aimed at a locked memory blocks the new lesson. |
 
 ### Hook feedback
-`/api/hooks/prompt` answers within about 3.5s; the Claude Code hook timeout is 5s. If the pipeline runs longer, Next's `after()` finishes it in the background. When something is learned, the agent sees a message like:
+`/api/hooks/prompt` answers within 4.6s; the Claude Code hook timeout is 5s. With Haiku, a full capture (extract, then conflict ‖ merge, plus DB writes) takes about 3–4s. Measured locally: 3.2–3.8s per hook call; the heuristic path takes about 0.3–0.5s. If the pipeline runs past the budget, the route returns `{}` and Next's `after()` finishes the learning in the background, so the lesson still lands. When something is learned, the agent sees a message like:
 
 - `📝 Hivemind captured a lesson: "Exports must call assertSingleCustomer() before writing" — pending approval by Jordan Reyes`
 - `🚫 Hivemind blocked "Mixing Lab A and Lab B data is fine in tests": conflicts with 🔒 Never mix data from different lab customers (Maya Chen)`
@@ -91,4 +100,6 @@ pnpm dev -p 3102
 node scripts/smoke-engine.mjs            # real correction, one-off (ignored), 2nd-actor duplicate (→ active),
                                          # bad lesson (→ blocked by 🔒), review comment (→ reinforces), session end (α/β)
 ```
-The script resets its own rows first (`--no-reset` to keep them). It creates only the fixtures it needs: demo scopes and people, Maya's 🔒 lab rule, and a "use logger" lesson. Existing seed rows are left alone.
+Both engine paths pass 7/7: real Haiku 5.5 (two runs in a row), and `HIVEMIND_ENGINE_MODE=heuristic`.
+
+The script resets its own rows first, including the evidence, α bumps, promotions and session scoring it applied to seeded rows, so repeated runs don't drift the demo data. Use `--no-reset` to keep them, or `--reset-only` to just clean up. It uses `scripts/seed.mjs` rows when they exist and only creates what's missing: demo scopes and people, Maya's 🔒 lab rule, and a "use logger" lesson.

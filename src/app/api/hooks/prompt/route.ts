@@ -6,7 +6,7 @@ import { hookMessage, ingestEvent, normalizeRepo, type Outcome } from "@/lib/eng
 export const maxDuration = 60;
 
 // Claude Code hooks time out at 5s; answer within this budget and finish learning in the background.
-const BUDGET_MS = 4300;
+const BUDGET_MS = 4600;
 
 /**
  * POST /api/hooks/prompt — raw Claude Code UserPromptSubmit hook JSON

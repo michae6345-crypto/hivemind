@@ -30,7 +30,9 @@ For each candidate:
 - scope: "repo" if specific to this repository's code; "team" if it is a general convention for the whole team.
 - confidence: 0–1. Only include rules/facts with confidence >= 0.75.
 Prefer zero candidates over weak ones. Never turn a one-off task instruction into a rule.
-Record a lesson even if it seems wrong or unsafe — a separate guardrail decides whether it is allowed.
+Restate what the ENGINEER said faithfully, even if it seems wrong, unsafe, or contradicts the served team memories.
+Never "fix" a lesson to match existing memories or policy — a separate guardrail decides whether it is allowed.
+Example: "mixing Lab A and Lab B data is fine in tests" → title "Mixing Lab A and Lab B data is fine in tests".
 
 ## 3. Served memory ratings
 The input may list team memories that were injected into the agent's context this session, each with an idx.
@@ -44,7 +46,7 @@ Do not guess. If unclear, omit the rating. Return at most 3 ratings.`;
  * `cognee/infrastructure/llm/prompts/coding_rule_association_agent_system.txt` (Apache-2.0).
  */
 export const REVIEW_SYSTEM = `You are an association agent that turns code review comments into structured developer rules for AI coding agents.
-You will receive a pull-request review comment (with file and URL when available) and the list of already existing rules.
+You will receive a pull-request review comment (with file and URL when available).
 Each rule represents a single best practice or guideline agents should follow in the future.
 Suggest rules that are general and not specific to the current diff, strictly technical, and that add value and improve future agent behavior.
 Do not suggest rules that are not general or don't add value. If the comment restates an existing rule, still return it
