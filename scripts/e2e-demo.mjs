@@ -109,7 +109,7 @@ const ASSERT_RE = /assertSingleCustomer|single[- ]customer/i;
 let lesson = null;
 
 async function beatA() {
-  const sid = `e2e-sam-${stamp}`;
+  const sid = `e2e-${P.corrector}-${stamp}`;
   const res = await promptHook(
     P.corrector,
     sid,

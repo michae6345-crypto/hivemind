@@ -48,7 +48,7 @@ build OOMed, which points to machine memory pressure with 12 Claude sessions ope
 - **Beat 8 "fix it once" is half live** (owner **B**). J's capture is on main (`1667966`), and watch sends `fix` events. But the engine on
   main ignores them (`pipeline.ts:178`, non-correction → `lessons:[]`). B's local version works: a `fix`-evidence lesson
   "Log expert ids, never emails" is in the shared DB. Needs B's push, then `node scripts/e2e-rehearse.mjs --beats 8`.
-- **reset-demo regex bug, fixed:** the engine-suffix check was `/d/` instead of `/d/` (heredoc ate the backslash), so
+- **reset-demo regex bug, fixed:** the engine-suffix check matched the letter `d` instead of a digit (`\d`; heredoc ate the backslash), so
   some engine-made leftovers survived a reset. Fixed and verified: the dry-run lists exactly the 3 suffixed slugs, and keeps
   playground (8) + 26 scenario lessons.
 - **Shared prod DB noise during takes** (everyone). Right after a reset, other agents' tests wrote

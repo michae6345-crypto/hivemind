@@ -5,7 +5,7 @@
 //   approval / rejection events at the moments lessons were reviewed.
 // Corrections on a topic are likely (p≈0.75) until its lesson is approved, then rare (p≈0.07: repeat mistakes),
 // plus untopical one-off corrections that never become lessons — so the curve falls with noise, not a straight line.
-// Lesson origins line up with the evidence actors/dates already on the seeded memories (e.g. use-logger ← alex, 10-08),
+// Lesson origins line up with the evidence actors/dates already on the seeded memories (e.g. use-logger ← kevin, 10-08),
 // so cross-user transfer (/api/metrics) is computed from the data, not hard-coded.
 //
 // Every row is marked: events.payload.synthetic = true, pack_log.session_id = 'hist-NN'. Re-running replaces only those rows.
@@ -47,19 +47,19 @@ const at = (iso) => new Date(iso).getTime();
 // Lessons learned during the window: origin correction (actor, time, repo) → approval (approver, delay).
 // Origins match the first evidence entry on the seeded memory.
 const TIMELINE = [
-  { slug: "migrations-append-only", origin: "jordan", repo: "repo/export-service", t: at("2026-10-02T18:10:00Z"), approver: "maya", delayH: 20 },
-  { slug: "money-integer-cents", origin: "jordan", repo: "repo/export-service", t: at("2026-10-05T17:30:00Z"), approver: "maya", delayH: 22 },
-  { slug: "use-pnpm", origin: "noor", repo: "repo/dataset-builder", t: at("2026-10-07T16:40:00Z"), approver: "jordan", delayH: 5 },
-  { slug: "use-logger", origin: "alex", repo: "repo/export-service", t: at("2026-10-08T19:20:00Z"), approver: "maya", delayH: 18 },
-  { slug: "stream-uploads", origin: "noor", repo: "repo/export-service", t: at("2026-10-10T17:05:00Z"), approver: "jordan", delayH: 26 },
-  { slug: "snapshot-after-model-change", origin: "alex", repo: "repo/dataset-builder", t: at("2026-10-12T20:15:00Z"), approver: "jordan", delayH: 4 },
-  { slug: "grader-negative-test", origin: "riley", repo: "repo/eval-harness", t: at("2026-10-14T18:45:00Z"), approver: "priya", delayH: 3 },
+  { slug: "migrations-append-only", origin: "ben", repo: "repo/export-service", t: at("2026-10-02T18:10:00Z"), approver: "greg", delayH: 20 },
+  { slug: "money-integer-cents", origin: "ben", repo: "repo/export-service", t: at("2026-10-05T17:30:00Z"), approver: "greg", delayH: 22 },
+  { slug: "use-pnpm", origin: "emily", repo: "repo/dataset-builder", t: at("2026-10-07T16:40:00Z"), approver: "ben", delayH: 5 },
+  { slug: "use-logger", origin: "kevin", repo: "repo/export-service", t: at("2026-10-08T19:20:00Z"), approver: "greg", delayH: 18 },
+  { slug: "stream-uploads", origin: "emily", repo: "repo/export-service", t: at("2026-10-10T17:05:00Z"), approver: "ben", delayH: 26 },
+  { slug: "snapshot-after-model-change", origin: "kevin", repo: "repo/dataset-builder", t: at("2026-10-12T20:15:00Z"), approver: "ben", delayH: 4 },
+  { slug: "grader-negative-test", origin: "nick", repo: "repo/eval-harness", t: at("2026-10-14T18:45:00Z"), approver: "lauren", delayH: 3 },
 ];
 // Proposed lessons that reviewers rejected (one-off preferences / task-specific fixes). No memory row exists for these.
 const REJECTED = [
-  { slug: "prefer-two-space-indent", title: "Use 2-space indent in SQL", actor: "jordan", t: at("2026-10-04T22:00:00Z") },
-  { slug: "rename-batch-helper", title: "Rename loadBatch to fetchBatch", actor: "jordan", t: at("2026-10-09T21:00:00Z") },
-  { slug: "skip-tests-for-scripts", title: "Scripts don't need tests", actor: "priya", t: at("2026-10-13T23:00:00Z") },
+  { slug: "prefer-two-space-indent", title: "Use 2-space indent in SQL", actor: "ben", t: at("2026-10-04T22:00:00Z") },
+  { slug: "rename-batch-helper", title: "Rename loadBatch to fetchBatch", actor: "ben", t: at("2026-10-09T21:00:00Z") },
+  { slug: "skip-tests-for-scripts", title: "Scripts don't need tests", actor: "lauren", t: at("2026-10-13T23:00:00Z") },
 ];
 
 // Which learnable topics a session in each repo can touch.
@@ -70,14 +70,14 @@ const REPO_TOPICS = {
   "repo/expert-portal": ["money-integer-cents", "use-logger"],
 };
 const PEOPLE_REPOS = {
-  alex: ["repo/export-service", "repo/dataset-builder"],
-  noor: ["repo/export-service", "repo/dataset-builder"],
-  jordan: ["repo/export-service"],
-  riley: ["repo/eval-harness"],
-  priya: ["repo/eval-harness"],
-  sam: ["repo/expert-portal"],
+  kevin: ["repo/export-service", "repo/dataset-builder"],
+  emily: ["repo/export-service", "repo/dataset-builder"],
+  ben: ["repo/export-service"],
+  nick: ["repo/eval-harness"],
+  lauren: ["repo/eval-harness"],
+  tom: ["repo/expert-portal"],
 };
-const WEIGHTED_PEOPLE = ["alex", "alex", "noor", "noor", "riley", "riley", "jordan", "priya", "sam", "sam"];
+const WEIGHTED_PEOPLE = ["kevin", "kevin", "emily", "emily", "nick", "nick", "ben", "lauren", "tom", "tom"];
 
 const TEXTS = {
   "migrations-append-only": ["don't edit 001_init.sql, it already ran in prod — add a new migration", "never change an existing migration file, write 004_… instead"],
