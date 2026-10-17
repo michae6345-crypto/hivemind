@@ -67,6 +67,10 @@ export const Memory = z.object({
 });
 export type Memory = z.infer<typeof Memory>;
 
+/** Which coding agent produced an event (cross-vendor attribution). Sent as header x-hm-agent. */
+export const AgentKind = z.enum(["claude-code", "cursor", "gemini-cli", "copilot", "codex", "claude-ai", "windsurf", "vscode", "other"]);
+export type AgentKind = z.infer<typeof AgentKind>;
+
 export const FeedType = z.enum([
   "correction", "review_comment", "approval", "rejection", "blocked", "collision", "session_start", "deny", "transfer",
 ]);
@@ -79,6 +83,7 @@ export const FeedEvent = z.object({
   at: z.string(),
   memoryId: z.string().optional(),
   repo: z.string().optional(),
+  agent: AgentKind.optional(),
 });
 export type FeedEvent = z.infer<typeof FeedEvent>;
 
@@ -90,6 +95,7 @@ export const ActivityItem = z.object({
   file: z.string(),
   createdAt: z.string(),
   warning: z.string().optional(),
+  agent: AgentKind.optional(),
 });
 export type ActivityItem = z.infer<typeof ActivityItem>;
 
@@ -122,6 +128,7 @@ export type Entity = z.infer<typeof Entity>;
 // Hooks/MCP send: Authorization: Bearer <HIVEMIND_TOKEN>, x-hm-user
 export const HDR_USER = "x-hm-user";
 export const HDR_ROLE = "x-hm-role";
+export const HDR_AGENT = "x-hm-agent"; // AgentKind; defaults to "claude-code" for hook routes
 
 // ---------- API shapes ----------
 /** GET /api/scopes → { scopes: Scope[], people: Person[] } */

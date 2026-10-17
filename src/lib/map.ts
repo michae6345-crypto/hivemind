@@ -42,6 +42,7 @@ export function toActivity(r: any): ActivityItem {
     repo: r.repo ?? "",
     file: r.file,
     createdAt: r.created_at,
+    ...(r.agent ? { agent: r.agent } : {}),
   };
 }
 
