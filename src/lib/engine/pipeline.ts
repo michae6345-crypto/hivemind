@@ -2,11 +2,12 @@ import "server-only";
 import type { Evidence, EventInput, Memory, Scope } from "@/contracts";
 import { db } from "@/lib/db";
 import { scopeChain, toMemory } from "@/lib/map";
-import { extractLessons, heuristicExtract, overlap, passesFilter, polarity, tokens, type Candidate, type ItemRating, type ServedItem } from "./extract";
+import { extractLessons, heuristicExtract, identifiers, overlap, passesFilter, polarity, tokens, type Candidate, type ItemRating, type ServedItem } from "./extract";
 import { checkConflict, contradicts, heuristicConflict } from "./conflict";
 import { decideMerge, heuristicMerge } from "./merge";
 import { bump, fmtConfidence, roleWeight } from "./score";
 import { hasLLM, type EnginePath } from "./llm";
+import { describeFix, excerpt, heuristicFixExtract, isCosmetic, parseFix } from "./fix";
 
 // The learning pipeline (PLAN §5):
 //   event → ① filter → ② extract → ④ conflict vs 🔒 → ③ merge (ADD/UPDATE/DELETE/NONE) → ⑤ pending until a human approves
@@ -40,6 +41,11 @@ export type Outcome = {
   lessons: Memory[];
   ratings?: ItemRating[];
   path: EnginePath;
+  /** "src/export.ts:23" when the event names a file (fix events, file-scoped corrections). */
+  where?: string;
+  /** "@kevin" when the lesson was learned from a code fix. */
+  fixBy?: string;
+  location?: { file: string; line: number | null; url: string | null };
 };
 
 const MEM_COLS = "*";
@@ -176,7 +182,7 @@ export async function ingestEvent(input: EventInput, opts: IngestOpts = {}): Pro
   if (input.type === "session_end") {
     await scoreSession(input.sessionId ?? "", { eventId, actor: input.actor, agent: opts.agent });
     outcome = { eventId, isCorrection: false, captured: [], lessons: [], path: hasLLM() ? "llm" : "heuristic" };
-  } else if (input.type === "correction" || input.type === "review_comment" || input.type === "agent_proposal") {
+  } else if (input.type === "correction" || input.type === "review_comment" || input.type === "agent_proposal" || input.type === "fix") {
     outcome = await learnFromEvent(eventId, { ...input, repo: repo ?? undefined });
   } else {
     outcome = { eventId, isCorrection: false, captured: [], lessons: [], path: "heuristic" };
@@ -199,6 +205,7 @@ export async function ingestEvent(input: EventInput, opts: IngestOpts = {}): Pro
           enginePath: outcome.path,
           memoryIds: outcome.captured.map((c) => c.memory.id),
           actions: outcome.captured.map((c) => c.action),
+          ...(outcome.location ?? {}), // {file, line, url} normalized (line parsed from the diff hunk if not sent)
         },
       })
       .eq("id", eventId);
@@ -229,7 +236,44 @@ async function learnFromEvent(eventId: string, input: EventInput): Promise<Outco
     if (cache) cache = [...cache.filter((m) => m.id !== row.id), ...(LIVE.has(row.status) ? [row] : [])];
     return row;
   };
-  const empty = { eventId, isCorrection: false, captured: [], lessons: [], ratings: [], path: "heuristic" as EnginePath };
+  // Where it happened (fix events, or corrections that name a file) → evidence, event payload and hook line.
+  const fix = input.type === "fix" ? parseFix(payload) : null;
+  const location = fix
+    ? { file: fix.file, line: fix.line ?? null, url: fix.url ?? null }
+    : payload.file
+      ? { file: String(payload.file).replace(/\\/g, "/"), line: Number(payload.line) > 0 ? Number(payload.line) : null, url: payload.url ? String(payload.url) : null }
+      : undefined;
+  const where = location ? `${location.file}${location.line ? `:${location.line}` : ""}` : undefined;
+  const fixBy = fix ? (handle(actor.replace(/^agent:/, "")) ?? undefined) : undefined;
+  const base = { where, fixBy, location };
+  const empty = { eventId, isCorrection: false, captured: [], lessons: [], ratings: [], path: "heuristic" as EnginePath, ...base };
+  const makeEvidence = (quote: string): Evidence => ({
+    type: input.type === "fix" ? "fix" : input.type === "review_comment" ? "review_comment" : input.type === "agent_proposal" ? "agent" : "correction",
+    quote: quote.slice(0, 500),
+    actor,
+    at: new Date().toISOString(),
+    url: location?.url ?? (payload.url ? String(payload.url) : null),
+    ref: eventId,
+    file: location?.file ?? null,
+    line: location?.line ?? null,
+  });
+  if (input.type === "fix" && !fix) return empty;
+
+  // A fix that resolves a known violation reinforces that rule (positive evidence), never creates a new lesson.
+  if (fix?.violationRuleId) {
+    const id = fix.violationRuleId;
+    const q = sb().from("memories").select(MEM_COLS);
+    const { data } = await (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id) ? q.eq("id", id) : q.eq("slug", id)).limit(1);
+    const rule = (data?.[0] ?? null) as MemRow | null;
+    if (rule) {
+      const row = await reinforce(rule, makeEvidence(excerpt(fix)), w);
+      const note = `reinforced by ${fixBy}'s fix`;
+      console.log(`[engine] "${rule.title}" ${note} in ${where} (α ${rule.alpha}→${row.alpha})`);
+      const memory = toMemory(row);
+      return { ...empty, isCorrection: true, captured: [{ action: "reinforced", memory, owner: handle(ownerFor(ctx, row.scope_id)), note }], lessons: [memory] };
+    }
+    console.log(`[engine] fix names unknown violationRuleId ${id}; learning from the diff instead`);
+  }
 
   // ① + ② candidates
   let candidates: Candidate[] = [];
@@ -241,6 +285,29 @@ async function learnFromEvent(eventId: string, input: EventInput): Promise<Outco
     if (!title) return empty;
     const scopeHint = String(payload.scope ?? "");
     candidates = [{ title, body: String(payload.body ?? title), kind: "lesson", scope: scopeHint.startsWith("team") ? "team" : "repo", confidence: 1 }];
+  } else if (fix) {
+    if (isCosmetic(fix)) {
+      console.log(`[engine] fix in ${where} is cosmetic (rename/format/typo) → no lesson`);
+      return empty;
+    }
+    const ex = await extractLessons({
+      mode: "fix",
+      text: describeFix(fix),
+      repo: repoScope,
+      file: fix.file,
+      served: [],
+      fallback: () => heuristicFixExtract(fix),
+    });
+    ({ candidates, isCorrection, path } = ex);
+    if (path === "llm") {
+      // Union with the deterministic patterns (deduped) so strong signals — PII leaving a log line — always surface,
+      // even when Haiku names only one of the conventions a fix enforces.
+      const known = candidates.map((c, i) => ({ id: String(i), title: c.title, body: c.body }));
+      const extra = heuristicFixExtract(fix).candidates.filter((h) => heuristicMerge(h, known).event === "ADD");
+      if (extra.length) console.log(`[engine] fix: + ${extra.map((e) => `"${e.title}"`).join(", ")} from diff patterns`);
+      candidates = [...candidates, ...extra].slice(0, 3);
+      isCorrection ||= candidates.length > 0;
+    }
   } else {
     if (!passesFilter(text, actor)) {
       console.log(`[engine] filter: dropped "${text.slice(0, 40)}"`);
@@ -278,17 +345,15 @@ async function learnFromEvent(eventId: string, input: EventInput): Promise<Outco
     }
   }
 
-  const evidence: Evidence = {
-    type: input.type === "review_comment" ? "review_comment" : input.type === "agent_proposal" ? "agent" : "correction",
-    quote: (text || candidates[0]?.title || "").slice(0, 500),
-    actor,
-    at: new Date().toISOString(),
-    url: payload.url ? String(payload.url) : null,
-    ref: eventId,
-  };
+  const evidence = makeEvidence(fix ? excerpt(fix) : text || candidates[0]?.title || "");
+  const learned = fix
+    ? `Learned from ${fixBy}'s fix in ${where} · #${repoScope}`
+    : `Learned from @${actor.replace(/^agent:/, "")}${where ? ` in ${where}` : ""} · #${repoScope}`;
   const source = input.type === "review_comment" ? "review" : input.type === "agent_proposal" ? "agent" : "correction";
 
   const captured: Captured[] = [];
+  // One event is one piece of evidence: never add it to the same memory twice (several candidates can land on one lesson).
+  const touched = new Set<string>();
   for (const c of candidates) {
     const explicit = input.type === "agent_proposal" && ctx.scopes.some((s) => s.id === payload.scope) ? String(payload.scope) : null;
     const scopeId = explicit ?? (c.scope === "team" ? teamOf(ctx, repoScope) : repoScope);
@@ -298,7 +363,7 @@ async function learnFromEvent(eventId: string, input: EventInput): Promise<Outco
     // Guard on the engineer's own words too: the extractor may rephrase away the "…is fine" that breaks a 🔒 rule.
     const rawLockHit = text && !isAgent ? heuristicConflict({ title: text, body: "" }, locked) : null;
     const owner = ownerFor(ctx, scopeId);
-    const body = `${c.body}\n\nLearned from @${actor.replace(/^agent:/, "")} in #${repoScope}`;
+    const body = `${c.body}\n\n${learned}`;
 
     const block = async (lock: MemRow, faithful?: Candidate) => {
       const b = faithful ?? c; // when only the raw-text guard fired, show what the engineer actually said
@@ -307,15 +372,17 @@ async function learnFromEvent(eventId: string, input: EventInput): Promise<Outco
       const blockedDupes = mems.filter((m) => m.status === "blocked" && !m.locked);
       const dup = heuristicMerge(b, blockedDupes);
       const dupRow = dup.event === "NONE" && dup.target ? blockedDupes.find((m) => m.id === dup.target!.id) : undefined;
+      if (dupRow && touched.has(dupRow.id)) return;
       const row = remember(
         dupRow
           ? await reinforce(dupRow, evidence, w)
           : await insertMemory({
               scope_id: scopeId, kind: b.kind, title: b.title, slug: slugify(b.title), status: "blocked",
-              body: `${b.body}\n\nLearned from @${actor.replace(/^agent:/, "")} in #${repoScope}`,
+              body: `${b.body}\n\n${learned}`,
               status_reason: reason, source, author: actor, evidence: [evidence], alpha: 1 + w, beta: 1,
             }),
       );
+      touched.add(row.id);
       captured.push({ action: "blocked", memory: toMemory(row), owner: lockOwner, note: reason, rule: lock.title });
     };
 
@@ -334,10 +401,23 @@ async function learnFromEvent(eventId: string, input: EventInput): Promise<Outco
     }
 
     // ③ apply merge. Evidence never changes status — every lesson waits for its scope owner's approval.
-    const target = d.target ? existing.find((m) => m.id === d.target!.id) : undefined;
+    let target = d.target ? existing.find((m) => m.id === d.target!.id) : undefined;
+    if ((d.event === "NONE" || d.event === "UPDATE") && target && !c.reinforceOnly) {
+      // Over-merge guard ("never mark as duplicates if they have key differences"): a duplicate/update must share
+      // ≥2 significant stems or a code identifier with its target; otherwise it is a different lesson (ADD).
+      const cText = `${c.title} ${c.body}`;
+      const tText = `${target.title} ${target.body}`;
+      if (overlap(tokens(c.title), tokens(tText)) < 2 && overlap(identifiers(cText), identifiers(tText)) === 0) {
+        console.log(`[engine] merge guard: "${c.title}" is not "${target.title}" → ADD`);
+        d.event = "ADD";
+        target = undefined;
+      }
+    }
     if ((d.event === "NONE" || d.event === "UPDATE") && target) {
-      const merged = d.event === "UPDATE" && d.mergedText ? `${d.mergedText}\n\nLearned from @${actor} in #${repoScope}` : undefined;
+      if (touched.has(target.id)) continue;
+      const merged = d.event === "UPDATE" && d.mergedText ? `${d.mergedText}\n\n${learned}` : undefined;
       const row = remember(await reinforce(target, evidence, w, merged));
+      touched.add(row.id);
       captured.push({
         action: d.event === "UPDATE" ? "updated" : "reinforced",
         memory: toMemory(row),
@@ -361,13 +441,14 @@ async function learnFromEvent(eventId: string, input: EventInput): Promise<Outco
         source, author: actor, evidence: [evidence], alpha: 1 + w, beta: 1,
       }),
     );
+    touched.add(row.id);
     captured.push({ action: "added", memory: toMemory(row), owner: handle(owner) });
   }
 
   console.log(
     `[engine] event ${eventId} (${input.type} by ${actor}, w=${w}) → ${captured.map((c) => `${c.action}:"${c.memory.title}"`).join(", ") || "no lesson"} in ${Date.now() - t0}ms [${path}]`,
   );
-  return { eventId, isCorrection, captured, lessons: captured.map((c) => c.memory), ratings, path };
+  return { eventId, isCorrection, captured, lessons: captured.map((c) => c.memory), ratings, path, ...base };
 }
 
 /** One-line hook message for Claude Code's additionalContext (UserPromptSubmit). */
@@ -376,10 +457,14 @@ export function hookMessage(o: Outcome): string | null {
     const t = c.memory.title;
     // Wording: public/brand/vscode (Adrian), mirrored in src/components/site/demo-script.ts — keep identical.
     // Plain text: Claude Code doesn't document ANSI rendering in systemMessage, so no colour codes.
+    const at = o.where ? ` in ${o.where}` : "";
+    const lock = `${c.owner ? `${c.owner}'s` : "the"} locked rule "${c.rule ?? "a locked rule"}"`;
     if (c.action === "blocked")
-      return `Hivemind · Blocked: contradicts ${c.owner ? `${c.owner}'s` : "the"} locked rule "${c.rule ?? "a locked rule"}".`;
-    if (c.memory.status === "pending") return `Hivemind · Lesson captured: "${t}". Waiting on ${c.owner ?? "the scope owner"}.`;
-    return `Hivemind · Lesson reinforced: "${t}" is already a team rule.`;
+      return o.fixBy ? `Hivemind · Blocked: ${o.fixBy}'s fix${at} contradicts ${lock}.` : `Hivemind · Blocked${at}: contradicts ${lock}.`;
+    if (c.memory.status === "pending")
+      return `Hivemind · Lesson captured${o.fixBy ? ` from ${o.fixBy}'s fix` : ""}${at}: "${t}". Waiting on ${c.owner ?? "the scope owner"}.`;
+    if (o.fixBy) return `Hivemind · Lesson reinforced by ${o.fixBy}'s fix${at}: "${t}".`;
+    return `Hivemind · Lesson reinforced${at}: "${t}" is already a team rule.`;
   });
   return lines.length ? lines.join("\n") : null;
 }

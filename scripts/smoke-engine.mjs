@@ -3,7 +3,7 @@
 //   pnpm dev -p 3102   (in another terminal)
 //   node scripts/smoke-engine.mjs [--url http://localhost:3102] [--no-reset | --reset-only]
 // Works with or without ANTHROPIC_API_KEY (server falls back to heuristics). Ensures minimal fixtures exist
-// (scopes/people from the demo company, Maya's 🔒 lab-isolation rule, a "use logger" lesson) without overwriting a seed.
+// (scopes/people from the demo company, Greg's 🔒 lab-isolation rule, a "use logger" lesson) without overwriting a seed.
 import fs from "node:fs";
 import { createClient } from "@supabase/supabase-js";
 
@@ -26,15 +26,15 @@ const must = (r, what) => {
 
 // ---------- fixtures (insert-if-missing) ----------
 const SCOPES = [
-  { id: "org", level: "org", name: "Meridian Data", parent_id: null, owner: "maya" },
-  { id: "team/data-pipelines", level: "team", name: "data-pipelines", parent_id: "org", owner: "jordan" },
-  { id: "repo/export-service", level: "repo", name: "export-service", parent_id: "team/data-pipelines", owner: "jordan" },
+  { id: "org", level: "org", name: "Meridian Data", parent_id: null, owner: "greg" },
+  { id: "team/data-pipelines", level: "team", name: "data-pipelines", parent_id: "org", owner: "ben" },
+  { id: "repo/export-service", level: "repo", name: "export-service", parent_id: "team/data-pipelines", owner: "ben" },
 ];
 const PEOPLE = [
-  { id: "maya", name: "Maya Chen", role: "security", scope_id: "org" },
-  { id: "jordan", name: "Jordan Reyes", role: "lead", scope_id: "team/data-pipelines" },
-  { id: "alex", name: "Alex Kim", role: "engineer", scope_id: "team/data-pipelines" },
-  { id: "noor", name: "Noor Haddad", role: "engineer", scope_id: "team/data-pipelines" },
+  { id: "greg", name: "Greg Walsh", role: "security", scope_id: "org", title: "Head of Security" },
+  { id: "ben", name: "Ben Carter", role: "lead", scope_id: "team/data-pipelines", title: "Data Pipelines Lead" },
+  { id: "kevin", name: "Kevin Park", role: "engineer", scope_id: "team/data-pipelines", title: "Engineer, Data Pipelines" },
+  { id: "emily", name: "Emily Ross", role: "engineer", scope_id: "team/data-pipelines", title: "Engineer, Data Pipelines" },
 ];
 
 async function fixtures() {
@@ -45,10 +45,10 @@ async function fixtures() {
   if (!lock)
     lock = must(
       await sb.from("memories").insert({
-        scope_id: "org", kind: "directive", locked: true, status: "active", source: "human", author: "maya", slug: "never-mix-lab-customers",
+        scope_id: "org", kind: "directive", locked: true, status: "active", source: "human", author: "greg", slug: "never-mix-lab-customers",
         title: "Never mix data from different lab customers",
-        body: "🔒 Never mix data from different lab customers (Lab A / Lab B) in one export, fixture, or test dataset. Owner: @maya",
-        evidence: [{ type: "manual", quote: "Customer data isolation is contractual.", actor: "maya", at: now }],
+        body: "🔒 Never mix data from different lab customers (Lab A / Lab B) in one export, fixture, or test dataset. Owner: @greg",
+        evidence: [{ type: "manual", quote: "Customer data isolation is contractual.", actor: "greg", at: now }],
       }).select("*").single(),
       "insert lock",
     );
@@ -59,9 +59,9 @@ async function fixtures() {
   if (!logger)
     logger = must(
       await sb.from("memories").insert({
-        scope_id: "team/data-pipelines", kind: "lesson", status: "active", source: "review", author: "jordan", slug: "use-logger-not-console-log",
+        scope_id: "team/data-pipelines", kind: "lesson", status: "active", source: "review", author: "ben", slug: "use-logger-not-console-log",
         title: "Use logger, not console.log", body: "Use the shared `logger` (structured, redacts PII), never `console.log`. #team/data-pipelines",
-        evidence: [{ type: "review_comment", quote: "please use logger here", actor: "jordan", at: now }], alpha: 3, beta: 1,
+        evidence: [{ type: "review_comment", quote: "please use logger here", actor: "ben", at: now }], alpha: 3, beta: 1,
       }).select("*").single(),
       "insert logger",
     );
@@ -70,7 +70,7 @@ async function fixtures() {
 
 // Undo everything earlier smoke runs did, including α bumps / promotions / scoring applied to seed rows,
 // so repeated runs never drift the demo data.
-const W = { maya: 2, jordan: 2, alex: 1, noor: 1 };
+const W = { greg: 2, ben: 2, kevin: 1, emily: 1, maya: 2, jordan: 2, alex: 1, noor: 1 };
 async function reset() {
   const evs = must(await sb.from("events").select("id,type,payload").or("payload->>smoke.eq.true,session_id.like.smoke-%"), "smoke events");
   const ids = new Set(evs.map((e) => e.id));
@@ -129,19 +129,19 @@ function check(name, ok, detail) {
 
 // ---------- run ----------
 const run = `smoke-${Date.now().toString(36)}`;
-const SESSION = `${run}-alex`;
+const SESSION = `${run}-kevin`;
 console.log(`Hivemind engine smoke → ${URL_}\n`);
 if (!args.includes("--no-reset")) await reset();
 if (args.includes("--reset-only")) process.exit(0);
 const { lock, logger } = await fixtures();
-must(await sb.from("pack_log").insert({ session_id: SESSION, actor: "alex", repo: "repo/export-service", memory_ids: [lock.id, logger.id], tokens: 180 }), "pack_log");
+must(await sb.from("pack_log").insert({ session_id: SESSION, actor: "kevin", repo: "repo/export-service", memory_ids: [lock.id, logger.id], tokens: 180 }), "pack_log");
 
 // Warm up (dev server compiles routes on first hit; Claude Code's 5s budget applies to a warm server)
-for (const pth of ["/api/hooks/prompt", "/api/hooks/session-end", "/api/events"]) await fetch(`${URL_}${pth}`, { method: "POST", headers: H("alex"), body: "{}" }).catch(() => {});
+for (const pth of ["/api/hooks/prompt", "/api/hooks/session-end", "/api/events"]) await fetch(`${URL_}${pth}`, { method: "POST", headers: H("kevin"), body: "{}" }).catch(() => {});
 
 // 1) Real correction via the Claude Code UserPromptSubmit hook (new pending lesson, or reinforces the seeded one)
-const hook = (prompt) => ({ session_id: SESSION, transcript_path: "C:/Users/alex/.claude/projects/x.jsonl", cwd: "C:\\code\\export-service", hook_event_name: "UserPromptSubmit", prompt });
-const r1 = await post("/api/hooks/prompt", hook("no — exports must call assertSingleCustomer() before writing anything to disk"), H("alex"));
+const hook = (prompt) => ({ session_id: SESSION, transcript_path: "C:/Users/kevin/.claude/projects/x.jsonl", cwd: "C:\\code\\export-service", hook_event_name: "UserPromptSubmit", prompt });
+const r1 = await post("/api/hooks/prompt", hook("no — exports must call assertSingleCustomer() before writing anything to disk"), H("kevin"));
 let ctx1 = r1.json?.hookSpecificOutput?.additionalContext ?? "";
 if (!ctx1 && r1.status === 200) {
   // Over the hook budget the route answers {} and after() finishes learning in the background → verify it landed.
@@ -155,11 +155,11 @@ check("1 correction → pending lesson, 'Lesson captured … Waiting on @owner.'
   r1.status === 200 && (/^Hivemind · Lesson captured: ".+"\. Waiting on @\w+\.$/.test(ctx1) && r1.json?.systemMessage === ctx1 || /background/.test(ctx1)) && r1.ms < 5000, `${r1.ms}ms  ${ctx1 || JSON.stringify(r1.json)}`);
 
 // 2) One-off instruction → must NOT become a lesson
-const r2 = await post("/api/hooks/prompt", hook("rename this variable to rowCount"), H("alex"));
+const r2 = await post("/api/hooks/prompt", hook("rename this variable to rowCount"), H("kevin"));
 check("2 one-off instruction → no lesson", r2.status === 200 && !r2.json?.hookSpecificOutput, `${r2.ms}ms  ${JSON.stringify(r2.json)}`);
 
 // 2b) A plain chat prompt is not a correction → not stored as a correction event at all
-const r2b = await post("/api/hooks/prompt", hook("Say OK."), H("alex", { "x-hm-agent": "cursor" }));
+const r2b = await post("/api/hooks/prompt", hook("Say OK."), H("kevin", { "x-hm-agent": "cursor" }));
 await new Promise((r) => setTimeout(r, 1500));
 const okEvents = must(await sb.from("events").select("id").eq("session_id", SESSION).eq("type", "correction").ilike("payload->>text", "Say OK."), "say ok");
 const corrEv = must(await sb.from("events").select("agent").eq("session_id", SESSION).eq("type", "correction").ilike("payload->>text", "%assertSingleCustomer%"), "corr agent")[0];
@@ -167,34 +167,60 @@ check("2b 'Say OK.' not stored as a correction; hook events carry events.agent",
   `stored "Say OK." correction events=${okEvents.length}  correction event agent=${corrEv?.agent}`);
 
 // 3) Same lesson from a 2nd engineer → reinforced (evidence + α), but stays PENDING: only a lead/security approval activates
-const r3 = await post("/api/events", { type: "correction", actor: "noor", sessionId: `${run}-noor`, repo: "export-service",
-  payload: { smoke: true, text: "Don't write the export file until assertSingleCustomer() has been called — always call it first." } }, H("noor"));
+const r3 = await post("/api/events", { type: "correction", actor: "emily", sessionId: `${run}-emily`, repo: "export-service",
+  payload: { smoke: true, text: "Don't write the export file until assertSingleCustomer() has been called — always call it first." } }, H("emily"));
 const dupLesson = (r3.json.lessons ?? []).find((m) => /assertSingleCustomer/i.test(m.title + m.body));
 const dupActors = new Set((dupLesson?.evidence ?? []).map((e) => e.actor));
 check("3 duplicate from 2nd actor → reinforced, stays pending (no auto-promotion)",
-  r3.status === 200 && dupLesson?.status === "pending" && !dupLesson.locked && dupActors.has("alex") && dupActors.has("noor"),
+  r3.status === 200 && dupLesson?.status === "pending" && !dupLesson.locked && dupActors.has("kevin") && dupActors.has("emily"),
   `${r3.ms}ms  ${dupLesson ? `"${dupLesson.title}" status=${dupLesson.status} actors=${[...dupActors]} α=${dupLesson.alpha}` : JSON.stringify(r3.json)}`);
 
-// 4) Bad lesson → blocked by Maya's 🔒 rule
-const r4 = await post("/api/events", { type: "correction", actor: "alex", sessionId: SESSION, repo: "repo/export-service",
-  payload: { smoke: true, text: "mixing Lab A and Lab B data is fine in tests" } }, H("alex"));
+// 4) Bad lesson → blocked by Greg's 🔒 rule
+const r4 = await post("/api/events", { type: "correction", actor: "kevin", sessionId: SESSION, repo: "repo/export-service",
+  payload: { smoke: true, text: "mixing Lab A and Lab B data is fine in tests" } }, H("kevin"));
 const blocked = (r4.json.lessons ?? []).find((m) => m.status === "blocked");
 check("4 bad lesson → blocked by the locked rule", !!blocked && /^Contradicts @\w+'s locked rule ".+"\.$/.test(blocked.blockedReason ?? ""), `${r4.ms}ms  ${blocked ? `${blocked.title} — ${blocked.blockedReason}` : JSON.stringify(r4.json)}`);
 
 // 5) PR review comment by the lead that duplicates an existing team lesson → evidence + α += 2
-const r5 = await post("/api/events", { type: "review_comment", actor: "jordan", repo: "repo/export-service",
-  payload: { smoke: true, text: "We never ship console.log in this service — always use the shared logger.", url: "https://github.com/meridian/export-service/pull/42#discussion_r1", file: "src/export.ts" } }, H("jordan"));
+const r5 = await post("/api/events", { type: "review_comment", actor: "ben", repo: "repo/export-service",
+  payload: { smoke: true, text: "We never ship console.log in this service — always use the shared logger.", url: "https://github.com/meridian/export-service/pull/42#discussion_r1", file: "src/export.ts" } }, H("ben"));
 const reinforced = (r5.json.actions ?? []).find((a) => a.memoryId === logger.id && /reinforced|updated/.test(a.action));
 check("5 review comment → reinforces existing logger lesson", !!reinforced, `${r5.ms}ms  actions=${JSON.stringify(r5.json.actions ?? r5.json)}`);
 
+// 7) Learning from FIXES: an agent wrote console.log(user.email); kevin fixed it (diff from J's watcher, verbatim shape)
+const FIX_URL = "https://github.com/meridian/export-service/blob/abc123/src/experts.ts#L6";
+const fixPayload = (extra = {}) => ({
+  smoke: true, file: "src/experts.ts", previousAuthor: "agent:claude-code", url: FIX_URL,
+  diff: "--- a/src/experts.ts\n+++ b/src/experts.ts\n@@ -5,3 +5,3 @@\n export function notifyExpert(user: Expert): string {\n-  console.log(user.email);\n+  logger.info({ expertId: user.id });\n   return user.id;",
+  before: "  console.log(user.email);", after: "  logger.info({ expertId: user.id });", ...extra,
+});
+const r7 = await post("/api/events", { type: "fix", actor: "kevin", sessionId: `${run}-watch`, repo: "repo/export-service", payload: fixPayload() }, H("kevin", { "x-hm-agent": "cli" }));
+const fixLesson = (r7.json.lessons ?? [])[0];
+const fixEv = (fixLesson?.evidence ?? []).find((e) => e.type === "fix" && e.actor === "kevin");
+check("7a fix → lesson captured (or existing one reinforced), evidence type fix with file:line + permalink",
+  r7.status === 200 && !!fixLesson && !!fixEv && /^Hivemind · Lesson (captured from @kevin's fix in src\/experts\.ts:6: ".+"\. Waiting on @\w+\.|reinforced by @kevin's fix in src\/experts\.ts:6: ".+"\.)$/m.test(r7.json.message ?? "")
+    && fixEv?.file === "src/experts.ts" && fixEv?.line === 6 && fixEv?.url === FIX_URL && /console\.log\(user\.email\)/.test(fixEv?.quote ?? ""),
+  `${r7.ms}ms  ${r7.json.message ?? JSON.stringify(r7.json)}  [${(r7.json.lessons ?? []).map((m) => `${m.slug} ${m.status}`).join(", ")}]`);
+
+const r7b = await post("/api/events", { type: "fix", actor: "kevin", repo: "repo/export-service",
+  payload: { smoke: true, file: "src/experts.ts", previousAuthor: "agent:claude-code",
+    diff: "@@ -5,2 +5,2 @@\n-  const usr = await loadExpert(id);\n-  return usr.id;\n+  const user = await loadExpert(id);\n+  return user.id;" } }, H("kevin"));
+check("7b cosmetic fix (rename) → no lesson", r7b.status === 200 && !(r7b.json.lessons ?? []).length, `${r7b.ms}ms  ${JSON.stringify(r7b.json.actions ?? r7b.json)}`);
+
+const r7c = await post("/api/events", { type: "fix", actor: "kevin", repo: "repo/export-service", payload: fixPayload({ violationRuleId: "sec-no-pii-logs" }) }, H("kevin"));
+const reinf = (r7c.json.actions ?? [])[0];
+check("7c fix resolving a known violation → reinforces that rule (no new lesson)",
+  r7c.status === 200 && reinf?.action === "reinforced" && (r7c.json.lessons ?? [])[0]?.slug === "sec-no-pii-logs" && /^Hivemind · Lesson reinforced by @kevin's fix in src\/experts\.ts:6: "Never log expert personal info"\.$/.test(r7c.json.message ?? ""),
+  `${r7c.ms}ms  ${r7c.json.message ?? JSON.stringify(r7c.json)}  α=${(r7c.json.lessons ?? [])[0]?.alpha}`);
+
 // 6) Session end → α/β scoring of served memories + pack_log.corrections
-const r6 = await post("/api/hooks/session-end", { session_id: SESSION, hook_event_name: "SessionEnd", reason: "exit", cwd: "C:\\code\\export-service" }, H("alex"));
+const r6 = await post("/api/hooks/session-end", { session_id: SESSION, hook_event_name: "SessionEnd", reason: "exit", cwd: "C:\\code\\export-service" }, H("kevin"));
 const loggerScore = (r6.json.scored ?? []).find((s) => s.id === logger.id);
 check("6 session end → served lesson scored, corrections counted", r6.status === 200 && r6.json.corrections >= 1 && loggerScore?.outcome === "untouched",
   `${r6.ms}ms  corrections=${r6.json.corrections}  ${(r6.json.scored ?? []).map((s) => `${s.title}: ${s.outcome} ${s.before} → ${s.after}`).join(" | ")}`);
 const endEv = must(await sb.from("events").select("actor,agent").eq("session_id", SESSION).eq("type", "session_end"), "end ev")[0];
-check("6a session_end event has actor + agent", endEv?.actor === "alex" && endEv?.agent === "claude-code", JSON.stringify(endEv));
-const r6b = await post("/api/hooks/session-end", { session_id: SESSION }, H("alex"));
+check("6a session_end event has actor + agent", endEv?.actor === "kevin" && endEv?.agent === "claude-code", JSON.stringify(endEv));
+const r6b = await post("/api/hooks/session-end", { session_id: SESSION }, H("kevin"));
 check("6b session end is idempotent", r6b.json.skipped === "already scored", JSON.stringify(r6b.json).slice(0, 120));
 
 // ---------- print resulting memory rows ----------

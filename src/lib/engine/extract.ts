@@ -1,7 +1,7 @@
 import "server-only";
 import { z } from "zod";
 import { llmJson, logStep, type EnginePath } from "./llm";
-import { CORRECTION_SYSTEM, REVIEW_SYSTEM } from "./prompts";
+import { CORRECTION_SYSTEM, FIX_SYSTEM, REVIEW_SYSTEM } from "./prompts";
 
 // Step ①–② of the pipeline: cheap filter, then extract candidate lessons (+ ratings of served pack items).
 // Also hosts the small text helpers (tokens/polarity) that merge.ts and conflict.ts use for their heuristics.
@@ -93,8 +93,10 @@ const ExtractSchema = z.object({
 });
 
 export async function extractLessons(opts: {
-  mode: "correction" | "review_comment";
+  mode: "correction" | "review_comment" | "fix";
   text: string;
+  /** Heuristic used when the LLM is unavailable (fix mode supplies its own diff-based one). */
+  fallback?: () => Extraction;
   repo: string;
   context?: string;
   file?: string;
@@ -110,7 +112,7 @@ export async function extractLessons(opts: {
       ? `SERVED TEAM MEMORIES (idx: title — body):\n${served.map((s, i) => `${i}: ${s.title} — ${s.body.slice(0, 200)}`).join("\n")}`
       : "SERVED TEAM MEMORIES: none",
     opts.existingTitles?.length ? `EXISTING RULES:\n${opts.existingTitles.map((t) => `- ${t}`).join("\n")}` : "",
-    `${opts.mode === "review_comment" ? "REVIEW COMMENT" : "ENGINEER MESSAGE"}:\n${opts.text.slice(0, 3000)}`,
+    `${opts.mode === "review_comment" ? "REVIEW COMMENT" : opts.mode === "fix" ? "CODE FIX" : "ENGINEER MESSAGE"}:\n${opts.text.slice(0, 4500)}`,
   ]
     .filter(Boolean)
     .join("\n\n");
@@ -118,7 +120,7 @@ export async function extractLessons(opts: {
   const out = await llmJson(
     `extract:${opts.mode}`,
     ExtractSchema,
-    opts.mode === "review_comment" ? REVIEW_SYSTEM : CORRECTION_SYSTEM,
+    opts.mode === "review_comment" ? REVIEW_SYSTEM : opts.mode === "fix" ? FIX_SYSTEM : CORRECTION_SYSTEM,
     user,
   );
   if (out) {
@@ -139,7 +141,7 @@ export async function extractLessons(opts: {
     logStep("extract", "llm", `${candidates.length} candidate(s), ${ratings.length} rating(s)`);
     return { isCorrection: out.is_correction || candidates.length > 0, candidates, ratings, path: "llm" };
   }
-  const h = heuristicExtract(opts.text, opts.mode);
+  const h = opts.fallback ? opts.fallback() : heuristicExtract(opts.text, opts.mode === "fix" ? "correction" : opts.mode);
   logStep("extract", "heuristic", `${h.candidates.length} candidate(s)`);
   return h;
 }
