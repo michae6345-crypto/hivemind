@@ -4,10 +4,11 @@ import { config, isCodeDoc, relPath, repoFor } from "./config";
 import { log } from "./log";
 import { rulesFor } from "./rules";
 import type { CompleteResponse } from "./types";
+import { at } from "./wording";
 
 // Ghost text that follows the team's lessons (POST /api/vscode/complete), offered when you open a new function in a
 // file that has rules, or on demand (Alt+\ / "Trigger inline suggestion"). The lesson it follows is shown as a faint
-// end-of-line label: `⬡ Hivemind · from Alex's lesson`.
+// end-of-line label: `Hivemind · from @alex's lesson` (Hivemind blue, no emoji).
 
 const DEBOUNCE_MS = 120;
 const SIGNATURE = [
@@ -20,11 +21,11 @@ const SIGNATURE = [
 const isSignature = (line: string) => SIGNATURE.some((re) => re.test(line)) && !/^\s*(if|for|while|switch|catch)\b/.test(line);
 
 const label = vscode.window.createTextEditorDecorationType({
-  after: { color: "#A1A1AA", fontStyle: "italic", margin: "0 0 0 3em" },
+  after: { color: "#4C6EF5", fontStyle: "italic", margin: "0 0 0 3em" },
 });
 
 const labelText = (r: CompleteResponse) =>
-  r.lesson ? `⬡ Hivemind · from ${r.lesson.authorName}'s ${r.lesson.locked ? "locked rule" : "lesson"}` : "⬡ Hivemind";
+  r.lesson ? `Hivemind · from ${at(r.lesson.authorName || r.lesson.author)}'s ${r.lesson.locked ? "locked rule" : "lesson"}` : "Hivemind";
 
 let shown: { uri: string; line: number; char: number; anchor: number } | null = null;
 

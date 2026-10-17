@@ -1,66 +1,31 @@
 import * as vscode from "vscode";
 import { config } from "./config";
-import { provenance } from "./rules";
-import type { RulesResponse, VsRule } from "./types";
 
-// Quick pick of team rules (status bar, "Show team rules", CodeLens clicks). Picking a rule opens its card.
+// Navigation helpers (the rule QuickPick is gone, Michael Oct 17): the status bar and "View source" links open the
+// Hivemind sidebar (agent I's webview); the web dashboard is the fallback when the sidebar isn't registered.
 
-type Item = vscode.QuickPickItem & { rule?: VsRule; action?: () => void };
+const FOCUS = ["hivemind.focusSidebar", "hivemind.sidebar.focus", "hivemind.openSidebar"];
+const SHOW_RULE = ["hivemind.showRule", "hivemind.sidebar.showRule", "hivemind.revealRule"];
 
-const sep = (label: string): Item => ({ label, kind: vscode.QuickPickItemKind.Separator });
-const ruleItem = (r: VsRule): Item => ({
-  label: `${r.locked ? "$(lock)" : "$(lightbulb)"} ${r.title}`,
-  description: r.locked ? `${r.ownerFirst}, ${r.ownerRole} · #${r.scopeId}` : `${r.ownerFirst}'s lesson · #${r.scopeId}`,
-  detail: r.learnedFrom ?? r.summary,
-  rule: r,
-});
+async function firstRegistered(candidates: string[]): Promise<string | undefined> {
+  const all = new Set(await vscode.commands.getCommands(true));
+  return candidates.find((c) => all.has(c)) ?? (candidates === FOCUS ? [...all].find((c) => c.startsWith("workbench.view.extension.hivemind")) : undefined);
+}
 
 export function openDashboard(path = "") {
   void vscode.env.openExternal(vscode.Uri.parse(config().dashboardUrl + path));
 }
 
-export async function pickRules(opts: { rules: VsRule[]; data?: RulesResponse | null; title: string; withActions?: boolean }) {
-  const { rules, data } = opts;
-  const locked = rules.filter((r) => r.locked);
-  const lessons = rules.filter((r) => !r.locked);
-  const items: Item[] = [];
-  if (locked.length) items.push(sep("Locked rules"), ...locked.map(ruleItem));
-  if (lessons.length) items.push(sep("Team lessons"), ...lessons.map(ruleItem));
-  if (opts.withActions && data?.pending.count) {
-    items.push(
-      sep(`Waiting for approval${data.approver ? ` (@${data.approver.id})` : ""}`),
-      ...data.pending.items.map((p) => ({
-        label: `$(clock) ${p.title}`,
-        description: `${p.owner} · #${p.scopeId}`,
-        action: () => openDashboard("/approvals"),
-      })),
-    );
-  }
-  if (opts.withActions) {
-    items.push(
-      sep("Hivemind"),
-      { label: "$(link-external) Open dashboard", action: () => openDashboard() },
-      ...(data?.pending.count ? [{ label: "$(check) Review approvals", action: () => openDashboard("/approvals") }] : []),
-      { label: "$(refresh) Refresh", action: () => void vscode.commands.executeCommand("hivemind.refresh") },
-      { label: "$(output) Show log", action: () => void vscode.commands.executeCommand("hivemind.showLog") },
-    );
-  }
-  if (!items.length) items.push({ label: "No team rules for this file yet", action: () => openDashboard() });
-
-  const picked = await vscode.window.showQuickPick(items, {
-    title: opts.title,
-    placeHolder: "Pick a rule to see where it came from",
-    matchOnDescription: true,
-    matchOnDetail: true,
-  });
-  if (!picked) return;
-  if (picked.action) return picked.action();
-  if (picked.rule) return showRule(picked.rule);
+/** Status bar click / "Show team rules": open the Hivemind sidebar. */
+export async function focusSidebar() {
+  const cmd = await firstRegistered(FOCUS);
+  if (cmd) return vscode.commands.executeCommand(cmd);
+  openDashboard();
 }
 
-export async function showRule(r: VsRule) {
-  const detail = [r.summary, "", provenance(r), r.learnedFrom ? `Learned from: ${r.learnedFrom}` : ""].filter(Boolean).join("\n");
-  const open = "Open in Hivemind";
-  const choice = await vscode.window.showInformationMessage(`${r.locked ? "🔒 " : ""}${r.title}`, { modal: true, detail }, open);
-  if (choice === open) openDashboard();
+/** Hover "View source": open this rule in the sidebar (falls back to the sidebar, then the dashboard). */
+export async function viewRule(ruleId?: string) {
+  const cmd = ruleId ? await firstRegistered(SHOW_RULE) : undefined;
+  if (cmd) return vscode.commands.executeCommand(cmd, ruleId);
+  return focusSidebar();
 }

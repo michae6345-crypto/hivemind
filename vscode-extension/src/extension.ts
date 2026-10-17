@@ -4,23 +4,21 @@ import { config, isCodeDoc } from "./config";
 import { checkDoc, recheckVisible, registerDiagnostics } from "./diagnostics";
 import { registerHover } from "./hover";
 import { registerInline } from "./inline";
-import { registerLens } from "./lens";
 import { initLog, log, showLog } from "./log";
-import { openDashboard, pickRules } from "./picker";
-import { clearRules, peekRules, rulesFor } from "./rules";
+import { focusSidebar, openDashboard, viewRule } from "./picker";
+import { clearRules, rulesFor } from "./rules";
 import { registerSidebar } from "./sidebar";
 import { registerStatus } from "./status";
 import { registerTeach, teach } from "./teach";
 
-// Hivemind inside the editor: status bar, CodeLens, hovers, squiggles + quick fixes, lesson-aware ghost text,
-// collision warnings and "Teach Hivemind". Everything talks to the Hivemind server (hivemind.apiUrl).
+// Hivemind inside the editor: status bar, hovers, squiggles + quick fixes, lesson-aware ghost text, collision
+// warnings and "Teach Hivemind". Everything talks to the Hivemind server (hivemind.apiUrl).
 export function activate(ctx: vscode.ExtensionContext) {
   initLog(ctx);
   const c = config();
   log(`Hivemind ${ctx.extension.packageJSON.version} → ${c.apiUrl} as @${c.user}${c.token ? "" : " (no token set)"}`);
 
   const status = registerStatus(ctx);
-  registerLens(ctx);
   registerHover(ctx);
   registerDiagnostics(ctx);
   const inline = registerInline(ctx);
@@ -34,28 +32,19 @@ export function activate(ctx: vscode.ExtensionContext) {
   };
 
   ctx.subscriptions.push(
+    // Status bar click: the Hivemind sidebar (no QuickPick, Michael Oct 17).
     vscode.commands.registerCommand("hivemind.showRules", async () => {
       const doc = activeDoc();
-      const data = doc ? await rulesFor(doc) : null;
-      if (doc && !data) {
+      if (doc && !(await rulesFor(doc))) {
         const pick = await vscode.window.showWarningMessage(`Hivemind can't reach ${config().apiUrl}.`, "Open settings", "Show log");
         if (pick === "Open settings") void vscode.commands.executeCommand("workbench.action.openSettings", "hivemind");
         if (pick === "Show log") showLog();
         return;
       }
-      await pickRules({
-        rules: data?.rules.filter((r) => r.kind !== "owner") ?? [],
-        data,
-        title: data ? `Hivemind · team rules for #${data.repo}` : "Hivemind",
-        withActions: true,
-      });
+      await focusSidebar();
     }),
-    vscode.commands.registerCommand("hivemind.showRuleList", async (ids: string[] = [], title = "Team rules") => {
-      const doc = activeDoc();
-      const data = doc ? peekRules(doc) ?? (await rulesFor(doc)) : null;
-      const rules = (data?.rules ?? []).filter((r) => ids.includes(r.id));
-      await pickRules({ rules, data, title: `Hivemind · ${title}` });
-    }),
+    // Hover "View source" → this rule in the sidebar.
+    vscode.commands.registerCommand("hivemind.viewRule", (ruleId?: string) => viewRule(ruleId)),
     vscode.commands.registerCommand("hivemind.openDashboard", () => openDashboard()),
     vscode.commands.registerCommand("hivemind.checkFile", async () => {
       const doc = activeDoc();
@@ -77,7 +66,7 @@ export function activate(ctx: vscode.ExtensionContext) {
     }),
   );
   // Exposed for the integration test (test/suite.js), not a public API.
-  return { testing: { inline, collisions } };
+  return { testing: { inline, collisions, rules: rulesFor, statusText: status.text } };
 }
 
 export function deactivate() {}

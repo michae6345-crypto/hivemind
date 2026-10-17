@@ -3,6 +3,7 @@ import { api } from "./api";
 import { config, relPath, repoFor } from "./config";
 import { openDashboard } from "./picker";
 import { peekRules } from "./rules";
+import { plain } from "./wording";
 
 // "Teach Hivemind?" lightbulb on a selection → one-line rule → POST /api/events (type correction, x-hm-agent: vscode).
 
@@ -58,10 +59,10 @@ export async function teach(uri?: vscode.Uri, range?: vscode.Range) {
   const approver = peekRules(doc)?.approver?.id;
   if (lesson?.status === "blocked") {
     void vscode.window.showWarningMessage(
-      `Blocked by a locked rule: ${lesson.title}.${lesson.blockedReason ? ` ${lesson.blockedReason}` : ""}`,
+      `Blocked by a locked rule: ${plain(lesson.title)}.${lesson.blockedReason ? ` ${plain(lesson.blockedReason)}` : ""}`,
     );
   } else if (lesson?.status === "active") {
-    void vscode.window.showInformationMessage(`Lesson added: ${lesson.title}.`);
+    void vscode.window.showInformationMessage(`Lesson added: ${plain(lesson.title)}.`);
   } else if (lesson) {
     const open = "Open approvals";
     const pick = await vscode.window.showInformationMessage(`Lesson proposed. Waiting on @${approver ?? "your lead"}.`, open);
