@@ -15,7 +15,7 @@ import { Progression } from "./progression";
 import { Structure } from "./structure";
 import { InitMock } from "./live-work";
 import { TryApprove } from "./try-approve";
-import { Different, GoToMarket } from "./gtm";
+import { Different } from "./gtm";
 import { LOCKED_RULE, PROMPTS } from "./demo-script";
 import { Note } from "./notes";
 
@@ -48,7 +48,6 @@ export function Site() {
         <Built />
         <GetStarted />
         <WhyUs />
-        <Market />
         <Closing />
         <Footer />
       </div>
@@ -318,23 +317,10 @@ function WhyUs() {
   return (
     <section className="px-4 pt-32">
       <SectionHead id="results" title="Before the agent writes, not after review.">
-        Teams already have rule files, vendor memory and review bots. Here is where Hivemind sits next to them.
+        Other tools catch a mistake after it&apos;s written, or only for one vendor&apos;s agent.
       </SectionHead>
       <div className="mt-12">
         <Different />
-      </div>
-    </section>
-  );
-}
-
-function Market() {
-  return (
-    <section className="px-4 pt-32">
-      <SectionHead id="gtm" title="Free for one team. Paid when security wants it everywhere.">
-        Bottom-up through the engineering lead, then up to the platform and security teams.
-      </SectionHead>
-      <div className="mt-12">
-        <GoToMarket />
       </div>
     </section>
   );
