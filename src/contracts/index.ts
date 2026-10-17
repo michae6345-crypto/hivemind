@@ -40,8 +40,10 @@ export const Evidence = z.object({
   quote: z.string(),
   actor: z.string(), // person id or 'agent:<session>'
   at: z.string(),
-  url: z.string().nullable().optional(),
+  url: z.string().nullable().optional(), // permalink (PR comment, commit line)
   ref: z.string().nullable().optional(),
+  file: z.string().nullable().optional(), // where the correction/fix happened, e.g. 'src/export.ts'
+  line: z.number().nullable().optional(),
 });
 export type Evidence = z.infer<typeof Evidence>;
 
