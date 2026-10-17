@@ -71,7 +71,21 @@ Copy each folder's contents into the target repo root (except Windsurf's `mcp_co
 
 `AGENTS.md` is also read by Cursor, Copilot and Windsurf, so one Hivemind stanza there covers every tool's rules fallback.
 
+`integrations/templates.mjs` returns all of the above with the placeholders filled in, for `hivemind init` to merge:
+`templates({ hivemindDir, apiUrl, repo })` → `[{ agent, kind: "mcp"|"hooks"|"rules", file, scope, content }]`.
+The MCP blocks are the same ones `cli/lib/agents.mjs` writes. The **hooks** files are what `init` still needs to add for
+Cursor / Gemini / Codex / Copilot / Windsurf. For rules files, `hivemind sync` writes the pack itself; keep the
+`get_team_rules` line at the top so a stale snapshot still points the agent at live memory.
+
 ## Testing
 
 `node scripts/smoke-adapters.mjs [baseUrl]` (default `http://localhost:3105`) pipes documented sample payloads through every
-adapter against a running server. See the script header for what it asserts.
+adapter, via a recording proxy, against a running server. See the script header for what it asserts.
+
+**Live vs docs-only (2026-10-16)**
+
+| Tool | Tested live | Checked against docs only |
+|---|---|---|
+| Gemini CLI 0.64.0 (`npx @google/gemini-cli`) | `gemini mcp list` with `.gemini/settings.json` from this folder: **✓ hivemind Connected** (✗ Disconnected with a wrong token, so the `$HIVEMIND_TOKEN` header expansion is what authenticates) | hooks: headless runs stop at the auth check (no `GEMINI_API_KEY` / Google login on this machine) before any hook fires |
+| Cursor, Codex, Copilot, Windsurf | not installed (`cursor-agent`, `codex`, `copilot`, `windsurf` not on PATH) | hook payloads/outputs and MCP formats from the linked docs; adapters exercised with those payloads by the smoke test |
+| all five adapters | against the real server: briefing, prompt → engine, edit → activity with `agent`, cross-tool collision, session end, server-down fallbacks | — |
