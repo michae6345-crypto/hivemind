@@ -120,7 +120,7 @@ export async function run(argv, cfg) {
 
   const refreshing = argv.includes("--refresh");
   const pos = argv.filter((a, i) => !a.startsWith("--") && !(argv[i - 1] ?? "").match(/^--(url|repo|user|dir)$/));
-  const input = refreshing ? {} : await readStdin();
+  const input = refreshing ? {} : (globalThis.hivemindHookInput ?? (await readStdin())); // cli/hivemind.mjs may have read it
   const session = refreshing ? (pos[0] === "-" ? "" : pos[0] ?? "") : input.session_id ?? "";
   const root = refreshing ? pos[1] ?? cfg.root : input.workspace?.project_dir || input.workspace?.current_dir || input.cwd || cfg.root;
   // The repo follows Claude Code's project dir (not this process' cwd) unless a flag, env or .hivemind.json says otherwise.
@@ -129,6 +129,16 @@ export async function run(argv, cfg) {
     cfg = { ...cfg, repo: r.includes("/") ? r : `repo/${r}` };
   }
   const file = join(tmpdir(), `hivemind-statusline-${hash(`${cfg.url}|${cfg.repo}|${cfg.actor}|${session}|${th.COLOR ? "c" : "p"}`)}.json`);
+  const entry = fileURLToPath(new URL("../hivemind.mjs", import.meta.url));
+  const args = [entry, "statusline", "--refresh", "--url", cfg.url, "--repo", cfg.repo, "--user", cfg.actor, session || "-", root];
+  // Point lib/fastline.mjs at this cache: the next run prints it (and starts this refresher) without loading the CLI.
+  if (process.env.HIVEMIND_FASTLINE && !refreshing) {
+    try {
+      writeFileSync(process.env.HIVEMIND_FASTLINE, JSON.stringify({ file, args }));
+    } catch {
+      /* best effort */
+    }
+  }
   const api = (timeout) => {
     const a = makeApi({ ...cfg }, () => ({ role: "engineer" }));
     // data.mjs times out at 10s; the inline attempt must give up much sooner.
@@ -168,7 +178,5 @@ export async function run(argv, cfg) {
   const lock = file + ".lock";
   if (existsSync(lock) && Date.now() - statSync(lock).mtimeMs < LOCK_MS) return;
   writeFileSync(lock, String(process.pid));
-  const entry = fileURLToPath(new URL("../hivemind.mjs", import.meta.url));
-  const args = [entry, "statusline", "--refresh", "--url", cfg.url, "--repo", cfg.repo, "--user", cfg.actor, session || "-", root];
   spawn(process.execPath, args, { detached: true, stdio: "ignore", windowsHide: true, env: { ...process.env, HIVEMIND_TOKEN: cfg.token ?? "" } }).unref();
 }

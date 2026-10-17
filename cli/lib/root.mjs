@@ -51,13 +51,64 @@ export function resolveUser(flags = {}, saved = {}, root = process.cwd()) {
   const pick = (v) => (typeof v === "string" && v.trim() ? v.trim().replace(/^@/, "").toLowerCase() : null);
   const direct = pick(flags.user) ?? pick(process.env.HIVEMIND_USER) ?? pick(saved?.user) ?? pick(rememberedUser(root));
   if (direct) return direct;
+  const email = gitEmailFromFiles(root) ?? gitEmailFromGit(root);
+  return pick((email ?? "").split("@")[0].replace(/[^\w.-]/g, ""));
+}
+
+function gitEmailFromGit(root) {
   try {
     const r = spawnSync("git", ["config", "user.email"], { cwd: root, encoding: "utf8", windowsHide: true, timeout: 3000 });
-    const local = r.status === 0 ? r.stdout.trim().split("@")[0] : "";
-    return pick(local.replace(/[^\w.-]/g, ""));
+    return r.status === 0 ? r.stdout.trim() : null;
   } catch {
     return null;
   }
+}
+
+/**
+ * user.email straight from the repo's and your git config files (no `git` spawn: that costs ~100ms on Windows, on every
+ * launch and every status line refresh). undefined = can't tell from the files alone (includes, env overrides, no email
+ * anywhere) → the caller asks git.
+ */
+function gitEmailFromFiles(root) {
+  if (process.env.GIT_DIR || process.env.GIT_CONFIG_GLOBAL || process.env.GIT_CONFIG_SYSTEM || process.env.GIT_CONFIG_COUNT) return undefined;
+  const read = (p) => {
+    try {
+      return readFileSync(p, "utf8");
+    } catch {
+      return null;
+    }
+  };
+  // The repo's .git may sit above root (a .hivemind.json in a subfolder). It is a folder, or (worktrees, submodules) a
+  // file "gitdir: <path>" whose commondir holds the shared config.
+  let top = nativePath(root);
+  while (!existsSync(join(top, ".git")) && dirname(top) !== top) top = dirname(top);
+  let gitDir = join(top, ".git");
+  const pointer = read(gitDir);
+  if (pointer !== null) {
+    const m = pointer.match(/^gitdir:\s*(.+?)\s*$/m);
+    if (!m) return undefined;
+    gitDir = resolve(top, m[1]);
+    const common = read(join(gitDir, "commondir"));
+    if (common) gitDir = resolve(gitDir, common.trim());
+  }
+  const home = homedir();
+  const xdg = process.env.XDG_CONFIG_HOME || join(home, ".config");
+  // git's precedence: local, then global (~/.gitconfig, then XDG). System config rarely holds an email; git covers it.
+  for (const p of [join(gitDir, "config"), join(home, ".gitconfig"), join(xdg, "git", "config")]) {
+    const text = read(p);
+    if (text === null) continue;
+    if (/^\s*\[\s*include/im.test(text)) return undefined; // [include]/[includeIf] can override: let git decide
+    let inUser = false;
+    let email;
+    for (const line of text.split(/\r?\n/)) {
+      const sec = line.match(/^\s*\[\s*([^\]\s"]+)(\s+"[^"]*")?\s*\]/);
+      if (sec) inUser = sec[1].toLowerCase() === "user" && !sec[2];
+      const kv = inUser && line.match(/^\s*email\s*=\s*"?([^"#;]*?)"?\s*(?:[#;].*)?$/i);
+      if (kv) email = kv[1].trim(); // last one wins, like git
+    }
+    if (email) return email;
+  }
+  return undefined;
 }
 
 /** The user you last ran this repo as (~/.hivemind/state.json), e.g. after `HIVEMIND_USER=kevin hivemind` there once. */

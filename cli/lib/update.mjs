@@ -4,11 +4,16 @@
 // Safety: only on branch main, only fast-forward (never merges, rebases, stashes or commits), and never when an
 // incoming commit touches a file you have uncommitted edits in (your demo/playground edits stay exactly as they are).
 // Anything unexpected → skip silently and append to ~/.hivemind/update.log. HIVEMIND_NO_UPDATE=1 turns all of it off.
-import { spawn, spawnSync } from "node:child_process";
 import { appendFileSync, existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
+import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
+
+// node:child_process only when git actually runs (~5ms otherwise spent on every launch, status line included).
+const require = createRequire(import.meta.url);
+const spawn = (...a) => require("node:child_process").spawn(...a);
+const spawnSync = (...a) => require("node:child_process").spawnSync(...a);
 
 const ROOT = resolve(fileURLToPath(new URL("../..", import.meta.url))); // <checkout>/cli/lib → <checkout>
 const DIR = join(homedir(), ".hivemind");
@@ -78,6 +83,8 @@ export function fastForward({ verbose = false } = {}) {
     return null;
   };
   const branch = out(["rev-parse", "--abbrev-ref", "HEAD"]);
+  // Clear `behind` on every skip, so the next launch doesn't spawn git again until the next background fetch.
+  if (branch !== "main") saveUpdate({ behind: 0 });
   if (branch !== "main") return skip(`checkout is on ${branch}, not main`, `skipped: this checkout is on ${branch}, not main`);
   const behind = Number(out(["rev-list", "--count", "HEAD..origin/main"]) ?? 0);
   const ahead = Number(out(["rev-list", "--count", "origin/main..HEAD"]) ?? 0);
