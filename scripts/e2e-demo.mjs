@@ -220,7 +220,7 @@ async function beatC() {
   const served = (logs ?? []).some((l) => (l.memory_ids ?? []).includes(lesson.id));
   report("c", title, served && follows, [
     `context-pack for ${P.fresh} includes lesson: ${inPack}`,
-    `claude -p exit=${res.code} session=${sid ?? "?"} turns=${res.meta.num_turns ?? "?"} ${res.stderr ? `stderr: ${short(res.stderr, 120)}` : ""}`,
+    `claude -p exit=${res.code} session=${sid ?? "?"} turns=${res.meta.num_turns ?? "?"} ${res.stderr ? `stderr: ${short(res.stderr, 600)}` : ""}`,
     `pack_log for that session: ${logs?.length ? `${logs[0].memory_ids.length} memories, ${logs[0].tokens} tokens, lesson served=${served}` : "no row (SessionStart hook did not reach the server?)"}`,
     code ? `src/csv-export.ts calls assertSingleCustomer(): ${calls}` : `src/csv-export.ts was not created${declined ? " (agent declined, citing the rule)" : ""}`,
     code ? `  ${short(code.split("\n").filter((l) => /assertSingleCustomer|export async function/.test(l)).join(" ⏎ "), 200)}` : "",
