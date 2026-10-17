@@ -1,0 +1,6 @@
+# Hivemind team memory (written by `hivemind init`)
+[mcp_servers.hivemind]
+url = "http://localhost:3000/api/mcp"
+bearer_token_env_var = "HIVEMIND_TOKEN"
+http_headers = { "x-hm-repo" = "repo/export-service", "x-hm-agent" = "codex" }
+env_http_headers = { "x-hm-user" = "HIVEMIND_USER" }

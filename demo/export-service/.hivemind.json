@@ -1,0 +1,10 @@
+{
+  "repo": "repo/export-service",
+  "url": "http://localhost:3000",
+  "agents": [
+    "cursor",
+    "gemini-cli",
+    "copilot",
+    "codex"
+  ]
+}
